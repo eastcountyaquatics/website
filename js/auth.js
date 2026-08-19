@@ -19,7 +19,7 @@ async function renderNavAuthSlot(session) {
     const adminLink = role ? '<a href="admin.html">Admin</a>' : "";
     slot.innerHTML =
       adminLink +
-      '<a href="dashboard.html">My Account</a>' +
+      '<a href="dashboard.html" class="nav-btn">My Account</a>' +
       '<a href="#" id="nav-sign-out">Sign Out</a>';
     const signOutLink = document.getElementById("nav-sign-out");
     signOutLink.addEventListener("click", async function (e) {
@@ -28,7 +28,7 @@ async function renderNavAuthSlot(session) {
       window.location.href = "index.html";
     });
   } else {
-    slot.innerHTML = '<a href="login.html">Sign In</a>';
+    slot.innerHTML = '<a href="login.html" class="nav-btn">Sign In</a>';
   }
 }
 

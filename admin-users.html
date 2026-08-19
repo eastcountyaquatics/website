@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Access | Admin | San Diego East County Aquatics</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="coaches.html">Coaches</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Team Access</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+    <p class="muted">Give someone owner, coach, or staff access once they've created an account on the site. Owners can edit everything; coaches can edit their own coach listing and, later, their team's schedule; staff access is read-only until you grant more.</p>
+    <div id="user-list" style="margin-top:24px;"><p class="muted">Loading accounts&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  async function loadUsers() {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .select("id, email, full_name, role, created_at")
+      .order("created_at", { ascending: false });
+
+    const listEl = document.getElementById("user-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load accounts: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No accounts yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = data
+      .map(function (u) {
+        const roles = ["", "owner", "coach", "staff"];
+        const options = roles
+          .map(function (r) {
+            const label = r === "" ? "No admin access" : r.charAt(0).toUpperCase() + r.slice(1);
+            const selected = (u.role || "") === r ? " selected" : "";
+            return '<option value="' + r + '"' + selected + ">" + label + "</option>";
+          })
+          .join("");
+        return (
+          '<div class="admin-list-item">' +
+          "<div>" +
+          "<h4>" + escapeHtml(u.full_name || "(no name)") + "</h4>" +
+          '<div class="muted" style="font-size:13px;">' + escapeHtml(u.email) + "</div>" +
+          "</div>" +
+          '<div class="admin-list-actions">' +
+          '<select data-user="' + u.id + '" style="padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;">' + options + "</select>" +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("select[data-user]").forEach(function (sel) {
+      sel.addEventListener("change", async function () {
+        const newRole = sel.value || null;
+        const { error } = await supabaseClient
+          .from("profiles")
+          .update({ role: newRole })
+          .eq("id", sel.dataset.user);
+        if (error) {
+          alert("Could not update role: " + error.message);
+        }
+      });
+    });
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    loadUsers();
+  })();
+</script>
+</body>
+</html>

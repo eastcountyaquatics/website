@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Coaches | Admin | San Diego East County Aquatics</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="coaches.html">Coaches</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Manage Coaches</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+
+    <div id="permission-notice" class="notice" style="display:none;margin-bottom:24px;">
+      Your account can view this list but doesn't have permission to add, edit, or delete coaches. Ask an owner if you need changes made.
+    </div>
+
+    <div class="admin-form" id="coach-form-wrap">
+      <h3 id="form-title">Add a Coach</h3>
+      <div id="form-msg" class="form-msg"></div>
+      <form id="coach-form">
+        <input type="hidden" id="coach-id">
+        <div class="field">
+          <label for="full_name">Full Name</label>
+          <input type="text" id="full_name" required>
+        </div>
+        <div class="field">
+          <label for="role_title">Role / Title</label>
+          <input type="text" id="role_title" placeholder="e.g. Coach, Club Founder, Masters Team Manager">
+        </div>
+        <div class="field">
+          <label for="team_group">Team Group</label>
+          <input type="text" id="team_group" placeholder="e.g. 14U Boys, Club Founders">
+        </div>
+        <div class="field">
+          <label for="bio">Bio (optional)</label>
+          <textarea id="bio" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label for="photo_url">Photo URL (optional)</label>
+          <input type="text" id="photo_url" placeholder="images/coach-example.jpg">
+        </div>
+        <div class="field">
+          <label for="sort_order">Display Order (lower shows first)</label>
+          <input type="number" id="sort_order" value="0">
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Add Coach</button>
+          <button type="button" id="cancel-edit-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="coach-list"><p class="muted">Loading coaches&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  let canEdit = false;
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  async function loadCoaches() {
+    const { data, error } = await supabaseClient
+      .from("coaches")
+      .select("*")
+      .order("team_group", { ascending: true })
+      .order("sort_order", { ascending: true });
+
+    const listEl = document.getElementById("coach-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load coaches: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No coaches yet.</p>';
+      return;
+    }
+
+    let currentGroup = null;
+    let html = "";
+    data.forEach(function (c) {
+      if (c.team_group !== currentGroup) {
+        currentGroup = c.team_group;
+        html += '<div class="admin-group-label">' + escapeHtml(currentGroup || "Ungrouped") + "</div>";
+      }
+      html +=
+        '<div class="admin-list-item">' +
+        "<div>" +
+        "<h4>" + escapeHtml(c.full_name) + "</h4>" +
+        '<div class="muted" style="font-size:13px;">' + escapeHtml(c.role_title || "") + "</div>" +
+        "</div>" +
+        '<div class="admin-list-actions">' +
+        (canEdit
+          ? '<button data-edit="' + c.id + '">Edit</button><button data-delete="' + c.id + '" class="danger">Delete</button>'
+          : "") +
+        "</div>" +
+        "</div>";
+    });
+    listEl.innerHTML = html;
+
+    if (canEdit) {
+      listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const coach = data.find(function (c) { return c.id === btn.dataset.edit; });
+          if (coach) startEdit(coach);
+        });
+      });
+      listEl.querySelectorAll("[data-delete]").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          if (!confirm("Delete this coach?")) return;
+          const { error } = await supabaseClient.from("coaches").delete().eq("id", btn.dataset.delete);
+          if (error) {
+            alert("Could not delete: " + error.message);
+            return;
+          }
+          loadCoaches();
+        });
+      });
+    }
+  }
+
+  function startEdit(coach) {
+    document.getElementById("form-title").textContent = "Edit Coach";
+    document.getElementById("coach-id").value = coach.id;
+    document.getElementById("full_name").value = coach.full_name || "";
+    document.getElementById("role_title").value = coach.role_title || "";
+    document.getElementById("team_group").value = coach.team_group || "";
+    document.getElementById("bio").value = coach.bio || "";
+    document.getElementById("photo_url").value = coach.photo_url || "";
+    document.getElementById("sort_order").value = coach.sort_order || 0;
+    document.getElementById("submit-btn").textContent = "Save Changes";
+    document.getElementById("cancel-edit-btn").style.display = "inline-block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    document.getElementById("coach-form").reset();
+    document.getElementById("coach-id").value = "";
+    document.getElementById("form-title").textContent = "Add a Coach";
+    document.getElementById("submit-btn").textContent = "Add Coach";
+    document.getElementById("cancel-edit-btn").style.display = "none";
+  }
+
+  document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
+
+  document.getElementById("coach-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("form-msg");
+    msg.className = "form-msg";
+
+    const payload = {
+      full_name: document.getElementById("full_name").value.trim(),
+      role_title: document.getElementById("role_title").value.trim() || null,
+      team_group: document.getElementById("team_group").value.trim() || null,
+      bio: document.getElementById("bio").value.trim() || null,
+      photo_url: document.getElementById("photo_url").value.trim() || null,
+      sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
+    };
+
+    const id = document.getElementById("coach-id").value;
+    const result = id
+      ? await supabaseClient.from("coaches").update(payload).eq("id", id)
+      : await supabaseClient.from("coaches").insert(payload);
+
+    if (result.error) {
+      msg.className = "form-msg error";
+      msg.textContent = result.error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = id ? "Coach updated." : "Coach added.";
+    resetForm();
+    loadCoaches();
+  });
+
+  (async function () {
+    const auth = await requireRole();
+    if (!auth) return;
+    canEdit = auth.role === "owner" || auth.role === "coach";
+    if (!canEdit) {
+      document.getElementById("coach-form-wrap").style.display = "none";
+      document.getElementById("permission-notice").style.display = "block";
+    }
+    loadCoaches();
+  })();
+</script>
+</body>
+</html>

@@ -1,18 +1,23 @@
 /* East County Aquatics — shared styles */
 
+/* Palette pulled from the club's real logo and site content:
+   pure link-blue (#0000ff) and gold/yellow highlight are their actual
+   inline colors; Bitter + Roboto are their actual site fonts. */
 :root{
-  --navy:#06283d;
-  --deep:#0a3d62;
-  --blue:#1565c0;
-  --aqua:#00b4d8;
-  --aqua-light:#90e0ef;
-  --foam:#f4fbfd;
+  --navy:#0a1f6b;
+  --deep:#0d2c99;
+  --blue:#0000ff;
+  --aqua:#0000ff;
+  --aqua-light:#b9c4ff;
+  --foam:#f7f8fb;
   --white:#ffffff;
-  --ink:#0d1b2a;
-  --muted:#4a5c6b;
-  --gold:#ffb703;
-  --radius:14px;
-  --shadow:0 10px 30px rgba(6,40,61,0.12);
+  --ink:#222222;
+  --muted:#5a5a5a;
+  --gold:#ffd400;
+  --highlight:#ffff00;
+  --orange:#e69138;
+  --radius:10px;
+  --shadow:0 6px 20px rgba(10,31,107,0.10);
   --maxw:1180px;
 }
 
@@ -20,14 +25,14 @@
 html{scroll-behavior:smooth;}
 body{
   margin:0;
-  font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-family:"Roboto","Segoe UI",Helvetica,Arial,sans-serif;
   color:var(--ink);
   background:var(--foam);
   line-height:1.6;
 }
 img{max-width:100%;display:block;}
 a{color:inherit;text-decoration:none;}
-h1,h2,h3,h4{font-family:"Trebuchet MS",Segoe UI,Roboto,sans-serif;line-height:1.15;margin:0 0 .5em;color:var(--navy);}
+h1,h2,h3,h4{font-family:"Bitter",Georgia,"Times New Roman",serif;font-weight:700;line-height:1.2;margin:0 0 .5em;color:var(--navy);}
 p{margin:0 0 1em;}
 .container{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
 section{padding:72px 0;}
@@ -36,20 +41,26 @@ section{padding:72px 0;}
 /* Buttons */
 .btn{
   display:inline-block;
-  padding:13px 28px;
-  border-radius:999px;
+  padding:12px 26px;
+  border-radius:6px;
   font-weight:700;
   letter-spacing:.02em;
   border:2px solid transparent;
   transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
   cursor:pointer;
 }
-.btn-primary{background:var(--gold);color:var(--navy);}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(255,183,3,.4);}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,255,.3);}
 .btn-outline{background:transparent;border-color:#fff;color:#fff;}
 .btn-outline:hover{background:rgba(255,255,255,.15);transform:translateY(-2px);}
 .btn-outline-dark{background:transparent;border-color:var(--blue);color:var(--blue);}
 .btn-outline-dark:hover{background:var(--blue);color:#fff;}
+
+/* Real-site highlight badge: literal yellow-highlighter style used on eastcountyaquatics.com */
+.highlight-badge{
+  display:inline-block;background:var(--highlight);color:#1a1a00;
+  padding:4px 12px;font-weight:700;font-size:15px;
+}
 
 /* Header */
 .site-header{
@@ -69,14 +80,14 @@ section{padding:72px 0;}
 .footer-logo{width:40px;height:40px;object-fit:contain;flex-shrink:0;}
 .footer-brand-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .footer-brand-row h4{margin-bottom:0;}
-.footer-tagline{font-style:italic;color:#a9c9dc;font-size:13px;margin:4px 0 0;}
+.footer-tagline{font-style:italic;color:#c9d2f5;font-size:13px;margin:4px 0 0;}
 .brand-text{display:flex;flex-direction:column;line-height:1.1;}
 .brand-text strong{font-size:17px;letter-spacing:.03em;}
 .brand-text span{font-size:11px;color:var(--aqua-light);letter-spacing:.12em;text-transform:uppercase;}
 
 .main-nav ul{list-style:none;display:flex;gap:6px;margin:0;padding:0;}
 .main-nav a{
-  display:block;color:#e8f6fb;padding:10px 14px;border-radius:8px;font-weight:600;font-size:15px;
+  display:block;color:#e4e8fc;padding:10px 14px;border-radius:8px;font-weight:600;font-size:15px;
   transition:background .15s ease, color .15s ease;
 }
 .main-nav a:hover, .main-nav a.active{background:rgba(255,255,255,.12);color:var(--gold);}
@@ -96,26 +107,35 @@ section{padding:72px 0;}
 /* Hero */
 .hero{
   position:relative;overflow:hidden;color:#fff;
-  background:linear-gradient(160deg, var(--navy) 0%, var(--deep) 45%, var(--blue) 100%);
-  padding:90px 0 60px;
+  background:var(--navy);
+  padding:64px 0 48px;
+  border-bottom:6px solid var(--gold);
 }
 .hero .container{position:relative;z-index:2;}
+.hero-photo{padding:0;min-height:400px;display:flex;align-items:flex-end;border-bottom:none;}
+.hero-photo-img{position:absolute;inset:0;background-size:cover;background-position:center 65%;}
+.hero-photo-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(0deg, rgba(10,31,107,.92) 0%, rgba(10,31,107,.55) 55%, rgba(10,31,107,.25) 100%);
+}
+.hero-photo .container{padding-bottom:40px;padding-top:100px;}
+.hero-photo h1{font-size:clamp(28px,4.2vw,42px);}
 .hero-eyebrow{
   display:inline-block;color:var(--navy);background:var(--gold);
-  padding:6px 14px;border-radius:999px;font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:18px;
+  padding:6px 14px;border-radius:4px;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px;
 }
-.hero h1{color:#fff;font-size:clamp(32px,5vw,54px);max-width:760px;}
-.hero p.lead{font-size:19px;max-width:600px;color:#dff3fb;}
+.hero h1{color:#fff;font-size:clamp(30px,4.6vw,48px);max-width:760px;}
+.hero p.lead{font-size:18px;max-width:600px;color:#e2e7ff;font-family:"Roboto",sans-serif;}
 .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px;}
-.waves{position:absolute;left:0;right:0;bottom:-2px;width:100%;line-height:0;z-index:1;}
-.waves svg{width:100%;height:80px;display:block;}
+.waves{display:none;}
 .page-hero{
-  background:linear-gradient(160deg, var(--navy) 0%, var(--deep) 55%, var(--blue) 100%);
-  color:#fff;padding:64px 0 84px;position:relative;overflow:hidden;
+  background:var(--navy);
+  color:#fff;padding:48px 0;position:relative;overflow:hidden;
+  border-bottom:6px solid var(--gold);
 }
 .page-hero h1{color:#fff;margin-bottom:10px;}
-.page-hero p{color:#dff3fb;max-width:640px;font-size:17px;margin-bottom:0;}
-.breadcrumb{font-size:13px;color:var(--aqua-light);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+.page-hero p{color:#e2e7ff;max-width:640px;font-size:16px;margin-bottom:0;font-family:"Roboto",sans-serif;}
+.breadcrumb{font-size:13px;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-weight:700;}
 
 /* Stats strip */
 .stats{
@@ -124,7 +144,7 @@ section{padding:72px 0;}
   padding:32px;margin-top:-56px;position:relative;z-index:3;
 }
 .stat{text-align:center;}
-.stat strong{display:block;font-size:32px;color:var(--blue);font-family:"Trebuchet MS",sans-serif;}
+.stat strong{display:block;font-size:30px;color:var(--blue);font-family:"Bitter",serif;}
 .stat span{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
 
 /* Cards / grids */
@@ -139,24 +159,25 @@ section{padding:72px 0;}
 
 .card{
   background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);
-  padding:28px;border-top:4px solid var(--aqua);
+  padding:28px;border:1px solid #e3e6f0;border-top:4px solid var(--blue);
 }
 .card h3{font-size:19px;}
 .card .muted{color:var(--muted);font-size:14px;}
 
 .icon-badge{
-  width:52px;height:52px;border-radius:12px;
-  background:linear-gradient(135deg, var(--aqua-light), var(--blue));
+  width:52px;height:52px;border-radius:10px;
+  background:var(--blue);
   display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;margin-bottom:16px;
 }
 
 .team-card{
   background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+  border:1px solid #e3e6f0;
   display:flex;flex-direction:column;
 }
 .team-card .team-banner{
-  height:96px;background:linear-gradient(135deg, var(--blue), var(--navy));
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;letter-spacing:.03em;
+  height:88px;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:19px;letter-spacing:.02em;font-family:"Bitter",serif;
 }
 .team-card .team-body{padding:22px;flex:1;display:flex;flex-direction:column;}
 .team-card .tag{
@@ -168,14 +189,14 @@ section{padding:72px 0;}
 .alt{background:#fff;}
 .navy-block{background:var(--navy);color:#fff;}
 .navy-block h2{color:#fff;}
-.navy-block .muted{color:#b7d6e8;}
+.navy-block .muted{color:#c9d2f5;}
 
 /* Coaches */
-.coach-card{display:flex;gap:20px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;}
+.coach-card{display:flex;gap:20px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid #e3e6f0;padding:24px;}
 .coach-photo{
   width:84px;height:84px;border-radius:50%;flex-shrink:0;
-  background:linear-gradient(135deg, var(--aqua-light), var(--blue));
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:26px;
+  background:var(--blue);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:26px;font-family:"Bitter",serif;
 }
 .coach-card h3{margin-bottom:2px;}
 .coach-role{color:var(--blue);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:block;}
@@ -199,20 +220,20 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 
 /* Callout / notice */
 .notice{
-  background:#fff8e6;border:1px solid #ffe3a3;color:#7a5b00;border-radius:var(--radius);
+  background:#fdf3e7;border:1px solid #f0cb95;border-left:4px solid var(--orange);color:#8a5a13;border-radius:6px;
   padding:18px 22px;font-size:14px;
 }
 
 /* CTA band */
 .cta-band{
-  background:linear-gradient(135deg, var(--blue), var(--navy));
-  color:#fff;text-align:center;border-radius:var(--radius);padding:56px 32px;
+  background:var(--navy);
+  color:#fff;text-align:center;border-radius:var(--radius);padding:56px 32px;border-top:6px solid var(--gold);
 }
 .cta-band h2{color:#fff;}
-.cta-band p{color:#dff3fb;max-width:520px;margin-left:auto;margin-right:auto;}
+.cta-band p{color:#e2e7ff;max-width:520px;margin-left:auto;margin-right:auto;font-family:"Roboto",sans-serif;}
 
 /* Footer */
-.site-footer{background:var(--navy);color:#cfe6f2;padding:56px 0 24px;margin-top:40px;}
+.site-footer{background:var(--navy);color:#cfd6f7;padding:56px 0 24px;margin-top:40px;}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:36px;}
 .site-footer h4{color:#fff;font-size:15px;margin-bottom:14px;}
 .site-footer ul{list-style:none;margin:0;padding:0;}
@@ -220,14 +241,15 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 .site-footer a:hover{color:var(--gold);}
 .footer-bottom{
   border-top:1px solid rgba(255,255,255,.12);padding-top:20px;
-  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:#8fb3c6;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:#8f9bd6;
 }
 .social-row{display:flex;gap:10px;margin-top:14px;}
 .social-row a{
-  width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);
+  width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);overflow:hidden;
   display:flex;align-items:center;justify-content:center;font-size:14px;
 }
 .social-row a:hover{background:var(--gold);color:var(--navy);}
+.social-row-lg a{width:64px;height:64px;box-shadow:var(--shadow);}
 
 .donor-columns{
   list-style:none;margin:0;padding:0;column-count:3;column-gap:32px;
@@ -247,7 +269,7 @@ table.schedule tr:nth-child(even){background:var(--foam);}
   min-height:calc(100vh - 76px - 260px);
   display:flex;align-items:center;justify-content:center;
   padding:64px 24px;
-  background:linear-gradient(160deg, var(--navy) 0%, var(--deep) 55%, var(--blue) 100%);
+  background:var(--navy);
 }
 .auth-card{
   background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);
@@ -272,11 +294,11 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 
 /* Dashboard */
 .dash-header{
-  background:linear-gradient(160deg, var(--navy) 0%, var(--deep) 55%, var(--blue) 100%);
-  color:#fff;padding:48px 0 32px;
+  background:var(--navy);
+  color:#fff;padding:48px 0 32px;border-bottom:6px solid var(--gold);
 }
 .dash-header h1{color:#fff;margin-bottom:4px;}
-.dash-header p{color:#dff3fb;margin-bottom:0;}
+.dash-header p{color:#e2e7ff;margin-bottom:0;font-family:"Roboto",sans-serif;}
 .dash-grid{display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:start;}
 .dash-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:26px;}
 .dash-card h3{font-size:17px;margin-bottom:16px;}

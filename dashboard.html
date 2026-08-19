@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account | San Diego East County Aquatics</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <span class="logo-mark">ECA</span>
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="programs.html">Programs</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="coaches.html">Coaches</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="dash-header">
+  <div class="container">
+    <h1 id="dash-greeting">My Account</h1>
+    <p id="dash-email">&nbsp;</p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="dash-grid">
+      <div class="dash-card">
+        <h3>Account Details</h3>
+        <ul class="info-list" id="account-details">
+          <li><div class="skeleton-line" style="width:80%;"></div></li>
+          <li><div class="skeleton-line" style="width:60%;"></div></li>
+        </ul>
+      </div>
+
+      <div class="dash-card">
+        <h3>Purchases</h3>
+        <div id="purchases-loading">
+          <div class="skeleton-line" style="width:100%;"></div>
+          <div class="skeleton-line" style="width:90%;"></div>
+          <div class="skeleton-line" style="width:95%;"></div>
+        </div>
+        <div id="purchases-empty" class="empty-state" style="display:none;">
+          <div class="icon-badge" style="margin:0 auto 16px;">🧾</div>
+          <h3>No Purchases Yet</h3>
+          <p class="muted">Registration and payment history will show up here once online checkout is available.</p>
+        </div>
+        <div class="table-wrap" id="purchases-table-wrap" style="display:none;overflow-x:auto;">
+          <table class="schedule" id="purchases-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="purchases-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function formatAmount(cents, currency) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: (currency || "usd").toUpperCase() }).format((cents || 0) / 100);
+  }
+  function formatDate(iso) {
+    return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  (async function loadDashboard() {
+    const session = await requireAuth();
+    if (!session) return;
+
+    const user = session.user;
+    document.getElementById("dash-greeting").textContent = "Welcome back";
+    document.getElementById("dash-email").textContent = user.email;
+
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("full_name, email, created_at")
+      .eq("id", user.id)
+      .single();
+
+    if (profile && profile.full_name) {
+      document.getElementById("dash-greeting").textContent = "Welcome back, " + profile.full_name;
+    }
+
+    const accountDetails = document.getElementById("account-details");
+    accountDetails.innerHTML =
+      '<li><span class="info-icon">👤</span><div><strong>Name</strong><div class="muted">' +
+      (profile && profile.full_name ? profile.full_name : "Not set") +
+      '</div></div></li>' +
+      '<li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted">' + user.email + '</div></div></li>' +
+      '<li><span class="info-icon">📅</span><div><strong>Member Since</strong><div class="muted">' +
+      (profile && profile.created_at ? formatDate(profile.created_at) : formatDate(user.created_at)) +
+      '</div></div></li>';
+
+    const { data: purchases, error: purchasesError } = await supabaseClient
+      .from("purchases")
+      .select("id, description, amount_cents, currency, status, created_at")
+      .order("created_at", { ascending: false });
+
+    document.getElementById("purchases-loading").style.display = "none";
+
+    if (purchasesError || !purchases || purchases.length === 0) {
+      document.getElementById("purchases-empty").style.display = "block";
+      return;
+    }
+
+    const tbody = document.getElementById("purchases-tbody");
+    tbody.innerHTML = purchases
+      .map(function (p) {
+        return (
+          "<tr>" +
+          "<td>" + formatDate(p.created_at) + "</td>" +
+          "<td>" + p.description + "</td>" +
+          "<td>" + formatAmount(p.amount_cents, p.currency) + "</td>" +
+          '<td><span class="status-pill ' + p.status + '">' + p.status + "</span></td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+
+    document.getElementById("purchases-table-wrap").style.display = "block";
+  })();
+</script>
+</body>
+</html>

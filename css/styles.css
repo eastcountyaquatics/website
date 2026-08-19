@@ -1,0 +1,251 @@
+/* East County Aquatics — shared styles */
+
+:root{
+  --navy:#06283d;
+  --deep:#0a3d62;
+  --blue:#1565c0;
+  --aqua:#00b4d8;
+  --aqua-light:#90e0ef;
+  --foam:#f4fbfd;
+  --white:#ffffff;
+  --ink:#0d1b2a;
+  --muted:#4a5c6b;
+  --gold:#ffb703;
+  --radius:14px;
+  --shadow:0 10px 30px rgba(6,40,61,0.12);
+  --maxw:1180px;
+}
+
+*,*::before,*::after{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink);
+  background:var(--foam);
+  line-height:1.6;
+}
+img{max-width:100%;display:block;}
+a{color:inherit;text-decoration:none;}
+h1,h2,h3,h4{font-family:"Trebuchet MS",Segoe UI,Roboto,sans-serif;line-height:1.15;margin:0 0 .5em;color:var(--navy);}
+p{margin:0 0 1em;}
+.container{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+section{padding:72px 0;}
+.section-tight{padding:48px 0;}
+
+/* Buttons */
+.btn{
+  display:inline-block;
+  padding:13px 28px;
+  border-radius:999px;
+  font-weight:700;
+  letter-spacing:.02em;
+  border:2px solid transparent;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  cursor:pointer;
+}
+.btn-primary{background:var(--gold);color:var(--navy);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(255,183,3,.4);}
+.btn-outline{background:transparent;border-color:#fff;color:#fff;}
+.btn-outline:hover{background:rgba(255,255,255,.15);transform:translateY(-2px);}
+.btn-outline-dark{background:transparent;border-color:var(--blue);color:var(--blue);}
+.btn-outline-dark:hover{background:var(--blue);color:#fff;}
+
+/* Header */
+.site-header{
+  position:sticky;top:0;z-index:100;
+  background:var(--navy);
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+.nav-wrap{
+  max-width:var(--maxw);margin:0 auto;padding:0 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:76px;
+}
+.brand{display:flex;align-items:center;gap:12px;color:#fff;}
+.brand .logo-mark{
+  width:44px;height:44px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--aqua-light), var(--blue) 60%, var(--navy));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:18px;color:#fff;border:2px solid var(--aqua-light);
+  flex-shrink:0;
+}
+.brand-text{display:flex;flex-direction:column;line-height:1.1;}
+.brand-text strong{font-size:17px;letter-spacing:.03em;}
+.brand-text span{font-size:11px;color:var(--aqua-light);letter-spacing:.12em;text-transform:uppercase;}
+
+.main-nav ul{list-style:none;display:flex;gap:6px;margin:0;padding:0;}
+.main-nav a{
+  display:block;color:#e8f6fb;padding:10px 14px;border-radius:8px;font-weight:600;font-size:15px;
+  transition:background .15s ease, color .15s ease;
+}
+.main-nav a:hover, .main-nav a.active{background:rgba(255,255,255,.12);color:var(--gold);}
+
+.nav-toggle{
+  display:none;background:none;border:2px solid rgba(255,255,255,.4);border-radius:8px;
+  width:44px;height:40px;cursor:pointer;position:relative;
+}
+.nav-toggle span, .nav-toggle::before, .nav-toggle::after{
+  content:"";position:absolute;left:9px;right:9px;height:2px;background:#fff;border-radius:2px;
+}
+.nav-toggle span{top:50%;transform:translateY(-50%);}
+.nav-toggle::before{top:12px;}
+.nav-toggle::after{bottom:12px;}
+
+/* Hero */
+.hero{
+  position:relative;overflow:hidden;color:#fff;
+  background:linear-gradient(160deg, var(--navy) 0%, var(--deep) 45%, var(--blue) 100%);
+  padding:90px 0 60px;
+}
+.hero .container{position:relative;z-index:2;}
+.hero-eyebrow{
+  display:inline-block;color:var(--navy);background:var(--gold);
+  padding:6px 14px;border-radius:999px;font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:18px;
+}
+.hero h1{color:#fff;font-size:clamp(32px,5vw,54px);max-width:760px;}
+.hero p.lead{font-size:19px;max-width:600px;color:#dff3fb;}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px;}
+.waves{position:absolute;left:0;right:0;bottom:-2px;width:100%;line-height:0;z-index:1;}
+.waves svg{width:100%;height:80px;display:block;}
+.page-hero{
+  background:linear-gradient(160deg, var(--navy) 0%, var(--deep) 55%, var(--blue) 100%);
+  color:#fff;padding:64px 0 84px;position:relative;overflow:hidden;
+}
+.page-hero h1{color:#fff;margin-bottom:10px;}
+.page-hero p{color:#dff3fb;max-width:640px;font-size:17px;margin-bottom:0;}
+.breadcrumb{font-size:13px;color:var(--aqua-light);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+
+/* Stats strip */
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:24px;
+  background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:32px;margin-top:-56px;position:relative;z-index:3;
+}
+.stat{text-align:center;}
+.stat strong{display:block;font-size:32px;color:var(--blue);font-family:"Trebuchet MS",sans-serif;}
+.stat span{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+
+/* Cards / grids */
+.section-head{max-width:680px;margin:0 auto 40px;text-align:center;}
+.section-head .kicker{
+  display:block;color:var(--blue);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px;margin-bottom:10px;
+}
+.grid{display:grid;gap:24px;}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+
+.card{
+  background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:28px;border-top:4px solid var(--aqua);
+}
+.card h3{font-size:19px;}
+.card .muted{color:var(--muted);font-size:14px;}
+
+.icon-badge{
+  width:52px;height:52px;border-radius:12px;
+  background:linear-gradient(135deg, var(--aqua-light), var(--blue));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;margin-bottom:16px;
+}
+
+.team-card{
+  background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;
+}
+.team-card .team-banner{
+  height:96px;background:linear-gradient(135deg, var(--blue), var(--navy));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;letter-spacing:.03em;
+}
+.team-card .team-body{padding:22px;flex:1;display:flex;flex-direction:column;}
+.team-card .tag{
+  align-self:flex-start;background:var(--foam);color:var(--blue);font-size:12px;font-weight:700;
+  padding:4px 10px;border-radius:999px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;
+}
+
+/* Alt background section */
+.alt{background:#fff;}
+.navy-block{background:var(--navy);color:#fff;}
+.navy-block h2{color:#fff;}
+.navy-block .muted{color:#b7d6e8;}
+
+/* Coaches */
+.coach-card{display:flex;gap:20px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;}
+.coach-photo{
+  width:84px;height:84px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg, var(--aqua-light), var(--blue));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:26px;
+}
+.coach-card h3{margin-bottom:2px;}
+.coach-role{color:var(--blue);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:block;}
+
+/* Info list */
+.info-list{list-style:none;margin:0;padding:0;}
+.info-list li{
+  display:flex;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid #e3eef3;
+}
+.info-list li:last-child{border-bottom:none;}
+.info-list .info-icon{
+  width:38px;height:38px;border-radius:10px;background:var(--foam);color:var(--blue);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;
+}
+
+/* Table */
+table.schedule{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+table.schedule th, table.schedule td{padding:14px 18px;text-align:left;}
+table.schedule th{background:var(--navy);color:#fff;font-size:13px;text-transform:uppercase;letter-spacing:.05em;}
+table.schedule tr:nth-child(even){background:var(--foam);}
+
+/* Callout / notice */
+.notice{
+  background:#fff8e6;border:1px solid #ffe3a3;color:#7a5b00;border-radius:var(--radius);
+  padding:18px 22px;font-size:14px;
+}
+
+/* CTA band */
+.cta-band{
+  background:linear-gradient(135deg, var(--blue), var(--navy));
+  color:#fff;text-align:center;border-radius:var(--radius);padding:56px 32px;
+}
+.cta-band h2{color:#fff;}
+.cta-band p{color:#dff3fb;max-width:520px;margin-left:auto;margin-right:auto;}
+
+/* Footer */
+.site-footer{background:var(--navy);color:#cfe6f2;padding:56px 0 24px;margin-top:40px;}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:36px;}
+.site-footer h4{color:#fff;font-size:15px;margin-bottom:14px;}
+.site-footer ul{list-style:none;margin:0;padding:0;}
+.site-footer li{margin-bottom:9px;font-size:14px;}
+.site-footer a:hover{color:var(--gold);}
+.footer-bottom{
+  border-top:1px solid rgba(255,255,255,.12);padding-top:20px;
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:#8fb3c6;
+}
+.social-row{display:flex;gap:10px;margin-top:14px;}
+.social-row a{
+  width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.social-row a:hover{background:var(--gold);color:var(--navy);}
+
+/* Responsive */
+@media (max-width: 900px){
+  .main-nav{
+    position:fixed;top:76px;left:0;right:0;bottom:0;
+    background:var(--navy);transform:translateX(-100%);transition:transform .25s ease;
+    overflow-y:auto;
+  }
+  .main-nav.open{transform:translateX(0);}
+  .main-nav ul{flex-direction:column;padding:20px 24px;gap:2px;}
+  .main-nav a{padding:14px 10px;font-size:17px;}
+  .nav-toggle{display:block;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .grid-3, .grid-4{grid-template-columns:repeat(2,1fr);}
+  .footer-grid{grid-template-columns:1fr;}
+}
+@media (max-width: 600px){
+  .stats{grid-template-columns:1fr 1fr;}
+  .grid-2, .grid-3, .grid-4{grid-template-columns:1fr;}
+  .coach-card{flex-direction:column;}
+  section{padding:52px 0;}
+}

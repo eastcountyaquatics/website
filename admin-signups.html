@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign-Ups | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Sign-Ups</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+      <p class="muted" id="signup-count" style="margin:0;">Loading&hellip;</p>
+      <button type="button" id="export-csv-btn" class="btn btn-primary" disabled>Export CSV for QuickBooks</button>
+    </div>
+
+    <div id="signups-loading"><p class="muted">Loading sign-ups&hellip;</p></div>
+    <div id="signups-empty" class="empty-state" style="display:none;">
+      <p>No sign-ups yet. Once families register and pay, they'll show up here.</p>
+    </div>
+    <div class="table-wrap" id="signups-table-wrap" style="display:none;overflow-x:auto;">
+      <table class="schedule" id="signups-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Family</th>
+            <th>Item</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Stripe Transaction</th>
+          </tr>
+        </thead>
+        <tbody id="signups-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatAmount(cents, currency) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: (currency || "usd").toUpperCase() }).format((cents || 0) / 100);
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+  function csvField(value) {
+    const str = String(value == null ? "" : value);
+    if (/[",\n]/.test(str)) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  let loadedRows = [];
+
+  async function loadSignups() {
+    const { data: purchases, error } = await supabaseClient
+      .from("purchases")
+      .select("id, user_id, description, amount_cents, currency, status, stripe_checkout_session_id, stripe_payment_intent_id, created_at")
+      .order("created_at", { ascending: false });
+
+    document.getElementById("signups-loading").style.display = "none";
+
+    if (error) {
+      document.getElementById("signups-empty").style.display = "block";
+      document.getElementById("signups-empty").innerHTML = "<p>Could not load sign-ups: " + escapeHtml(error.message) + "</p>";
+      document.getElementById("signup-count").textContent = "";
+      return;
+    }
+    if (!purchases || purchases.length === 0) {
+      document.getElementById("signups-empty").style.display = "block";
+      document.getElementById("signup-count").textContent = "";
+      return;
+    }
+
+    const userIds = [...new Set(purchases.map(function (p) { return p.user_id; }).filter(Boolean))];
+    const { data: profiles } = await supabaseClient
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", userIds);
+    const profileById = {};
+    (profiles || []).forEach(function (p) { profileById[p.id] = p; });
+
+    loadedRows = purchases.map(function (p) {
+      const profile = profileById[p.user_id];
+      return {
+        date: p.created_at,
+        family_email: profile ? profile.email : "",
+        family_name: profile && profile.full_name ? profile.full_name : "",
+        description: p.description,
+        amount_cents: p.amount_cents,
+        currency: p.currency,
+        status: p.status,
+        stripe_checkout_session_id: p.stripe_checkout_session_id,
+        stripe_payment_intent_id: p.stripe_payment_intent_id,
+      };
+    });
+
+    document.getElementById("signup-count").textContent = loadedRows.length + " sign-up" + (loadedRows.length === 1 ? "" : "s");
+
+    const tbody = document.getElementById("signups-tbody");
+    tbody.innerHTML = loadedRows
+      .map(function (r) {
+        return (
+          "<tr>" +
+          "<td>" + formatDate(r.date) + "</td>" +
+          "<td>" + escapeHtml(r.family_name || r.family_email) + (r.family_name && r.family_email ? '<div class="muted" style="font-size:12px;">' + escapeHtml(r.family_email) + "</div>" : "") + "</td>" +
+          "<td>" + escapeHtml(r.description) + "</td>" +
+          "<td>" + formatAmount(r.amount_cents, r.currency) + "</td>" +
+          '<td><span class="status-pill ' + escapeHtml(r.status) + '">' + escapeHtml(r.status) + "</span></td>" +
+          '<td class="muted" style="font-size:12px;">' + escapeHtml(r.stripe_checkout_session_id) + "</td>" +
+          "</tr>"
+        );
+      })
+      .join("");
+
+    document.getElementById("signups-table-wrap").style.display = "block";
+    document.getElementById("export-csv-btn").disabled = false;
+  }
+
+  document.getElementById("export-csv-btn").addEventListener("click", function () {
+    if (!loadedRows.length) return;
+    const header = ["Date", "Family Name", "Family Email", "Item", "Amount", "Currency", "Status", "Stripe Checkout Session", "Stripe Payment Intent"];
+    const lines = [header.map(csvField).join(",")];
+    loadedRows.forEach(function (r) {
+      lines.push(
+        [
+          formatDate(r.date),
+          r.family_name,
+          r.family_email,
+          r.description,
+          ((r.amount_cents || 0) / 100).toFixed(2),
+          (r.currency || "usd").toUpperCase(),
+          r.status,
+          r.stripe_checkout_session_id,
+          r.stripe_payment_intent_id,
+        ]
+          .map(csvField)
+          .join(",")
+      );
+    });
+    const csv = lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "eca-signups-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    loadSignups();
+  })();
+</script>
+</body>
+</html>

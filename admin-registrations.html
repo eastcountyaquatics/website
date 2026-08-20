@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Registrations | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Manage Registrations</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+
+    <div class="notice" style="margin-bottom:24px;">
+      Create the matching Product + Price in your <a href="https://dashboard.stripe.com/products" target="_blank" rel="noopener" style="color:#7a5b00;font-weight:700;">Stripe dashboard</a> first, then paste its Price ID (starts with <code>price_</code>) below. The dollar amount here is for display only &mdash; Stripe charges whatever the Price ID says, so keep them in sync.
+    </div>
+
+    <div class="admin-form" id="reg-form-wrap">
+      <h3 id="form-title">Add a Registration Option</h3>
+      <div id="form-msg" class="form-msg"></div>
+      <form id="reg-form">
+        <input type="hidden" id="reg-id">
+        <div class="field">
+          <label for="label">Label</label>
+          <input type="text" id="label" placeholder="e.g. 10U Coed &ndash; Fall 2026" required>
+        </div>
+        <div class="field">
+          <label for="description">Description (optional)</label>
+          <textarea id="description" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label for="amount_dollars">Amount (USD)</label>
+          <input type="number" id="amount_dollars" step="0.01" min="0" placeholder="185.00" required>
+        </div>
+        <div class="field">
+          <label for="stripe_price_id">Stripe Price ID</label>
+          <input type="text" id="stripe_price_id" placeholder="price_1AbCdEfGhIjKlMnOp" required>
+        </div>
+        <div class="field">
+          <label for="season">Season (optional)</label>
+          <input type="text" id="season" placeholder="e.g. Fall 2026">
+        </div>
+        <div class="field">
+          <label for="sort_order">Display Order (lower shows first)</label>
+          <input type="number" id="sort_order" value="0">
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="is_open" checked style="width:auto;">
+          <label for="is_open" style="margin:0;">Open for registration</label>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Add Registration Option</button>
+          <button type="button" id="cancel-edit-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="reg-list" style="margin-top:32px;"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatAmount(cents) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+  }
+
+  async function loadOptions() {
+    const { data, error } = await supabaseClient
+      .from("registration_options")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    const listEl = document.getElementById("reg-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load registration options: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No registration options yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = data
+      .map(function (o) {
+        return (
+          '<div class="admin-list-item">' +
+          "<div>" +
+          "<h4>" + escapeHtml(o.label) + (o.is_open ? "" : ' <span class="muted" style="font-weight:400;">(closed)</span>') + "</h4>" +
+          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.season ? " &middot; " + escapeHtml(o.season) : "") + "</div>" +
+          "</div>" +
+          '<div class="admin-list-actions">' +
+          '<button data-edit="' + o.id + '">Edit</button>' +
+          '<button data-delete="' + o.id + '" class="danger">Delete</button>' +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const o = data.find(function (x) { return x.id === btn.dataset.edit; });
+        if (o) startEdit(o);
+      });
+    });
+    listEl.querySelectorAll("[data-delete]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Delete this registration option? This does not affect past purchases.")) return;
+        const { error } = await supabaseClient.from("registration_options").delete().eq("id", btn.dataset.delete);
+        if (error) {
+          alert("Could not delete: " + error.message);
+          return;
+        }
+        loadOptions();
+      });
+    });
+  }
+
+  function startEdit(o) {
+    document.getElementById("form-title").textContent = "Edit Registration Option";
+    document.getElementById("reg-id").value = o.id;
+    document.getElementById("label").value = o.label || "";
+    document.getElementById("description").value = o.description || "";
+    document.getElementById("amount_dollars").value = ((o.amount_cents || 0) / 100).toFixed(2);
+    document.getElementById("stripe_price_id").value = o.stripe_price_id || "";
+    document.getElementById("season").value = o.season || "";
+    document.getElementById("sort_order").value = o.sort_order || 0;
+    document.getElementById("is_open").checked = !!o.is_open;
+    document.getElementById("submit-btn").textContent = "Save Changes";
+    document.getElementById("cancel-edit-btn").style.display = "inline-block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    document.getElementById("reg-form").reset();
+    document.getElementById("reg-id").value = "";
+    document.getElementById("is_open").checked = true;
+    document.getElementById("form-title").textContent = "Add a Registration Option";
+    document.getElementById("submit-btn").textContent = "Add Registration Option";
+    document.getElementById("cancel-edit-btn").style.display = "none";
+  }
+
+  document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
+
+  document.getElementById("reg-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("form-msg");
+    msg.className = "form-msg";
+
+    const dollars = parseFloat(document.getElementById("amount_dollars").value);
+    if (isNaN(dollars) || dollars < 0) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter a valid amount.";
+      return;
+    }
+
+    const payload = {
+      label: document.getElementById("label").value.trim(),
+      description: document.getElementById("description").value.trim() || null,
+      amount_cents: Math.round(dollars * 100),
+      stripe_price_id: document.getElementById("stripe_price_id").value.trim(),
+      season: document.getElementById("season").value.trim() || null,
+      sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
+      is_open: document.getElementById("is_open").checked,
+    };
+
+    const id = document.getElementById("reg-id").value;
+    const result = id
+      ? await supabaseClient.from("registration_options").update(payload).eq("id", id)
+      : await supabaseClient.from("registration_options").insert(payload);
+
+    if (result.error) {
+      msg.className = "form-msg error";
+      msg.textContent = result.error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = id ? "Registration option updated." : "Registration option added.";
+    resetForm();
+    loadOptions();
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    loadOptions();
+  })();
+</script>
+</body>
+</html>

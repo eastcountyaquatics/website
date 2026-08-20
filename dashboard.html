@@ -44,6 +44,8 @@
   </div>
 </section>
 
+<div id="checkout-banner" style="display:none;"></div>
+
 <section class="section-tight">
   <div class="container">
     <div class="dash-grid">
@@ -56,6 +58,33 @@
       </div>
 
       <div class="dash-card">
+        <h3>My Athletes</h3>
+        <p class="muted" style="margin-bottom:14px;">Add your children here so you can register them for programs below.</p>
+        <div id="athlete-list"><p class="muted">Loading&hellip;</p></div>
+        <form id="athlete-form" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="athlete_name" placeholder="Athlete's full name" required style="flex:1;min-width:160px;padding:10px 12px;border:1px solid #d7e6ee;border-radius:6px;">
+          <button type="submit" class="btn btn-outline-dark" style="padding:10px 18px;">Add Athlete</button>
+        </form>
+        <div id="athlete-form-msg" class="form-msg"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt section-tight">
+  <div class="container">
+    <div class="section-head" style="margin-bottom:24px;">
+      <span class="kicker">Sign Up</span>
+      <h2>Register for a Program</h2>
+    </div>
+    <div id="registration-options"><p class="muted" style="text-align:center;">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="dash-grid" style="grid-template-columns:1fr;">
+      <div class="dash-card">
         <h3>Purchases</h3>
         <div id="purchases-loading">
           <div class="skeleton-line" style="width:100%;"></div>
@@ -65,7 +94,7 @@
         <div id="purchases-empty" class="empty-state" style="display:none;">
           <div class="icon-badge" style="margin:0 auto 16px;">🧾</div>
           <h3>No Purchases Yet</h3>
-          <p class="muted">Registration and payment history will show up here once online checkout is available.</p>
+          <p class="muted">Register for a program above and your payment history will show up here.</p>
         </div>
         <div class="table-wrap" id="purchases-table-wrap" style="display:none;overflow-x:auto;">
           <table class="schedule" id="purchases-table">
@@ -105,14 +134,193 @@
   function formatDate(iso) {
     return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  function showCheckoutBanner() {
+    var params = new URLSearchParams(window.location.search);
+    var status = params.get("checkout");
+    if (!status) return;
+    var banner = document.getElementById("checkout-banner");
+    if (status === "success") {
+      banner.innerHTML =
+        '<div class="container" style="padding-top:20px;"><div class="notice" style="border-color:var(--blue);background:#eef1ff;color:#1a1a4d;">' +
+        "You're registered! Your payment was received &mdash; see it below under Purchases." +
+        "</div></div>";
+      banner.style.display = "block";
+    } else if (status === "cancelled") {
+      banner.innerHTML =
+        '<div class="container" style="padding-top:20px;"><div class="notice">' +
+        "Checkout was cancelled &mdash; no payment was made. You can try again below anytime." +
+        "</div></div>";
+      banner.style.display = "block";
+    }
+    params.delete("checkout");
+    var newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+    window.history.replaceState({}, "", newUrl);
+  }
+
+  var myAthletes = [];
+
+  async function loadAthletes() {
+    const { data, error } = await supabaseClient
+      .from("athletes")
+      .select("id, full_name")
+      .order("created_at", { ascending: true });
+
+    const listEl = document.getElementById("athlete-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load athletes.</p>';
+      return;
+    }
+    myAthletes = data || [];
+    if (myAthletes.length === 0) {
+      listEl.innerHTML = '<p class="muted">No athletes added yet.</p>';
+    } else {
+      listEl.innerHTML = myAthletes
+        .map(function (a) {
+          return (
+            '<div class="admin-list-item"><div><h4 style="margin:0;font-size:15px;">' +
+            escapeHtml(a.full_name) +
+            '</h4></div><div class="admin-list-actions"><button data-remove-athlete="' +
+            a.id +
+            '" class="danger">Remove</button></div></div>'
+          );
+        })
+        .join("");
+      listEl.querySelectorAll("[data-remove-athlete]").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          if (!confirm("Remove this athlete from your account?")) return;
+          await supabaseClient.from("athletes").delete().eq("id", btn.dataset.removeAthlete);
+          loadAthletes();
+          loadRegistrationOptions();
+        });
+      });
+    }
+    // Refresh the checkbox lists on any already-rendered registration cards.
+    loadRegistrationOptions();
+  }
+
+  document.getElementById("athlete-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("athlete-form-msg");
+    msg.className = "form-msg";
+    const nameInput = document.getElementById("athlete_name");
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    const session = await requireAuth();
+    const { error } = await supabaseClient
+      .from("athletes")
+      .insert({ full_name: name, parent_id: session.user.id });
+
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+    nameInput.value = "";
+    loadAthletes();
+  });
+
+  async function loadRegistrationOptions() {
+    const wrap = document.getElementById("registration-options");
+    const { data: options, error } = await supabaseClient
+      .from("registration_options")
+      .select("id, label, description, amount_cents, season")
+      .eq("is_open", true)
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      wrap.innerHTML = '<p class="muted" style="text-align:center;">Registration is temporarily unavailable &mdash; please check back soon.</p>';
+      return;
+    }
+    if (!options || options.length === 0) {
+      wrap.innerHTML = '<p class="muted" style="text-align:center;">No programs are open for registration right now &mdash; check back soon.</p>';
+      return;
+    }
+
+    wrap.innerHTML = '<div class="grid grid-3">' +
+      options
+        .map(function (o) {
+          const amount = formatAmount(o.amount_cents, "usd");
+          const athleteChecks = myAthletes.length
+            ? myAthletes
+                .map(function (a) {
+                  return (
+                    '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
+                    '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
+                    escapeHtml(a.full_name) +
+                    "</label>"
+                  );
+                })
+                .join("")
+            : '<p class="muted" style="font-size:13px;">Add an athlete above first.</p>';
+          return (
+            '<div class="card">' +
+            "<h3>" + escapeHtml(o.label) + "</h3>" +
+            (o.description ? '<p class="muted">' + escapeHtml(o.description) + "</p>" : "") +
+            '<p style="font-size:22px;font-weight:800;color:var(--blue);margin:10px 0;">' + amount + "</p>" +
+            '<div data-athlete-checks="' + o.id + '">' + athleteChecks + "</div>" +
+            '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '" style="margin-top:10px;width:100%;" ' +
+            (myAthletes.length ? "" : "disabled") + ">Register &amp; Pay</button>" +
+            '<div class="form-msg" data-checkout-msg="' + o.id + '"></div>' +
+            "</div>"
+          );
+        })
+        .join("") +
+      "</div>";
+
+    wrap.querySelectorAll("[data-checkout]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const optionId = btn.dataset.checkout;
+        const msgEl = wrap.querySelector('[data-checkout-msg="' + optionId + '"]');
+        const checked = wrap.querySelectorAll('input[data-option="' + optionId + '"]:checked');
+        if (checked.length === 0) {
+          msgEl.className = "form-msg error";
+          msgEl.textContent = "Select at least one athlete.";
+          return;
+        }
+        const items = Array.from(checked).map(function (c) {
+          return { athlete_id: c.value, registration_option_id: optionId };
+        });
+
+        btn.disabled = true;
+        btn.textContent = "Redirecting to payment...";
+        msgEl.className = "form-msg";
+        msgEl.textContent = "";
+
+        const { data, error } = await supabaseClient.functions.invoke("create-checkout-session", {
+          body: { items: items },
+        });
+
+        if (error || !data || !data.url) {
+          btn.disabled = false;
+          btn.textContent = "Register & Pay";
+          msgEl.className = "form-msg error";
+          msgEl.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+          return;
+        }
+
+        window.location.href = data.url;
+      });
+    });
+  }
 
   (async function loadDashboard() {
     const session = await requireAuth();
     if (!session) return;
 
+    showCheckoutBanner();
+
     const user = session.user;
     document.getElementById("dash-greeting").textContent = "Welcome back";
     document.getElementById("dash-email").textContent = user.email;
+
+    loadAthletes();
 
     const { data: profile } = await supabaseClient
       .from("profiles")

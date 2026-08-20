@@ -51,13 +51,23 @@
         <h3>Coaches</h3>
         <p class="muted">Add, edit, or remove coaches shown on the About Us page.</p>
       </a>
-      <div class="admin-nav-card" style="opacity:.55;">
-        <h3>Schedules</h3>
-        <p class="muted">Team practice schedules &mdash; coming soon.</p>
+      <div class="admin-nav-card" id="schedules-card" style="display:none;">
+        <a href="admin-schedules.html" style="display:block;color:inherit;">
+          <h3>Schedules</h3>
+          <p class="muted">Update each team's practice schedule and publish it when ready.</p>
+        </a>
       </div>
-      <div class="admin-nav-card" style="opacity:.55;">
-        <h3>Sign-Ups</h3>
-        <p class="muted">See who's registered &mdash; coming soon.</p>
+      <div class="admin-nav-card" id="registrations-card" style="display:none;">
+        <a href="admin-registrations.html" style="display:block;color:inherit;">
+          <h3>Registrations</h3>
+          <p class="muted">Create the programs families can sign up and pay for online.</p>
+        </a>
+      </div>
+      <div class="admin-nav-card" id="signups-card" style="display:none;">
+        <a href="admin-signups.html" style="display:block;color:inherit;">
+          <h3>Sign-Ups</h3>
+          <p class="muted">See who's registered and paid &mdash; export to CSV for QuickBooks.</p>
+        </a>
       </div>
       <div class="admin-nav-card" id="users-card" style="display:none;">
         <a href="admin-users.html" style="display:block;color:inherit;">
@@ -88,7 +98,12 @@
     if (!auth) return;
     document.getElementById("admin-email").textContent = auth.session.user.email;
     document.getElementById("admin-role").textContent = auth.role;
+    if (auth.role === "owner" || auth.role === "coach") {
+      document.getElementById("schedules-card").style.display = "block";
+    }
     if (auth.role === "owner") {
+      document.getElementById("registrations-card").style.display = "block";
+      document.getElementById("signups-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";
     }
   })();

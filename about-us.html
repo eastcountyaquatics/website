@@ -93,21 +93,7 @@
 
 <section id="coaches">
   <div class="container">
-    <div class="section-head" style="margin-bottom:32px;">
-      <span class="kicker">Club Founders</span>
-      <h2>Clint &amp; Marcy McLaughlin</h2>
-    </div>
-    <div class="founder-card">
-      <img src="images/coach-marcy.jpg" alt="Clint and Marcy McLaughlin poolside at Grossmont High School">
-      <div>
-        <h3 style="margin-bottom:2px;">Clint McLaughlin</h3>
-        <span class="coach-role">Club Founder</span>
-        <p class="muted">Valhalla &amp; University of the Pacific alumni (BS Business); UOP water polo &amp; swim alumni; played semi-professionally for Upper Hutt Water Polo (New Zealand) and Cronulla Sharks Water Polo (Australia); Grossmont High School boys head water polo coach (2008&ndash;present).</p>
-        <h3 style="margin-bottom:2px;margin-top:18px;">Marcy McLaughlin (Wilson)</h3>
-        <span class="coach-role">Club Founder</span>
-        <p class="muted">Granite Hills High School alumni; San Diego State University (BA Mathematics); Point Loma University (Masters in Education); girls &amp; boys water polo coach and mathematics teacher at Grossmont High School.</p>
-      </div>
-    </div>
+    <div id="founders-wrap"><p class="muted" style="text-align:center;">Loading&hellip;</p></div>
   </div>
 </section>
 
@@ -118,35 +104,7 @@
       <h2>This Season's Coaches</h2>
       <p class="muted">Coaches by team assignment for the current season.</p>
     </div>
-
-    <h3 style="font-size:16px;margin-bottom:14px;">8U &amp; 10U Coed &amp; 12U Boys</h3>
-    <div class="grid grid-3" style="margin-bottom:36px;">
-      <div class="coach-card"><div class="coach-photo">M</div><div><h3>Melina Raymond</h3><span class="coach-role">Coach</span></div></div>
-      <div class="coach-card"><div class="coach-photo">E</div><div><h3>Evy McColluch</h3><span class="coach-role">Coach</span></div></div>
-      <div class="coach-card"><div class="coach-photo">B</div><div><h3>Briana Reynolds</h3><span class="coach-role">Coach</span></div></div>
-    </div>
-
-    <h3 style="font-size:16px;margin-bottom:14px;">14U Boys</h3>
-    <div class="grid grid-3" style="margin-bottom:36px;">
-      <div class="coach-card"><div class="coach-photo">A</div><div><h3>Alessandro Maria Prete</h3><span class="coach-role">Coach</span></div></div>
-      <div class="coach-card">
-        <div class="coach-photo"><img src="images/coach-preston.jpg" alt="Preston Burke"></div>
-        <div><h3>Preston Burke</h3><span class="coach-role">Masters Team Manager &amp; Coach</span></div>
-      </div>
-      <div class="coach-card"><div class="coach-photo">J</div><div><h3>Joey Asaro</h3><span class="coach-role">Coach</span></div></div>
-    </div>
-
-    <h3 style="font-size:16px;margin-bottom:14px;">12U / 14U Girls</h3>
-    <div class="grid grid-3" style="margin-bottom:36px;">
-      <div class="coach-card"><div class="coach-photo">N</div><div><h3>Naja Steward</h3><span class="coach-role">Coach</span></div></div>
-      <div class="coach-card"><div class="coach-photo">K</div><div><h3>Kaya Eaton</h3><span class="coach-role">Coach</span></div></div>
-    </div>
-
-    <h3 style="font-size:16px;margin-bottom:14px;">16U / 18U Girls</h3>
-    <div class="grid grid-3">
-      <div class="coach-card"><div class="coach-photo">T</div><div><h3>TC Cole</h3><span class="coach-role">Coach</span></div></div>
-      <div class="coach-card"><div class="coach-photo">J</div><div><h3>Jesse Norton</h3><span class="coach-role">Coach</span></div></div>
-    </div>
+    <div id="coaches-wrap"><p class="muted" style="text-align:center;">Loading coaches&hellip;</p></div>
   </div>
 </section>
 
@@ -223,5 +181,104 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script>
+  (async function loadCoaches() {
+    var GROUP_ORDER = ["Club Founders", "8U & 10U Coed & 12U Boys", "14U Boys", "12U / 14U Girls", "16U / 18U Girls"];
+
+    function escapeHtml(str) {
+      var div = document.createElement("div");
+      div.textContent = str || "";
+      return div.innerHTML;
+    }
+
+    function groupRank(g) {
+      var i = GROUP_ORDER.indexOf(g);
+      return i === -1 ? GROUP_ORDER.length : i;
+    }
+
+    var foundersWrap = document.getElementById("founders-wrap");
+    var coachesWrap = document.getElementById("coaches-wrap");
+
+    var data;
+    try {
+      var timeout = new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error("timeout")); }, 8000);
+      });
+      var result = await Promise.race([supabaseClient.from("coaches").select("*"), timeout]);
+      if (result.error) throw result.error;
+      data = result.data;
+    } catch (e) {
+      foundersWrap.innerHTML = "";
+      coachesWrap.innerHTML = '<p class="muted" style="text-align:center;">Coach info is temporarily unavailable &mdash; please check back soon.</p>';
+      return;
+    }
+
+    if (!data) {
+      foundersWrap.innerHTML = "";
+      coachesWrap.innerHTML = '<p class="muted" style="text-align:center;">Coach info is temporarily unavailable &mdash; please check back soon.</p>';
+      return;
+    }
+
+    data.sort(function (a, b) {
+      var ga = groupRank(a.team_group);
+      var gb = groupRank(b.team_group);
+      if (ga !== gb) return ga - gb;
+      if (ga === GROUP_ORDER.length) {
+        var gc = (a.team_group || "").localeCompare(b.team_group || "");
+        if (gc !== 0) return gc;
+      }
+      return (a.sort_order || 0) - (b.sort_order || 0);
+    });
+
+    var founders = data.filter(function (c) { return c.team_group === "Club Founders"; });
+    var others = data.filter(function (c) { return c.team_group !== "Club Founders"; });
+
+    if (founders.length) {
+      var photoCoach = founders.filter(function (c) { return c.photo_url; })[0];
+      var names = founders.map(function (c) { return escapeHtml(c.full_name); }).join(" &amp; ");
+      var html =
+        '<div class="section-head" style="margin-bottom:32px;">' +
+        '<span class="kicker">Club Founders</span><h2>' + names + '</h2></div>' +
+        '<div class="founder-card">';
+      if (photoCoach) {
+        html += '<img src="' + escapeHtml(photoCoach.photo_url) + '" alt="' + escapeHtml(founders.map(function (c) { return c.full_name; }).join(" and ")) + '">';
+      }
+      html += '<div>';
+      founders.forEach(function (c, i) {
+        html += '<h3 style="margin-bottom:2px;' + (i > 0 ? 'margin-top:18px;' : '') + '">' + escapeHtml(c.full_name) + '</h3>';
+        html += '<span class="coach-role">' + escapeHtml(c.role_title || "") + '</span>';
+        if (c.bio) html += '<p class="muted">' + escapeHtml(c.bio) + '</p>';
+      });
+      html += '</div></div>';
+      foundersWrap.innerHTML = html;
+    } else {
+      foundersWrap.innerHTML = "";
+    }
+
+    if (!others.length) {
+      coachesWrap.innerHTML = '<p class="muted" style="text-align:center;">Coach list coming soon.</p>';
+      return;
+    }
+
+    var currentGroup = null;
+    var coachesHtml = "";
+    others.forEach(function (c) {
+      if (c.team_group !== currentGroup) {
+        if (currentGroup !== null) coachesHtml += "</div>";
+        currentGroup = c.team_group;
+        coachesHtml += '<h3 style="font-size:16px;margin-bottom:14px;">' + escapeHtml(currentGroup || "Coaches") + '</h3>';
+        coachesHtml += '<div class="grid grid-3" style="margin-bottom:36px;">';
+      }
+      var photoHtml = c.photo_url
+        ? '<img src="' + escapeHtml(c.photo_url) + '" alt="' + escapeHtml(c.full_name) + '">'
+        : escapeHtml((c.full_name || "?").charAt(0));
+      coachesHtml +=
+        '<div class="coach-card"><div class="coach-photo">' + photoHtml + '</div>' +
+        '<div><h3>' + escapeHtml(c.full_name) + '</h3><span class="coach-role">' + escapeHtml(c.role_title || "Coach") + '</span></div></div>';
+    });
+    coachesHtml += "</div>";
+    coachesWrap.innerHTML = coachesHtml;
+  })();
+</script>
 </body>
 </html>

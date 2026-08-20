@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /admin-coaches.html
+Disallow: /admin-users.html
+Disallow: /dashboard.html
+Disallow: /login.html
+Disallow: /signup.html
+Disallow: /forgot-password.html
+Disallow: /reset-password.html
+
+Sitemap: https://eastcountyaquatics.github.io/website/sitemap.xml

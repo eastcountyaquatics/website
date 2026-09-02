@@ -72,8 +72,31 @@
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
       <p class="muted" id="roster-count" style="margin:0;">Loading&hellip;</p>
-      <button type="button" id="export-roster-btn" class="btn btn-outline-dark" disabled>Export Roster CSV</button>
+      <button type="button" id="export-toggle-btn" class="btn btn-outline-dark" disabled>Export&hellip;</button>
     </div>
+
+    <div class="admin-form" id="export-panel" style="display:none;margin-bottom:24px;">
+      <h3>Export Roster</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:10px;">Pick a team to export just that roster (e.g. for a tournament), and only the columns you need &mdash; useful for a quick USWP#/name list rather than the full record.</p>
+      <div class="field">
+        <label for="export-team-filter">Team</label>
+        <select id="export-team-filter">
+          <option value="">All teams</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Columns</label>
+        <div id="export-columns" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px 14px;">
+          <!-- checkboxes injected by JS -->
+        </div>
+        <div style="margin-top:6px;">
+          <button type="button" id="export-select-all" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">Select All</button>
+          <button type="button" id="export-select-none" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">Select None</button>
+        </div>
+      </div>
+      <button type="button" id="export-roster-btn" class="btn btn-primary">Download CSV</button>
+    </div>
+
     <div id="roster-list"><p class="muted">Loading roster&hellip;</p></div>
   </div>
 </section>
@@ -100,6 +123,15 @@
   function formatDate(iso) {
     if (!iso) return "";
     return new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+  function emergencyContactRow(label, name, email, phone1, phone2) {
+    const parts = [name, email].filter(Boolean);
+    const links = [];
+    if (phone1) links.push('<a href="tel:' + escapeHtml(phone1) + '">' + escapeHtml(phone1) + "</a>");
+    if (phone2) links.push('<a href="tel:' + escapeHtml(phone2) + '">' + escapeHtml(phone2) + "</a>");
+    const bits = parts.map(escapeHtml).concat(links);
+    if (!bits.length) return "";
+    return "<dt>" + label + "</dt><dd>" + bits.join(" &middot; ") + "</dd>";
   }
   function formatAmount(cents) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
@@ -204,14 +236,13 @@
           '<dl class="roster-detail">' +
           "<dt>Parent / Guardian</dt><dd>" + escapeHtml(a.parent_name || "(no name on file)") + (a.parent_email ? " &middot; <a href=\"mailto:" + escapeHtml(a.parent_email) + "\">" + escapeHtml(a.parent_email) + "</a>" : "") + (a.parent_phone ? " &middot; <a href=\"tel:" + escapeHtml(a.parent_phone) + "\">" + escapeHtml(a.parent_phone) + "</a>" : "") + "</dd>" +
           (a.birthdate ? "<dt>Birthdate</dt><dd>" + formatDate(a.birthdate) + (age !== null ? " (age " + age + ")" : "") + "</dd>" : "") +
+          (a.sex ? "<dt>Sex</dt><dd>" + escapeHtml(a.sex) + "</dd>" : "") +
           (a.gender ? "<dt>Gender</dt><dd>" + escapeHtml(a.gender) + "</dd>" : "") +
           (a.school ? "<dt>School</dt><dd>" + escapeHtml(a.school) + "</dd>" : "") +
+          (a.uswp_number ? "<dt>USWP Number</dt><dd>" + escapeHtml(a.uswp_number) + "</dd>" : "") +
           (a.shirt_size ? "<dt>Shirt Size</dt><dd>" + escapeHtml(a.shirt_size) + "</dd>" : "") +
-          (a.jammer_size ? "<dt>Speedo / Jammer Size</dt><dd>" + escapeHtml(a.jammer_size) + "</dd>" : "") +
-          (a.experience_level ? "<dt>Water Polo Experience</dt><dd>" + escapeHtml(a.experience_level) + "</dd>" : "") +
-          (a.emergency_contact_name || a.emergency_contact_phone
-            ? "<dt>Emergency Contact</dt><dd>" + escapeHtml(a.emergency_contact_name || "") + (a.emergency_contact_phone ? (a.emergency_contact_name ? " &middot; " : "") + "<a href=\"tel:" + escapeHtml(a.emergency_contact_phone) + "\">" + escapeHtml(a.emergency_contact_phone) + "</a>" : "") + "</dd>"
-            : "") +
+          emergencyContactRow("Emergency Contact 1", a.emergency_contact_name, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2) +
+          emergencyContactRow("Emergency Contact 2", a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2) +
           (a.notes ? "<dt>Medical / Allergy Notes</dt><dd>" + escapeHtml(a.notes) + '<br><span class="muted" style="font-size:12px;">Entered by the parent</span></dd>' : "") +
           "<dt>Coach Notes</dt><dd>" +
           '<textarea data-coach-notes="' + a.id + '" rows="2" placeholder="Notes for staff — position, progress, attendance...">' + escapeHtml(a.coach_notes) + "</textarea>" +
@@ -301,7 +332,7 @@
   async function loadRoster() {
     const { data: athletes, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, notes, coach_notes, parent_id, gender, school, team_slug, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone")
+      .select("id, full_name, birthdate, notes, coach_notes, parent_id, sex, gender, school, uswp_number, team_slug, shirt_size, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2")
       .order("full_name", { ascending: true });
 
     const listEl = document.getElementById("roster-list");
@@ -340,14 +371,20 @@
         birthdate: a.birthdate,
         notes: a.notes,
         coach_notes: a.coach_notes,
+        sex: a.sex,
         gender: a.gender,
         school: a.school,
+        uswp_number: a.uswp_number,
         team_slug: a.team_slug,
         shirt_size: a.shirt_size,
-        jammer_size: a.jammer_size,
-        experience_level: a.experience_level,
         emergency_contact_name: a.emergency_contact_name,
-        emergency_contact_phone: a.emergency_contact_phone,
+        emergency_contact_email: a.emergency_contact_email,
+        emergency_contact_phone1: a.emergency_contact_phone1,
+        emergency_contact_phone2: a.emergency_contact_phone2,
+        emergency_contact2_name: a.emergency_contact2_name,
+        emergency_contact2_email: a.emergency_contact2_email,
+        emergency_contact2_phone1: a.emergency_contact2_phone1,
+        emergency_contact2_phone2: a.emergency_contact2_phone2,
         parent_name: profile ? profile.full_name : "",
         parent_email: profile ? profile.email : "",
         parent_phone: profile ? profile.phone : "",
@@ -356,7 +393,7 @@
     });
 
     render("");
-    document.getElementById("export-roster-btn").disabled = false;
+    document.getElementById("export-toggle-btn").disabled = false;
   }
 
   document.getElementById("roster-search").addEventListener("input", function (e) {
@@ -368,49 +405,98 @@
     return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
   }
 
+  // Each column: a header label and a getter run per athlete. Drives both
+  // the "select which columns" checkboxes and the CSV itself, so adding a
+  // column later is one entry here rather than two places to keep in sync.
+  const EXPORT_COLUMNS = [
+    { key: "team", label: "Team", get: function (a) { return teamLabelFor(a); }, defaultOn: true },
+    { key: "name", label: "Athlete Name", get: function (a) { return a.full_name; }, defaultOn: true },
+    { key: "uswp", label: "USWP Number", get: function (a) { return a.uswp_number || ""; }, defaultOn: true },
+    { key: "age", label: "Age", get: function (a) { const g = calcAge(a.birthdate); return g === null ? "" : g; }, defaultOn: true },
+    { key: "birthdate", label: "Birthdate", get: function (a) { return a.birthdate || ""; }, defaultOn: false },
+    { key: "sex", label: "Sex", get: function (a) { return a.sex || ""; }, defaultOn: false },
+    { key: "gender", label: "Gender", get: function (a) { return a.gender || ""; }, defaultOn: false },
+    { key: "school", label: "School", get: function (a) { return a.school || ""; }, defaultOn: false },
+    { key: "shirt_size", label: "Shirt Size", get: function (a) { return a.shirt_size || ""; }, defaultOn: false },
+    { key: "parent_name", label: "Parent Name", get: function (a) { return a.parent_name || ""; }, defaultOn: true },
+    { key: "parent_email", label: "Parent Email", get: function (a) { return a.parent_email || ""; }, defaultOn: true },
+    { key: "parent_phone", label: "Parent Phone", get: function (a) { return a.parent_phone || ""; }, defaultOn: false },
+    {
+      key: "emergency1", label: "Emergency Contact 1",
+      get: function (a) { return [a.emergency_contact_name, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2].filter(Boolean).join(" / "); },
+      defaultOn: false,
+    },
+    {
+      key: "emergency2", label: "Emergency Contact 2",
+      get: function (a) { return [a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2].filter(Boolean).join(" / "); },
+      defaultOn: false,
+    },
+    { key: "notes", label: "Medical/Allergy Notes", get: function (a) { return a.notes || ""; }, defaultOn: false },
+    { key: "coach_notes", label: "Coach Notes", get: function (a) { return a.coach_notes || ""; }, defaultOn: false },
+    {
+      key: "registrations", label: "Registrations",
+      get: function (a) { return a.registrations.map(function (r) { return r.description + " (" + (r.status || "pending") + ")"; }).join("; "); },
+      defaultOn: true,
+    },
+    {
+      key: "paid", label: "Paid",
+      get: function (a) {
+        const cents = a.registrations.filter(function (r) { return r.status === "paid"; }).reduce(function (s, r) { return s + (r.amount_cents || 0); }, 0);
+        return (cents / 100).toFixed(2);
+      },
+      defaultOn: true,
+    },
+  ];
+
+  function populateExportPanel() {
+    document.getElementById("export-columns").innerHTML = EXPORT_COLUMNS
+      .map(function (c) {
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;">' +
+          '<input type="checkbox" data-export-col="' + c.key + '"' + (c.defaultOn ? " checked" : "") + '> ' + escapeHtml(c.label) +
+          "</label>";
+      })
+      .join("");
+
+    const teamSelect = document.getElementById("export-team-filter");
+    teamSelect.innerHTML = '<option value="">All teams</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+  }
+
+  document.getElementById("export-toggle-btn").addEventListener("click", function () {
+    const panel = document.getElementById("export-panel");
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+  });
+  document.getElementById("export-select-all").addEventListener("click", function () {
+    document.querySelectorAll("[data-export-col]").forEach(function (cb) { cb.checked = true; });
+  });
+  document.getElementById("export-select-none").addEventListener("click", function () {
+    document.querySelectorAll("[data-export-col]").forEach(function (cb) { cb.checked = false; });
+  });
+
   document.getElementById("export-roster-btn").addEventListener("click", function () {
     if (!allAthletes.length) return;
-    const header = [
-      "Team", "Athlete", "Age", "Birthdate", "Gender", "School",
-      "Shirt Size", "Speedo/Jammer Size", "Experience",
-      "Parent", "Parent Email", "Parent Phone",
-      "Emergency Contact", "Emergency Phone",
-      "Medical/Allergy Notes", "Coach Notes",
-      "Registrations", "Paid",
-    ];
-    const rows = allAthletes
+
+    const checked = Array.prototype.slice.call(document.querySelectorAll("[data-export-col]:checked")).map(function (cb) { return cb.dataset.exportCol; });
+    const columns = EXPORT_COLUMNS.filter(function (c) { return checked.indexOf(c.key) !== -1; });
+    if (!columns.length) {
+      alert("Select at least one column.");
+      return;
+    }
+
+    const teamFilter = document.getElementById("export-team-filter").value;
+    const subset = allAthletes.filter(function (a) { return !teamFilter || a.team_slug === teamFilter || (!a.team_slug && deriveTeam(calcAge(a.birthdate), a.gender) === (teams.find(function (t) { return t.team_slug === teamFilter; }) || {}).team_label); });
+
+    const rows = subset
       .slice()
       .sort(function (x, y) {
         const d = teamSortIndex(teamLabelFor(x)) - teamSortIndex(teamLabelFor(y));
         return d !== 0 ? d : x.full_name.localeCompare(y.full_name);
       })
       .map(function (a) {
-        const age = calcAge(a.birthdate);
-        const paid = a.registrations
-          .filter(function (r) { return r.status === "paid"; })
-          .reduce(function (sum, r) { return sum + (r.amount_cents || 0); }, 0);
-        return [
-          teamLabelFor(a),
-          a.full_name,
-          age === null ? "" : age,
-          a.birthdate || "",
-          a.gender || "",
-          a.school || "",
-          a.shirt_size || "",
-          a.jammer_size || "",
-          a.experience_level || "",
-          a.parent_name || "",
-          a.parent_email || "",
-          a.parent_phone || "",
-          a.emergency_contact_name || "",
-          a.emergency_contact_phone || "",
-          a.notes || "",
-          a.coach_notes || "",
-          a.registrations.map(function (r) { return r.description + " (" + (r.status || "pending") + ")"; }).join("; "),
-          (paid / 100).toFixed(2),
-        ].map(csvField).join(",");
+        return columns.map(function (c) { return c.get(a); }).map(csvField).join(",");
       });
 
+    const header = columns.map(function (c) { return c.label; });
     const csv = "﻿" + [header.map(csvField).join(",")].concat(rows).join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -434,6 +520,7 @@
       .select("team_slug, team_label")
       .order("sort_order", { ascending: true });
     teams = teamRows || [];
+    populateExportPanel();
 
     loadRoster();
   })();

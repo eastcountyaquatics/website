@@ -77,6 +77,15 @@
             <input type="date" id="athlete_birthdate">
           </div>
           <div class="field">
+            <label for="athlete_sex">Sex</label>
+            <select id="athlete_sex" required>
+              <option value="">Select one...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+            <p class="muted" style="font-size:12px;margin-top:4px;">Used for tournament and USA Water Polo roster eligibility.</p>
+          </div>
+          <div class="field">
             <label for="athlete_gender">Gender</label>
             <select id="athlete_gender">
               <option value="">Select one...</option>
@@ -90,8 +99,12 @@
             <input type="text" id="athlete_school" placeholder="e.g. Grossmont High School">
           </div>
           <div class="field">
+            <label for="athlete_uswp_number">USA Water Polo (USWP) Membership Number</label>
+            <input type="text" id="athlete_uswp_number" placeholder="e.g. 1234567" autocomplete="off">
+          </div>
+          <div class="field">
             <label for="athlete_shirt_size">Shirt Size</label>
-            <select id="athlete_shirt_size">
+            <select id="athlete_shirt_size" autocomplete="on" name="shirt-size">
               <option value="">Select one...</option>
               <option value="YS">Youth Small</option>
               <option value="YM">Youth Medium</option>
@@ -102,27 +115,43 @@
               <option value="AXL">Adult XL</option>
             </select>
           </div>
-          <div class="field">
-            <label for="athlete_jammer_size">Speedo / Jammer Size</label>
-            <input type="text" id="athlete_jammer_size" placeholder="e.g. Youth 24, Adult M">
+          <div class="field" style="border-top:1px solid #eef1f7;padding-top:14px;">
+            <label style="font-weight:800;">Emergency Contact 1</label>
           </div>
           <div class="field">
-            <label for="athlete_experience_level">Water Polo Experience</label>
-            <select id="athlete_experience_level">
-              <option value="">Select one...</option>
-              <option value="New to water polo">New to water polo</option>
-              <option value="Some experience (rec/school)">Some experience (rec/school)</option>
-              <option value="Experienced (club/travel)">Experienced (club/travel)</option>
-              <option value="Advanced/competitive">Advanced/competitive</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="athlete_emergency_name">Emergency Contact Name</label>
+            <label for="athlete_emergency_name">Name</label>
             <input type="text" id="athlete_emergency_name" placeholder="e.g. Grandma Smith">
           </div>
           <div class="field">
-            <label for="athlete_emergency_phone">Emergency Contact Phone</label>
-            <input type="tel" id="athlete_emergency_phone" placeholder="(619) 555-0100">
+            <label for="athlete_emergency_email">Email</label>
+            <input type="email" id="athlete_emergency_email" placeholder="grandma@example.com">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency_phone1">Cell Phone 1</label>
+            <input type="tel" id="athlete_emergency_phone1" placeholder="(619) 555-0100">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency_phone2">Cell Phone 2</label>
+            <input type="tel" id="athlete_emergency_phone2" placeholder="(619) 555-0100">
+          </div>
+          <div class="field" style="border-top:1px solid #eef1f7;padding-top:14px;">
+            <label style="font-weight:800;">Emergency Contact 2 (optional)</label>
+          </div>
+          <div class="field">
+            <label for="athlete_emergency2_name">Name</label>
+            <input type="text" id="athlete_emergency2_name" placeholder="e.g. Uncle Mike">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency2_email">Email</label>
+            <input type="email" id="athlete_emergency2_email" placeholder="uncle@example.com">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency2_phone1">Cell Phone 1</label>
+            <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency2_phone2">Cell Phone 2</label>
+            <input type="tel" id="athlete_emergency2_phone2" placeholder="(619) 555-0100">
           </div>
           <div class="field">
             <label for="athlete_notes">Medical / Allergy Notes</label>
@@ -264,7 +293,7 @@
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, gender, school, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone, notes")
+      .select("id, full_name, birthdate, sex, gender, school, uswp_number, shirt_size, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, notes")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -290,12 +319,13 @@
             "</div>" +
             '<div class="athlete-detail" style="display:none;padding-top:10px;margin-top:10px;border-top:1px solid #eef1f7;">' +
             detailRow("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "") +
+            detailRow("Sex", a.sex) +
             detailRow("Gender", a.gender) +
             detailRow("School", a.school) +
+            detailRow("USWP Number", a.uswp_number) +
             detailRow("Shirt Size", a.shirt_size) +
-            detailRow("Speedo / Jammer Size", a.jammer_size) +
-            detailRow("Water Polo Experience", a.experience_level) +
-            detailRow("Emergency Contact", [a.emergency_contact_name, a.emergency_contact_phone].filter(Boolean).join(" · ")) +
+            detailRow("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2].filter(Boolean).join(" · ")) +
+            detailRow("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2].filter(Boolean).join(" · ")) +
             detailRow("Medical / Allergy Notes", a.notes) +
             "</div>" +
             "</div>"
@@ -334,13 +364,19 @@
       full_name: name,
       parent_id: session.user.id,
       birthdate: document.getElementById("athlete_birthdate").value || null,
+      sex: document.getElementById("athlete_sex").value || null,
       gender: document.getElementById("athlete_gender").value || null,
       school: document.getElementById("athlete_school").value.trim() || null,
+      uswp_number: document.getElementById("athlete_uswp_number").value.trim() || null,
       shirt_size: document.getElementById("athlete_shirt_size").value || null,
-      jammer_size: document.getElementById("athlete_jammer_size").value.trim() || null,
-      experience_level: document.getElementById("athlete_experience_level").value || null,
       emergency_contact_name: document.getElementById("athlete_emergency_name").value.trim() || null,
-      emergency_contact_phone: document.getElementById("athlete_emergency_phone").value.trim() || null,
+      emergency_contact_email: document.getElementById("athlete_emergency_email").value.trim() || null,
+      emergency_contact_phone1: document.getElementById("athlete_emergency_phone1").value.trim() || null,
+      emergency_contact_phone2: document.getElementById("athlete_emergency_phone2").value.trim() || null,
+      emergency_contact2_name: document.getElementById("athlete_emergency2_name").value.trim() || null,
+      emergency_contact2_email: document.getElementById("athlete_emergency2_email").value.trim() || null,
+      emergency_contact2_phone1: document.getElementById("athlete_emergency2_phone1").value.trim() || null,
+      emergency_contact2_phone2: document.getElementById("athlete_emergency2_phone2").value.trim() || null,
       notes: document.getElementById("athlete_notes").value.trim() || null,
     });
 

@@ -12,6 +12,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .consent-overlay{position:fixed;inset:0;background:rgba(10,20,50,.55);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;z-index:1000;}
+  .consent-modal{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .consent-check{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:14px;line-height:1.5;cursor:pointer;}
+  .consent-check input{width:auto;margin-top:3px;flex-shrink:0;}
+  .consent-check a{color:var(--blue);font-weight:700;}
+</style>
 </head>
 <body>
 
@@ -178,6 +185,75 @@
   </div>
 </section>
 
+<div id="consent-overlay" class="consent-overlay" style="display:none;">
+  <div class="consent-modal">
+    <h3>Before You Pay</h3>
+    <p class="muted" style="font-size:13px;margin-bottom:16px;">Please read and agree to the following for this registration.</p>
+
+    <div id="consent-msg" class="form-msg"></div>
+
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="ball">
+      <span data-cms="dashboard-consent-ball">We will bring our own water polo ball to every practice this session. Sharpie your name on it! 10U &ndash; Size 2; 12U &ndash; Size 3; 14U Boys &amp; HS Girls &ndash; Size 4; 16U+ Boys &ndash; Size 5. New athletes can borrow a ball.</span>
+    </label>
+
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="photo">
+      <span data-cms="dashboard-consent-photo">I acknowledge that pictures taken at tournaments, games, practices, ECA events, etc. may be posted to ECA's social media, including Facebook and Instagram.</span>
+    </label>
+
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="guidelines">
+      <span data-cms="dashboard-consent-guidelines">We acknowledge the ECA guidelines and etiquette for athletes and parents. <a href="guidelines-etiquette.html" target="_blank" rel="noopener">Click here for the policy.</a></span>
+    </label>
+
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="tournament-roster">
+      <span data-cms="dashboard-consent-tournament-roster">We acknowledge that only players who have paid for a tournament/game by the payment cutoff date/time will be included on the official roster and eligible to play. There is no promise a spot is available if not paid on time, and a late fee may be added if late.</span>
+    </label>
+
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="volunteer">
+      <span data-cms="dashboard-consent-volunteer">We acknowledge we need to volunteer running clocks, game book, clean-up, setup, and/or a snack bar 2 times during the current session. We are stronger as a community! We will teach you everything you need to know. :)</span>
+    </label>
+
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="refund">
+      <span data-cms="dashboard-consent-refund">We acknowledge and agree to ECA's refund policy. <a href="registration-refund-policy.html" target="_blank" rel="noopener">Click here for the policy.</a></span>
+    </label>
+
+    <div class="field" style="margin-top:16px;">
+      <label for="consent-heard-about">How did you hear about us? <span class="muted" style="font-weight:400;">(optional)</span></label>
+      <select id="consent-heard-about">
+        <option value="">Select...</option>
+        <option value="Returning Player">Returning Player</option>
+        <option value="ECA Coach">ECA Coach</option>
+        <option value="Friend/Family">Friend/Family</option>
+        <option value="Peachjar">Peachjar</option>
+        <option value="ECA Banner">ECA Banner</option>
+        <option value="Social Media">Social Media</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="consent-referral-name">Referred by a returning ECA athlete? <span class="muted" style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="consent-referral-name" placeholder="Their name &mdash; they can earn a coupon code for next session">
+    </div>
+
+    <div class="field">
+      <label for="consent-discount-code">Discount Code <span class="muted" style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="consent-discount-code" placeholder="e.g. ecasibling2" autocomplete="off">
+      <p class="muted" data-cms="dashboard-consent-discount-info" style="font-size:12px;margin-top:4px;">Only use if you have 2 or more athletes playing this session (not including Splashball), or a 10U/12U/14U athlete new to ECA this session. Sibling #2: "ecasibling2"; Sibling #3: "ecasibling3"; Sibling #4: "ecasibling4"; New athlete: "NewAthlete26".</p>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
+      <button type="button" id="consent-continue-btn" class="btn btn-primary">Continue to Payment</button>
+      <button type="button" id="consent-cancel-btn" class="btn btn-outline-dark">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <section class="section-tight">
   <div class="container">
     <div class="dash-grid" style="grid-template-columns:1fr;">
@@ -222,8 +298,10 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/sanitize-html.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/content-blocks.js"></script>
 <script>
   function formatAmount(cents, currency) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: (currency || "usd").toUpperCase() }).format((cents || 0) / 100);
@@ -438,7 +516,7 @@
       "</div>";
 
     wrap.querySelectorAll("[data-checkout]").forEach(function (btn) {
-      btn.addEventListener("click", async function () {
+      btn.addEventListener("click", function () {
         const optionId = btn.dataset.checkout;
         const msgEl = wrap.querySelector('[data-checkout-msg="' + optionId + '"]');
         const checked = wrap.querySelectorAll('input[data-option="' + optionId + '"]:checked');
@@ -450,28 +528,69 @@
         const items = Array.from(checked).map(function (c) {
           return { athlete_id: c.value, registration_option_id: optionId };
         });
-
-        btn.disabled = true;
-        btn.textContent = "Redirecting to payment...";
-        msgEl.className = "form-msg";
-        msgEl.textContent = "";
-
-        const { data, error } = await supabaseClient.functions.invoke("create-checkout-session", {
-          body: { items: items },
-        });
-
-        if (error || !data || !data.url) {
-          btn.disabled = false;
-          btn.textContent = "Register & Pay";
-          msgEl.className = "form-msg error";
-          msgEl.textContent = (data && data.error) || "Could not start checkout. Please try again.";
-          return;
-        }
-
-        window.location.href = data.url;
+        openConsentModal(items, btn, msgEl);
       });
     });
   }
+
+  // Registration consent modal: shown once per checkout attempt, regardless
+  // of how many athletes/programs are in the cart, since these are family/
+  // season-level acknowledgments rather than per-athlete ones.
+  var pendingCheckout = null;
+
+  function openConsentModal(items, btn, msgEl) {
+    pendingCheckout = { items: items, btn: btn, msgEl: msgEl };
+    document.getElementById("consent-msg").textContent = "";
+    document.querySelectorAll("[data-consent-required]").forEach(function (cb) { cb.checked = false; });
+    document.getElementById("consent-heard-about").value = "";
+    document.getElementById("consent-referral-name").value = "";
+    document.getElementById("consent-discount-code").value = "";
+    document.getElementById("consent-overlay").style.display = "flex";
+  }
+  function closeConsentModal() {
+    document.getElementById("consent-overlay").style.display = "none";
+    pendingCheckout = null;
+  }
+  document.getElementById("consent-cancel-btn").addEventListener("click", closeConsentModal);
+
+  document.getElementById("consent-continue-btn").addEventListener("click", async function () {
+    if (!pendingCheckout) return;
+    const consentMsg = document.getElementById("consent-msg");
+    const required = document.querySelectorAll("[data-consent-required]");
+    const allChecked = Array.prototype.every.call(required, function (cb) { return cb.checked; });
+    if (!allChecked) {
+      consentMsg.className = "form-msg error";
+      consentMsg.textContent = "Please check all of the boxes above to continue.";
+      return;
+    }
+
+    const consent = {
+      heard_about: document.getElementById("consent-heard-about").value || null,
+      referral_name: document.getElementById("consent-referral-name").value.trim() || null,
+      discount_code: document.getElementById("consent-discount-code").value.trim() || null,
+      agreed_at: new Date().toISOString(),
+    };
+
+    const { items, btn, msgEl } = pendingCheckout;
+    const continueBtn = document.getElementById("consent-continue-btn");
+    continueBtn.disabled = true;
+    continueBtn.textContent = "Redirecting to payment...";
+
+    const { data, error } = await supabaseClient.functions.invoke("create-checkout-session", {
+      body: { items: items, consent: consent },
+    });
+
+    continueBtn.disabled = false;
+    continueBtn.textContent = "Continue to Payment";
+
+    if (error || !data || !data.url) {
+      consentMsg.className = "form-msg error";
+      consentMsg.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+      return;
+    }
+
+    window.location.href = data.url;
+  });
 
   (async function loadDashboard() {
     const session = await requireAuth();

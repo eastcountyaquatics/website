@@ -83,6 +83,15 @@ Deno.serve(async (req) => {
     .in("id", optionIds);
   const amountByOption = new Map((options ?? []).map((o) => [o.id, o.amount_cents]));
 
+  let consentResponses: unknown = null;
+  if (session.metadata?.consent) {
+    try {
+      consentResponses = JSON.parse(session.metadata.consent);
+    } catch {
+      console.error("Could not parse consent metadata for session", session.id);
+    }
+  }
+
   const rows = registrations.map((r) => ({
     user_id: userId,
     athlete_id: r.athlete_id,
@@ -96,6 +105,7 @@ Deno.serve(async (req) => {
     stripe_checkout_session_id: session.id,
     stripe_payment_intent_id:
       typeof session.payment_intent === "string" ? session.payment_intent : null,
+    consent_responses: consentResponses,
   }));
 
   const { error } = await supabase.from("purchases").insert(rows);

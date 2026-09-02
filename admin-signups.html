@@ -71,6 +71,7 @@
             <th>Item</th>
             <th>Amount</th>
             <th>Status</th>
+            <th>Discount Code</th>
             <th>Stripe Transaction</th>
           </tr>
         </thead>
@@ -154,7 +155,7 @@
   async function loadSignups() {
     const { data: purchases, error } = await supabaseClient
       .from("purchases")
-      .select("id, user_id, description, amount_cents, currency, status, stripe_checkout_session_id, stripe_payment_intent_id, created_at")
+      .select("id, user_id, description, amount_cents, currency, status, stripe_checkout_session_id, stripe_payment_intent_id, consent_responses, created_at")
       .order("created_at", { ascending: false });
 
     document.getElementById("signups-loading").style.display = "none";
@@ -191,6 +192,9 @@
         status: p.status,
         stripe_checkout_session_id: p.stripe_checkout_session_id,
         stripe_payment_intent_id: p.stripe_payment_intent_id,
+        discount_code: p.consent_responses && p.consent_responses.discount_code ? p.consent_responses.discount_code : "",
+        heard_about: p.consent_responses && p.consent_responses.heard_about ? p.consent_responses.heard_about : "",
+        referral_name: p.consent_responses && p.consent_responses.referral_name ? p.consent_responses.referral_name : "",
       };
     });
 
@@ -206,6 +210,7 @@
           "<td>" + escapeHtml(r.description) + "</td>" +
           "<td>" + formatAmount(r.amount_cents, r.currency) + "</td>" +
           '<td><span class="status-pill ' + escapeHtml(r.status) + '">' + escapeHtml(r.status) + "</span></td>" +
+          "<td>" + (r.discount_code ? escapeHtml(r.discount_code) : '<span class="muted">&mdash;</span>') + "</td>" +
           '<td class="muted" style="font-size:12px;">' + escapeHtml(r.stripe_checkout_session_id) + "</td>" +
           "</tr>"
         );
@@ -236,7 +241,7 @@
   // Full record for the club's own files -- not a QuickBooks import format.
   document.getElementById("export-csv-btn").addEventListener("click", function () {
     if (!loadedRows.length) return;
-    const header = ["Date", "Family Name", "Family Email", "Item", "Amount", "Currency", "Status", "Stripe Checkout Session", "Stripe Payment Intent"];
+    const header = ["Date", "Family Name", "Family Email", "Item", "Amount", "Currency", "Status", "Discount Code", "Heard About Us", "Referral Name", "Stripe Checkout Session", "Stripe Payment Intent"];
     const lines = [header.map(csvField).join(",")];
     loadedRows.forEach(function (r) {
       lines.push(
@@ -248,6 +253,9 @@
           ((r.amount_cents || 0) / 100).toFixed(2),
           (r.currency || "usd").toUpperCase(),
           r.status,
+          r.discount_code || "",
+          r.heard_about || "",
+          asciiSafe(r.referral_name || ""),
           r.stripe_checkout_session_id,
           r.stripe_payment_intent_id,
         ]

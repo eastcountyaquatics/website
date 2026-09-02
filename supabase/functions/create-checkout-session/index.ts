@@ -97,6 +97,17 @@ Deno.serve(async (req) => {
 
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
 
+    // Consent answers from the registration agreement modal. Free-text
+    // fields are capped so the whole blob stays well under Stripe's
+    // 500-char-per-metadata-value limit.
+    const rawConsent = body.consent && typeof body.consent === "object" ? body.consent : {};
+    const consent = {
+      heard_about: typeof rawConsent.heard_about === "string" ? rawConsent.heard_about.slice(0, 60) : null,
+      referral_name: typeof rawConsent.referral_name === "string" ? rawConsent.referral_name.slice(0, 120) : null,
+      discount_code: typeof rawConsent.discount_code === "string" ? rawConsent.discount_code.slice(0, 40) : null,
+      agreed_at: typeof rawConsent.agreed_at === "string" ? rawConsent.agreed_at.slice(0, 40) : null,
+    };
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
@@ -106,6 +117,7 @@ Deno.serve(async (req) => {
       metadata: {
         user_id: user.id,
         registrations: JSON.stringify(registrations),
+        consent: JSON.stringify(consent),
       },
     });
 

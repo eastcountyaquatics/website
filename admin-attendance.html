@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .attendance-picker{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;}
+  .attendance-picker .field{margin:0;min-width:200px;flex:1;}
+  .attendance-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:12px 16px;margin-bottom:8px;}
+  .attendance-row label{display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer;flex:1;margin:0;}
+  .attendance-row input{width:20px;height:20px;flex-shrink:0;}
+  .attendance-row .status{font-size:12px;color:var(--muted,#6b7280);min-width:70px;text-align:right;}
+  .attendance-summary{font-size:14px;font-weight:700;margin-bottom:14px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Attendance</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:700px;">
+    <div class="attendance-picker">
+      <div class="field">
+        <label for="attendance-team">Team</label>
+        <select id="attendance-team">
+          <option value="">Choose a team&hellip;</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="attendance-date">Date</label>
+        <input type="date" id="attendance-date">
+      </div>
+    </div>
+
+    <div id="attendance-summary" class="attendance-summary"></div>
+    <div id="attendance-list"><p class="muted">Choose a team and date to take roll call.</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  // Same domestic-eligibility age + auto team-derivation rule used on the
+  // Roster page, so "who's on this team" matches what the Roster shows.
+  function seasonYear() {
+    var now = new Date();
+    var aug1 = new Date(now.getFullYear(), 7, 1);
+    return now >= aug1 ? now.getFullYear() : now.getFullYear() - 1;
+  }
+  function calcAge(birthdate) {
+    if (!birthdate) return null;
+    var dob = new Date(birthdate + "T00:00:00");
+    var cutoff = new Date(seasonYear(), 7, 1);
+    var age = cutoff.getFullYear() - dob.getFullYear();
+    var hadBirthdayByCutoff =
+      cutoff.getMonth() > dob.getMonth() ||
+      (cutoff.getMonth() === dob.getMonth() && cutoff.getDate() >= dob.getDate());
+    if (!hadBirthdayByCutoff) age--;
+    return age;
+  }
+  function deriveTeam(age, gender) {
+    if (age === null) return null;
+    if (age <= 8) return "8u-coed";
+    if (age <= 10) return "10u-coed";
+    const bracket = age <= 12 ? "12u" : age <= 14 ? "14u" : age <= 16 ? "16u" : age <= 18 ? "18u" : null;
+    if (!bracket) return null;
+    const g = (gender || "").toLowerCase();
+    if (g === "male") return bracket + "-boys";
+    if (g === "female") return bracket + "-girls";
+    return null;
+  }
+  function athleteTeamSlug(a) {
+    return a.team_slug || deriveTeam(calcAge(a.birthdate), a.gender);
+  }
+
+  let teams = [];
+  let allAthletes = [];
+
+  async function init() {
+    const [{ data: teamRows }, { data: athleteRows }] = await Promise.all([
+      supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
+      supabaseClient.from("athletes").select("id, full_name, birthdate, gender, team_slug"),
+    ]);
+    teams = teamRows || [];
+    allAthletes = athleteRows || [];
+
+    const teamSelect = document.getElementById("attendance-team");
+    teamSelect.innerHTML = '<option value="">Choose a team&hellip;</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+
+    const dateInput = document.getElementById("attendance-date");
+    dateInput.value = new Date().toISOString().slice(0, 10);
+
+    teamSelect.addEventListener("change", loadRollCall);
+    dateInput.addEventListener("change", loadRollCall);
+  }
+
+  async function loadRollCall() {
+    const teamSlug = document.getElementById("attendance-team").value;
+    const date = document.getElementById("attendance-date").value;
+    const listEl = document.getElementById("attendance-list");
+    const summaryEl = document.getElementById("attendance-summary");
+
+    if (!teamSlug || !date) {
+      listEl.innerHTML = '<p class="muted">Choose a team and date to take roll call.</p>';
+      summaryEl.textContent = "";
+      return;
+    }
+
+    const members = allAthletes
+      .filter(function (a) { return athleteTeamSlug(a) === teamSlug; })
+      .sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
+
+    if (members.length === 0) {
+      listEl.innerHTML = '<p class="muted">No athletes on this team yet.</p>';
+      summaryEl.textContent = "";
+      return;
+    }
+
+    listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
+
+    const { data: existing } = await supabaseClient
+      .from("attendance")
+      .select("athlete_id, present")
+      .eq("team_slug", teamSlug)
+      .eq("session_date", date);
+
+    const presentByAthlete = {};
+    (existing || []).forEach(function (r) { presentByAthlete[r.athlete_id] = r.present; });
+
+    function updateSummary() {
+      const checked = listEl.querySelectorAll("input:checked").length;
+      summaryEl.textContent = checked + " of " + members.length + " present";
+    }
+
+    listEl.innerHTML = members
+      .map(function (a) {
+        const present = !!presentByAthlete[a.id];
+        return (
+          '<div class="attendance-row">' +
+          '<label><input type="checkbox" data-athlete="' + a.id + '"' + (present ? " checked" : "") + "> " + escapeHtml(a.full_name) + "</label>" +
+          '<span class="status" data-status="' + a.id + '"></span>' +
+          "</div>"
+        );
+      })
+      .join("");
+
+    updateSummary();
+
+    listEl.querySelectorAll("input[data-athlete]").forEach(function (cb) {
+      cb.addEventListener("change", async function () {
+        const athleteId = cb.dataset.athlete;
+        const statusEl = listEl.querySelector('[data-status="' + athleteId + '"]');
+        statusEl.textContent = "Saving…";
+        const { error } = await supabaseClient
+          .from("attendance")
+          .upsert(
+            { team_slug: teamSlug, athlete_id: athleteId, session_date: date, present: cb.checked },
+            { onConflict: "team_slug,athlete_id,session_date" }
+          );
+        statusEl.textContent = error ? error.message : "Saved";
+        updateSummary();
+      });
+    });
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    init();
+  })();
+</script>
+</body>
+</html>

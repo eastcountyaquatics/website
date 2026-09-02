@@ -90,6 +90,12 @@
     if (!iso) return "";
     return new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
+  function calcAge(birthdate) {
+    if (!birthdate) return null;
+    var dob = new Date(birthdate + "T00:00:00");
+    var diff = new Date() - dob;
+    return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+  }
 
   let allAthletes = [];
 
@@ -116,19 +122,24 @@
 
     listEl.innerHTML = filtered
       .map(function (a) {
+        const age = calcAge(a.birthdate);
         const regList = a.registrations.length
           ? "<ul>" + a.registrations.map(function (r) { return "<li>" + escapeHtml(r.description) + " &mdash; " + formatDate(r.created_at) + "</li>"; }).join("") + "</ul>"
           : "<dd class=\"muted\">No registrations yet.</dd>";
         return (
           '<div class="roster-row" data-id="' + a.id + '">' +
           '<div class="roster-row-head">' +
-          "<h4>" + escapeHtml(a.full_name) + "</h4>" +
+          "<h4>" + escapeHtml(a.full_name) + (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") + "</h4>" +
           '<span class="muted" style="font-size:13px;">' + escapeHtml(a.parent_name || a.parent_email || "") + "</span>" +
           "</div>" +
           '<dl class="roster-detail">' +
-          "<dt>Parent / Guardian</dt><dd>" + escapeHtml(a.parent_name || "(no name on file)") + (a.parent_email ? " &middot; <a href=\"mailto:" + escapeHtml(a.parent_email) + "\">" + escapeHtml(a.parent_email) + "</a>" : "") + "</dd>" +
-          (a.birthdate ? "<dt>Birthdate</dt><dd>" + formatDate(a.birthdate) + "</dd>" : "") +
-          (a.notes ? "<dt>Notes</dt><dd>" + escapeHtml(a.notes) + "</dd>" : "") +
+          "<dt>Parent / Guardian</dt><dd>" + escapeHtml(a.parent_name || "(no name on file)") + (a.parent_email ? " &middot; <a href=\"mailto:" + escapeHtml(a.parent_email) + "\">" + escapeHtml(a.parent_email) + "</a>" : "") + (a.parent_phone ? " &middot; <a href=\"tel:" + escapeHtml(a.parent_phone) + "\">" + escapeHtml(a.parent_phone) + "</a>" : "") + "</dd>" +
+          (a.birthdate ? "<dt>Birthdate</dt><dd>" + formatDate(a.birthdate) + (age !== null ? " (age " + age + ")" : "") + "</dd>" : "") +
+          (a.shirt_size ? "<dt>Shirt Size</dt><dd>" + escapeHtml(a.shirt_size) + "</dd>" : "") +
+          (a.emergency_contact_name || a.emergency_contact_phone
+            ? "<dt>Emergency Contact</dt><dd>" + escapeHtml(a.emergency_contact_name || "") + (a.emergency_contact_phone ? (a.emergency_contact_name ? " &middot; " : "") + "<a href=\"tel:" + escapeHtml(a.emergency_contact_phone) + "\">" + escapeHtml(a.emergency_contact_phone) + "</a>" : "") + "</dd>"
+            : "") +
+          (a.notes ? "<dt>Medical / Allergy Notes</dt><dd>" + escapeHtml(a.notes) + "</dd>" : "") +
           "<dt>Registrations</dt>" + regList +
           "</dl>" +
           "</div>"
@@ -147,7 +158,7 @@
   async function loadRoster() {
     const { data: athletes, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, notes, parent_id")
+      .select("id, full_name, birthdate, notes, parent_id, shirt_size, emergency_contact_name, emergency_contact_phone")
       .order("full_name", { ascending: true });
 
     const listEl = document.getElementById("roster-list");
@@ -166,7 +177,7 @@
     const athleteIds = athletes.map(function (a) { return a.id; });
 
     const [{ data: profiles }, { data: purchases }] = await Promise.all([
-      supabaseClient.from("profiles").select("id, email, full_name").in("id", parentIds),
+      supabaseClient.from("profiles").select("id, email, full_name, phone").in("id", parentIds),
       supabaseClient.from("purchases").select("athlete_id, description, created_at").in("athlete_id", athleteIds).order("created_at", { ascending: false }),
     ]);
 
@@ -185,8 +196,12 @@
         full_name: a.full_name,
         birthdate: a.birthdate,
         notes: a.notes,
+        shirt_size: a.shirt_size,
+        emergency_contact_name: a.emergency_contact_name,
+        emergency_contact_phone: a.emergency_contact_phone,
         parent_name: profile ? profile.full_name : "",
         parent_email: profile ? profile.email : "",
+        parent_phone: profile ? profile.phone : "",
         registrations: purchasesByAthlete[a.id] || [],
       };
     });

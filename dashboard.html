@@ -55,15 +55,52 @@
           <li><div class="skeleton-line" style="width:80%;"></div></li>
           <li><div class="skeleton-line" style="width:60%;"></div></li>
         </ul>
+        <form id="phone-form" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="tel" id="account_phone" placeholder="Phone number" style="flex:1;min-width:160px;padding:10px 12px;border:1px solid #d7e6ee;border-radius:6px;">
+          <button type="submit" class="btn btn-outline-dark" style="padding:10px 18px;">Save Phone</button>
+        </form>
+        <div id="phone-form-msg" class="form-msg"></div>
       </div>
 
       <div class="dash-card">
         <h3>My Athletes</h3>
         <p class="muted" style="margin-bottom:14px;">Add your children here so you can register them for programs below.</p>
         <div id="athlete-list"><p class="muted">Loading&hellip;</p></div>
-        <form id="athlete-form" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-          <input type="text" id="athlete_name" placeholder="Athlete's full name" required style="flex:1;min-width:160px;padding:10px 12px;border:1px solid #d7e6ee;border-radius:6px;">
-          <button type="submit" class="btn btn-outline-dark" style="padding:10px 18px;">Add Athlete</button>
+        <form id="athlete-form" style="margin-top:16px;">
+          <div class="field">
+            <label for="athlete_name">Full Name</label>
+            <input type="text" id="athlete_name" placeholder="Athlete's full name" required>
+          </div>
+          <div class="field">
+            <label for="athlete_birthdate">Birthdate</label>
+            <input type="date" id="athlete_birthdate">
+          </div>
+          <div class="field">
+            <label for="athlete_shirt_size">Shirt Size</label>
+            <select id="athlete_shirt_size">
+              <option value="">Select one...</option>
+              <option value="YS">Youth Small</option>
+              <option value="YM">Youth Medium</option>
+              <option value="YL">Youth Large</option>
+              <option value="AS">Adult Small</option>
+              <option value="AM">Adult Medium</option>
+              <option value="AL">Adult Large</option>
+              <option value="AXL">Adult XL</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="athlete_emergency_name">Emergency Contact Name</label>
+            <input type="text" id="athlete_emergency_name" placeholder="e.g. Grandma Smith">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency_phone">Emergency Contact Phone</label>
+            <input type="tel" id="athlete_emergency_phone" placeholder="(619) 555-0100">
+          </div>
+          <div class="field">
+            <label for="athlete_notes">Medical / Allergy Notes</label>
+            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about"></textarea>
+          </div>
+          <button type="submit" class="btn btn-outline-dark">Add Athlete</button>
         </form>
         <div id="athlete-form-msg" class="form-msg"></div>
       </div>
@@ -165,10 +202,17 @@
 
   var myAthletes = [];
 
+  function calcAge(birthdate) {
+    if (!birthdate) return null;
+    var dob = new Date(birthdate + "T00:00:00");
+    var diff = new Date() - dob;
+    return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+  }
+
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name")
+      .select("id, full_name, birthdate")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -182,9 +226,11 @@
     } else {
       listEl.innerHTML = myAthletes
         .map(function (a) {
+          const age = calcAge(a.birthdate);
           return (
             '<div class="admin-list-item"><div><h4 style="margin:0;font-size:15px;">' +
             escapeHtml(a.full_name) +
+            (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") +
             '</h4></div><div class="admin-list-actions"><button data-remove-athlete="' +
             a.id +
             '" class="danger">Remove</button></div></div>'
@@ -208,21 +254,27 @@
     e.preventDefault();
     const msg = document.getElementById("athlete-form-msg");
     msg.className = "form-msg";
-    const nameInput = document.getElementById("athlete_name");
-    const name = nameInput.value.trim();
+    const form = e.target;
+    const name = document.getElementById("athlete_name").value.trim();
     if (!name) return;
 
     const session = await requireAuth();
-    const { error } = await supabaseClient
-      .from("athletes")
-      .insert({ full_name: name, parent_id: session.user.id });
+    const { error } = await supabaseClient.from("athletes").insert({
+      full_name: name,
+      parent_id: session.user.id,
+      birthdate: document.getElementById("athlete_birthdate").value || null,
+      shirt_size: document.getElementById("athlete_shirt_size").value || null,
+      emergency_contact_name: document.getElementById("athlete_emergency_name").value.trim() || null,
+      emergency_contact_phone: document.getElementById("athlete_emergency_phone").value.trim() || null,
+      notes: document.getElementById("athlete_notes").value.trim() || null,
+    });
 
     if (error) {
       msg.className = "form-msg error";
       msg.textContent = error.message;
       return;
     }
-    nameInput.value = "";
+    form.reset();
     loadAthletes();
   });
 
@@ -324,7 +376,7 @@
 
     const { data: profile } = await supabaseClient
       .from("profiles")
-      .select("full_name, email, created_at")
+      .select("full_name, email, phone, created_at")
       .eq("id", user.id)
       .single();
 
@@ -338,9 +390,23 @@
       (profile && profile.full_name ? profile.full_name : "Not set") +
       '</div></div></li>' +
       '<li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted">' + user.email + '</div></div></li>' +
+      '<li><span class="info-icon">📱</span><div><strong>Phone</strong><div class="muted">' + (profile && profile.phone ? escapeHtml(profile.phone) : "Not set") + '</div></div></li>' +
       '<li><span class="info-icon">📅</span><div><strong>Member Since</strong><div class="muted">' +
       (profile && profile.created_at ? formatDate(profile.created_at) : formatDate(user.created_at)) +
       '</div></div></li>';
+
+    document.getElementById("account_phone").value = (profile && profile.phone) || "";
+    document.getElementById("phone-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const msg = document.getElementById("phone-form-msg");
+      const phone = document.getElementById("account_phone").value.trim();
+      const { error } = await supabaseClient.from("profiles").update({ phone: phone || null }).eq("id", user.id);
+      msg.className = error ? "form-msg error" : "form-msg success";
+      msg.textContent = error ? error.message : "Saved.";
+      if (!error) {
+        accountDetails.querySelector("li:nth-child(3) .muted").textContent = phone || "Not set";
+      }
+    });
 
     const { data: purchases, error: purchasesError } = await supabaseClient
       .from("purchases")

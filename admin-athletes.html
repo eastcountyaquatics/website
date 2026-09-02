@@ -27,6 +27,8 @@
   .team-group{margin-bottom:28px;}
   .team-group-head{margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid var(--gold);font-size:17px;}
   .team-group-head .muted{font-weight:400;font-size:13px;}
+  .roster-detail select{padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;max-width:100%;}
+  .team-save-msg{margin-left:8px;font-size:12px;color:var(--muted,#6b7280);}
 </style>
 </head>
 <body>
@@ -124,6 +126,22 @@
   }
 
   let allAthletes = [];
+  let teams = []; // {team_slug, team_label} from the schedules table
+
+  function teamLabelFor(a) {
+    if (a.team_slug) {
+      const t = teams.find(function (x) { return x.team_slug === a.team_slug; });
+      if (t) return t.team_label;
+    }
+    return deriveTeam(calcAge(a.birthdate), a.gender);
+  }
+
+  function teamSortIndex(name) {
+    const i = teams.findIndex(function (t) { return t.team_label === name; });
+    if (i !== -1) return i;
+    const j = TEAM_ORDER.indexOf(name);
+    return j !== -1 ? j : 999;
+  }
 
   function render(filterText) {
     const term = (filterText || "").trim().toLowerCase();
@@ -149,15 +167,13 @@
 
     const byTeam = {};
     filtered.forEach(function (a) {
-      const team = deriveTeam(calcAge(a.birthdate), a.gender);
+      const team = teamLabelFor(a);
       if (!byTeam[team]) byTeam[team] = [];
       byTeam[team].push(a);
     });
     const teamNames = Object.keys(byTeam).sort(function (x, y) {
-      const ix = TEAM_ORDER.indexOf(x), iy = TEAM_ORDER.indexOf(y);
-      if (ix === -1 && iy === -1) return x.localeCompare(y);
-      if (ix === -1) return 1;
-      if (iy === -1) return -1;
+      const ix = teamSortIndex(x), iy = teamSortIndex(y);
+      if (ix === iy) return x.localeCompare(y);
       return ix - iy;
     });
 
@@ -185,6 +201,18 @@
             : "") +
           (a.notes ? "<dt>Medical / Allergy Notes</dt><dd>" + escapeHtml(a.notes) + "</dd>" : "") +
           "<dt>Registrations</dt>" + regList +
+          "<dt>Team</dt><dd>" +
+          '<select data-team-for="' + a.id + '">' +
+          '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; gender (" + escapeHtml(deriveTeam(age, a.gender)) + ")</option>" +
+          teams
+            .map(function (t) {
+              return '<option value="' + escapeHtml(t.team_slug) + '"' +
+                (a.team_slug === t.team_slug ? " selected" : "") + ">" + escapeHtml(t.team_label) + "</option>";
+            })
+            .join("") +
+          "</select>" +
+          '<span class="team-save-msg" data-team-msg="' + a.id + '"></span>' +
+          "</dd>" +
           "</dl>" +
           "</div>"
         );
@@ -205,8 +233,30 @@
 
     listEl.querySelectorAll(".roster-row").forEach(function (row) {
       row.addEventListener("click", function (e) {
-        if (e.target.tagName === "A") return;
+        if (e.target.tagName === "A" || e.target.tagName === "SELECT" || e.target.tagName === "OPTION") return;
         row.classList.toggle("open");
+      });
+    });
+
+    listEl.querySelectorAll("[data-team-for]").forEach(function (sel) {
+      sel.addEventListener("change", async function () {
+        const id = sel.dataset.teamFor;
+        const msgEl = listEl.querySelector('[data-team-msg="' + id + '"]');
+        const newSlug = sel.value || null;
+        msgEl.textContent = "Saving...";
+
+        const { error } = await supabaseClient
+          .from("athletes")
+          .update({ team_slug: newSlug })
+          .eq("id", id);
+
+        if (error) {
+          msgEl.textContent = error.message;
+          return;
+        }
+        const athlete = allAthletes.find(function (x) { return x.id === id; });
+        if (athlete) athlete.team_slug = newSlug;
+        render(document.getElementById("roster-search").value);
       });
     });
   }
@@ -214,7 +264,7 @@
   async function loadRoster() {
     const { data: athletes, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, notes, parent_id, gender, school, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone")
+      .select("id, full_name, birthdate, notes, parent_id, gender, school, team_slug, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone")
       .order("full_name", { ascending: true });
 
     const listEl = document.getElementById("roster-list");
@@ -254,6 +304,7 @@
         notes: a.notes,
         gender: a.gender,
         school: a.school,
+        team_slug: a.team_slug,
         shirt_size: a.shirt_size,
         jammer_size: a.jammer_size,
         experience_level: a.experience_level,
@@ -276,6 +327,15 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+
+    // Team list comes from the schedules table so it stays in sync with the
+    // club's real teams rather than being hardcoded here.
+    const { data: teamRows } = await supabaseClient
+      .from("schedules")
+      .select("team_slug, team_label")
+      .order("sort_order", { ascending: true });
+    teams = teamRows || [];
+
     loadRoster();
   })();
 </script>

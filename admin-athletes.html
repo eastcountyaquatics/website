@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roster | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .roster-row{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid #e3e6f0;padding:16px 22px;margin-bottom:10px;cursor:pointer;}
+  .roster-row-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .roster-row-head h4{margin:0;}
+  .roster-detail{display:none;margin-top:14px;padding-top:14px;border-top:1px solid #eef1f7;}
+  .roster-row.open .roster-detail{display:block;}
+  .roster-row.open{cursor:default;}
+  .roster-detail dt{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted, #6b7280);margin-top:10px;}
+  .roster-detail dt:first-child{margin-top:0;}
+  .roster-detail dd{margin:2px 0 0;}
+  .search-box{margin-bottom:18px;}
+  .search-box input{width:100%;padding:10px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Roster</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+    <div class="search-box">
+      <input type="text" id="roster-search" placeholder="Search by athlete or parent name...">
+    </div>
+    <p class="muted" id="roster-count" style="margin-bottom:14px;">Loading&hellip;</p>
+    <div id="roster-list"><p class="muted">Loading roster&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso + (iso.length === 10 ? "T00:00:00" : "")).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  let allAthletes = [];
+
+  function render(filterText) {
+    const term = (filterText || "").trim().toLowerCase();
+    const filtered = !term
+      ? allAthletes
+      : allAthletes.filter(function (a) {
+          return (
+            a.full_name.toLowerCase().indexOf(term) !== -1 ||
+            (a.parent_name || "").toLowerCase().indexOf(term) !== -1 ||
+            (a.parent_email || "").toLowerCase().indexOf(term) !== -1
+          );
+        });
+
+    document.getElementById("roster-count").textContent =
+      filtered.length + " athlete" + (filtered.length === 1 ? "" : "s") + (term ? " matching “" + filterText + "”" : "");
+
+    const listEl = document.getElementById("roster-list");
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p class="muted">No athletes found.</p>';
+      return;
+    }
+
+    listEl.innerHTML = filtered
+      .map(function (a) {
+        const regList = a.registrations.length
+          ? "<ul>" + a.registrations.map(function (r) { return "<li>" + escapeHtml(r.description) + " &mdash; " + formatDate(r.created_at) + "</li>"; }).join("") + "</ul>"
+          : "<dd class=\"muted\">No registrations yet.</dd>";
+        return (
+          '<div class="roster-row" data-id="' + a.id + '">' +
+          '<div class="roster-row-head">' +
+          "<h4>" + escapeHtml(a.full_name) + "</h4>" +
+          '<span class="muted" style="font-size:13px;">' + escapeHtml(a.parent_name || a.parent_email || "") + "</span>" +
+          "</div>" +
+          '<dl class="roster-detail">' +
+          "<dt>Parent / Guardian</dt><dd>" + escapeHtml(a.parent_name || "(no name on file)") + (a.parent_email ? " &middot; <a href=\"mailto:" + escapeHtml(a.parent_email) + "\">" + escapeHtml(a.parent_email) + "</a>" : "") + "</dd>" +
+          (a.birthdate ? "<dt>Birthdate</dt><dd>" + formatDate(a.birthdate) + "</dd>" : "") +
+          (a.notes ? "<dt>Notes</dt><dd>" + escapeHtml(a.notes) + "</dd>" : "") +
+          "<dt>Registrations</dt>" + regList +
+          "</dl>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll(".roster-row").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target.tagName === "A") return;
+        row.classList.toggle("open");
+      });
+    });
+  }
+
+  async function loadRoster() {
+    const { data: athletes, error } = await supabaseClient
+      .from("athletes")
+      .select("id, full_name, birthdate, notes, parent_id")
+      .order("full_name", { ascending: true });
+
+    const listEl = document.getElementById("roster-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load roster: ' + escapeHtml(error.message) + "</p>";
+      document.getElementById("roster-count").textContent = "";
+      return;
+    }
+    if (!athletes || athletes.length === 0) {
+      listEl.innerHTML = '<p class="muted">No athletes registered yet.</p>';
+      document.getElementById("roster-count").textContent = "0 athletes";
+      return;
+    }
+
+    const parentIds = [...new Set(athletes.map(function (a) { return a.parent_id; }))];
+    const athleteIds = athletes.map(function (a) { return a.id; });
+
+    const [{ data: profiles }, { data: purchases }] = await Promise.all([
+      supabaseClient.from("profiles").select("id, email, full_name").in("id", parentIds),
+      supabaseClient.from("purchases").select("athlete_id, description, created_at").in("athlete_id", athleteIds).order("created_at", { ascending: false }),
+    ]);
+
+    const profileById = {};
+    (profiles || []).forEach(function (p) { profileById[p.id] = p; });
+    const purchasesByAthlete = {};
+    (purchases || []).forEach(function (p) {
+      if (!purchasesByAthlete[p.athlete_id]) purchasesByAthlete[p.athlete_id] = [];
+      purchasesByAthlete[p.athlete_id].push(p);
+    });
+
+    allAthletes = athletes.map(function (a) {
+      const profile = profileById[a.parent_id];
+      return {
+        id: a.id,
+        full_name: a.full_name,
+        birthdate: a.birthdate,
+        notes: a.notes,
+        parent_name: profile ? profile.full_name : "",
+        parent_email: profile ? profile.email : "",
+        registrations: purchasesByAthlete[a.id] || [],
+      };
+    });
+
+    render("");
+  }
+
+  document.getElementById("roster-search").addEventListener("input", function (e) {
+    render(e.target.value);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    loadRoster();
+  })();
+</script>
+</body>
+</html>

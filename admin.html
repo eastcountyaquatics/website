@@ -57,6 +57,12 @@
           <p class="muted">Update each team's practice schedule and publish it when ready.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="athletes-card" style="display:none;">
+        <a href="admin-athletes.html" style="display:block;color:inherit;">
+          <h3>Roster</h3>
+          <p class="muted">See every registered athlete, their parent's contact info, and what they've signed up for.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="registrations-card" style="display:none;">
         <a href="admin-registrations.html" style="display:block;color:inherit;">
           <h3>Registrations</h3>
@@ -100,6 +106,7 @@
     document.getElementById("admin-role").textContent = auth.role;
     if (auth.role === "owner" || auth.role === "coach") {
       document.getElementById("schedules-card").style.display = "block";
+      document.getElementById("athletes-card").style.display = "block";
     }
     if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";

@@ -89,6 +89,20 @@
             </select>
           </div>
           <div class="field">
+            <label for="athlete_jammer_size">Speedo / Jammer Size</label>
+            <input type="text" id="athlete_jammer_size" placeholder="e.g. Youth 24, Adult M">
+          </div>
+          <div class="field">
+            <label for="athlete_experience_level">Water Polo Experience</label>
+            <select id="athlete_experience_level">
+              <option value="">Select one...</option>
+              <option value="New to water polo">New to water polo</option>
+              <option value="Some experience (rec/school)">Some experience (rec/school)</option>
+              <option value="Experienced (club/travel)">Experienced (club/travel)</option>
+              <option value="Advanced/competitive">Advanced/competitive</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="athlete_emergency_name">Emergency Contact Name</label>
             <input type="text" id="athlete_emergency_name" placeholder="e.g. Grandma Smith">
           </div>
@@ -264,6 +278,8 @@
       parent_id: session.user.id,
       birthdate: document.getElementById("athlete_birthdate").value || null,
       shirt_size: document.getElementById("athlete_shirt_size").value || null,
+      jammer_size: document.getElementById("athlete_jammer_size").value.trim() || null,
+      experience_level: document.getElementById("athlete_experience_level").value || null,
       emergency_contact_name: document.getElementById("athlete_emergency_name").value.trim() || null,
       emergency_contact_phone: document.getElementById("athlete_emergency_phone").value.trim() || null,
       notes: document.getElementById("athlete_notes").value.trim() || null,

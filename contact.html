@@ -50,8 +50,8 @@
 <section class="page-hero">
   <div class="container">
     <span class="breadcrumb">Contact</span>
-    <h1>Get in Touch</h1>
-    <p>Questions about joining a team, programs, or sponsoring the club? We'd love to hear from you.</p>
+    <h1 data-cms="contact-0001">Get in Touch</h1>
+    <p data-cms="contact-0002">Questions about joining a team, programs, or sponsoring the club? We'd love to hear from you.</p>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
@@ -62,20 +62,20 @@
   <div class="container">
     <div class="grid grid-2" style="align-items:flex-start;">
       <div>
-        <span class="kicker">Get In Touch</span>
-        <h2>Contact Us</h2>
-        <p class="muted"><strong>New or prospective members:</strong> please use our contact form to get more information about our club and programs.</p>
-        <p class="muted"><strong>Existing club parents and athletes:</strong> please use our contact form to submit questions, concerns, and comments. You may post anonymously or share an email for reply.</p>
+        <span class="kicker" data-cms="contact-0014">Get In Touch</span>
+        <h2 data-cms="contact-0003">Contact Us</h2>
+        <p class="muted" data-cms="contact-0004"><strong>New or prospective members:</strong> please use our contact form to get more information about our club and programs.</p>
+        <p class="muted" data-cms="contact-0005"><strong>Existing club parents and athletes:</strong> please use our contact form to submit questions, concerns, and comments. You may post anonymously or share an email for reply.</p>
         <ul class="info-list">
-          <li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted"><a href="mailto:eastcountyaquatics@gmail.com" style="color:var(--blue);font-weight:700;">eastcountyaquatics@gmail.com</a></div></div></li>
-          <li><span class="info-icon">📍</span><div><strong>Location</strong><div class="muted">El Cajon, CA &mdash; serving San Diego's East County</div></div></li>
-          <li><span class="info-icon">📱</span><div><strong>Team Chats</strong><div class="muted">Current players stay updated via each team's BAND app group.</div></div></li>
-          <li><span class="info-icon">📘</span><div><strong>Facebook</strong><div class="muted"><a href="https://www.facebook.com/SanDiegoECA/" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;">facebook.com/SanDiegoECA</a></div></div></li>
+          <li data-cms="contact-0006"><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted"><a href="mailto:eastcountyaquatics@gmail.com" style="color:var(--blue);font-weight:700;">eastcountyaquatics@gmail.com</a></div></div></li>
+          <li data-cms="contact-0007"><span class="info-icon">📍</span><div><strong>Location</strong><div class="muted">El Cajon, CA &mdash; serving San Diego's East County</div></div></li>
+          <li data-cms="contact-0008"><span class="info-icon">📱</span><div><strong>Team Chats</strong><div class="muted">Current players stay updated via each team's BAND app group.</div></div></li>
+          <li data-cms="contact-0009"><span class="info-icon">📘</span><div><strong>Facebook</strong><div class="muted"><a href="https://www.facebook.com/SanDiegoECA/" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;">facebook.com/SanDiegoECA</a></div></div></li>
         </ul>
       </div>
       <div class="card" style="border-top-color:var(--gold);text-align:center;">
-        <h3>Contact Form</h3>
-        <p class="muted">Use our contact form to reach the club &mdash; you may post anonymously or share an email for a reply.</p>
+        <h3 data-cms="contact-0010">Contact Form</h3>
+        <p class="muted" data-cms="contact-0011">Use our contact form to reach the club &mdash; you may post anonymously or share an email for a reply.</p>
         <a href="https://forms.gle/8RfU6NryHoWc85CCA" target="_blank" rel="noopener" class="btn btn-primary">Open Contact Form</a>
       </div>
     </div>
@@ -85,8 +85,8 @@
 <section class="alt">
   <div class="container">
     <div class="cta-band">
-      <h2>Follow Along This Season</h2>
-      <p>Stay up to date on schedules, tournaments, and club news.</p>
+      <h2 data-cms="contact-0012">Follow Along This Season</h2>
+      <p data-cms="contact-0013">Stay up to date on schedules, tournaments, and club news.</p>
       <div class="hero-actions" style="justify-content:center;">
         <a href="mailto:eastcountyaquatics@gmail.com" class="btn btn-primary">Email Us</a>
         <a href="https://www.facebook.com/SanDiegoECA/" target="_blank" rel="noopener" class="btn btn-outline-dark">Facebook</a>
@@ -148,8 +148,10 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/sanitize-html.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script src="js/nav-pages.js"></script>
+<script src="js/content-blocks.js"></script>
 </body>
 </html>

@@ -63,6 +63,12 @@
           <p class="muted">See every registered athlete, their parent's contact info, and what they've signed up for.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="content-card" style="display:none;">
+        <a href="admin-content.html" style="display:block;color:inherit;">
+          <h3>Edit Website Text</h3>
+          <p class="muted">Change the wording on any existing page, without touching its design.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="pages-card" style="display:none;">
         <a href="admin-pages.html" style="display:block;color:inherit;">
           <h3>Pages</h3>
@@ -120,6 +126,7 @@
     if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";
       document.getElementById("pages-card").style.display = "block";
+      document.getElementById("content-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";
     }
   })();

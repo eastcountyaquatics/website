@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Website Text | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .block-card{background:#fff;border:1px solid #e3e6f0;border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;}
+  .block-card.edited{border-left:4px solid var(--gold);}
+  .block-tag{display:inline-block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;background:#f1f4f9;padding:2px 8px;border-radius:4px;}
+  .block-card textarea{width:100%;margin-top:8px;padding:9px 11px;border:1px solid #d7e6ee;border-radius:6px;font-family:inherit;font-size:14px;line-height:1.6;}
+  .block-actions{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+  .block-actions button{padding:6px 14px;font-size:13px;}
+  .block-msg{font-size:12px;color:#6b7280;}
+  .page-picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;}
+  .page-picker select{padding:9px 12px;border:1px solid #d7e6ee;border-radius:6px;min-width:240px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Edit Website Text</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:820px;">
+    <div class="notice" style="margin-bottom:20px;">
+      Pick a page to edit the words on it. The page's design stays exactly as it is &mdash; you're only changing text. Edited blocks are marked with a gold bar, and <strong>Revert</strong> puts the original wording back.
+    </div>
+
+    <div class="page-picker">
+      <label for="page-select" style="margin:0;font-weight:700;">Page</label>
+      <select id="page-select">
+        <option value="">Choose a page&hellip;</option>
+        <option value="index.html">Home</option>
+        <option value="about-us.html">About Us</option>
+        <option value="teams.html">Teams</option>
+        <option value="masters.html">Masters</option>
+        <option value="junior-olympics.html">Junior Olympics</option>
+        <option value="support.html">Sponsors &amp; Donors</option>
+        <option value="contact.html">Contact</option>
+        <option value="faq.html">FAQ</option>
+        <option value="guidelines-etiquette.html">Guidelines &amp; Etiquette</option>
+        <option value="registration-refund-policy.html">Registration/Refund Policy</option>
+        <option value="eca-gear.html">ECA Gear</option>
+        <option value="accomplishments.html">Accomplishments</option>
+        <option value="projects.html">Athlete Projects</option>
+        <option value="summer-league.html">Summer League</option>
+        <option value="st-pattys-day-shootout.html">St. Patty's Day Shootout</option>
+        <option value="team-splashball.html">Team &mdash; Splashball</option>
+        <option value="team-8u-coed.html">Team &mdash; 8U Coed</option>
+        <option value="team-10u-coed.html">Team &mdash; 10U Coed</option>
+        <option value="team-12u-boys.html">Team &mdash; 12U Boys</option>
+        <option value="team-12u-girls.html">Team &mdash; 12U Girls</option>
+        <option value="team-14u-boys.html">Team &mdash; 14U Boys</option>
+        <option value="team-14u-girls.html">Team &mdash; 14U Girls</option>
+        <option value="team-16u-boys.html">Team &mdash; 16U Boys</option>
+        <option value="team-16u-girls.html">Team &mdash; 16U Girls</option>
+        <option value="team-18u-boys.html">Team &mdash; 18U Boys</option>
+        <option value="team-18u-girls.html">Team &mdash; 18U Girls</option>
+      </select>
+      <a id="view-page-link" href="#" target="_blank" rel="noopener" style="display:none;font-weight:700;color:var(--blue);">View page &rarr;</a>
+    </div>
+
+    <div id="blocks"><p class="muted">Choose a page above to see its text.</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+
+  const blocksEl = document.getElementById("blocks");
+
+  async function loadPage(path) {
+    blocksEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
+
+    // Read the page's own HTML to discover its editable blocks and their
+    // original wording, so nothing has to be pre-registered in the database.
+    let defaults = [];
+    try {
+      const res = await fetch(path, { cache: "no-store" });
+      const html = await res.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      defaults = Array.prototype.slice.call(doc.querySelectorAll("[data-cms]")).map(function (el) {
+        return {
+          key: el.getAttribute("data-cms"),
+          tag: el.tagName.toLowerCase(),
+          original: el.innerHTML.trim(),
+        };
+      });
+    } catch (e) {
+      blocksEl.innerHTML = '<p class="muted">Could not read that page.</p>';
+      return;
+    }
+
+    if (!defaults.length) {
+      blocksEl.innerHTML = '<p class="muted">This page has no editable text blocks yet.</p>';
+      return;
+    }
+
+    const { data: overrides } = await supabaseClient
+      .from("content_blocks")
+      .select("block_key, content")
+      .eq("page_path", path);
+
+    const byKey = {};
+    (overrides || []).forEach(function (o) { byKey[o.block_key] = o.content; });
+
+    blocksEl.innerHTML = defaults
+      .map(function (b) {
+        const edited = typeof byKey[b.key] === "string";
+        const value = edited ? byKey[b.key] : b.original;
+        const label = b.tag === "li" ? "list item" : b.tag;
+        return (
+          '<div class="block-card' + (edited ? " edited" : "") + '" data-key="' + escapeHtml(b.key) + '">' +
+          '<span class="block-tag">' + escapeHtml(label) + "</span>" +
+          (edited ? ' <span class="block-msg">edited</span>' : "") +
+          '<textarea rows="' + (value.length > 160 ? 4 : 2) + '">' + escapeHtml(value) + "</textarea>" +
+          '<div class="block-actions">' +
+          '<button type="button" class="btn btn-primary" data-save>Save</button>' +
+          (edited ? '<button type="button" class="btn btn-outline-dark" data-revert>Revert</button>' : "") +
+          '<span class="block-msg" data-msg></span>' +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    blocksEl.querySelectorAll(".block-card").forEach(function (card) {
+      const key = card.dataset.key;
+      const textarea = card.querySelector("textarea");
+      const msg = card.querySelector("[data-msg]");
+      const original = (defaults.find(function (d) { return d.key === key; }) || {}).original || "";
+
+      card.querySelector("[data-save]").addEventListener("click", async function () {
+        msg.textContent = "Saving...";
+        const content = sanitizeHtml(textarea.value.trim());
+        const { error } = await supabaseClient
+          .from("content_blocks")
+          .upsert({ block_key: key, page_path: path, content: content }, { onConflict: "block_key" });
+        msg.textContent = error ? error.message : "Saved.";
+        if (!error) card.classList.add("edited");
+      });
+
+      const revertBtn = card.querySelector("[data-revert]");
+      if (revertBtn) {
+        revertBtn.addEventListener("click", async function () {
+          msg.textContent = "Reverting...";
+          const { error } = await supabaseClient.from("content_blocks").delete().eq("block_key", key);
+          if (error) {
+            msg.textContent = error.message;
+            return;
+          }
+          textarea.value = original;
+          card.classList.remove("edited");
+          revertBtn.remove();
+          msg.textContent = "Back to the original wording.";
+        });
+      }
+    });
+  }
+
+  document.getElementById("page-select").addEventListener("change", function (e) {
+    const link = document.getElementById("view-page-link");
+    if (!e.target.value) {
+      blocksEl.innerHTML = '<p class="muted">Choose a page above to see its text.</p>';
+      link.style.display = "none";
+      return;
+    }
+    link.href = e.target.value;
+    link.style.display = "inline";
+    loadPage(e.target.value);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+  })();
+</script>
+</body>
+</html>

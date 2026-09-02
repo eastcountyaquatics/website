@@ -84,6 +84,14 @@
           <option value="">All teams</option>
         </select>
       </div>
+      <div class="field" id="export-players-field" style="display:none;">
+        <label>Players (e.g. only those going to a tournament)</label>
+        <div id="export-players" style="max-height:180px;overflow-y:auto;border:1px solid #d7e6ee;border-radius:6px;padding:8px 10px;"></div>
+        <div style="margin-top:6px;">
+          <button type="button" id="export-players-all" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">All</button>
+          <button type="button" id="export-players-none" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">None</button>
+        </div>
+      </div>
       <div class="field">
         <label>Columns</label>
         <div id="export-columns" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px 14px;">
@@ -466,6 +474,37 @@
     const panel = document.getElementById("export-panel");
     panel.style.display = panel.style.display === "none" ? "block" : "none";
   });
+
+  function renderExportPlayers(teamSlug) {
+    const field = document.getElementById("export-players-field");
+    const listEl = document.getElementById("export-players");
+    if (!teamSlug) {
+      field.style.display = "none";
+      listEl.innerHTML = "";
+      return;
+    }
+    const teamLabel = (teams.find(function (t) { return t.team_slug === teamSlug; }) || {}).team_label;
+    const members = allAthletes.filter(function (a) { return teamLabelFor(a) === teamLabel; });
+    field.style.display = "block";
+    listEl.innerHTML = members.length
+      ? members
+          .map(function (a) {
+            return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;padding:2px 0;">' +
+              '<input type="checkbox" data-export-player="' + a.id + '" checked> ' + escapeHtml(a.full_name) + "</label>";
+          })
+          .join("")
+      : '<span class="muted" style="font-size:13px;">No players on this team yet.</span>';
+  }
+
+  document.getElementById("export-team-filter").addEventListener("change", function (e) {
+    renderExportPlayers(e.target.value);
+  });
+  document.getElementById("export-players-all").addEventListener("click", function () {
+    document.querySelectorAll("[data-export-player]").forEach(function (cb) { cb.checked = true; });
+  });
+  document.getElementById("export-players-none").addEventListener("click", function () {
+    document.querySelectorAll("[data-export-player]").forEach(function (cb) { cb.checked = false; });
+  });
   document.getElementById("export-select-all").addEventListener("click", function () {
     document.querySelectorAll("[data-export-col]").forEach(function (cb) { cb.checked = true; });
   });
@@ -484,7 +523,12 @@
     }
 
     const teamFilter = document.getElementById("export-team-filter").value;
-    const subset = allAthletes.filter(function (a) { return !teamFilter || a.team_slug === teamFilter || (!a.team_slug && deriveTeam(calcAge(a.birthdate), a.gender) === (teams.find(function (t) { return t.team_slug === teamFilter; }) || {}).team_label); });
+    let subset = allAthletes;
+    if (teamFilter) {
+      const teamLabel = (teams.find(function (t) { return t.team_slug === teamFilter; }) || {}).team_label;
+      const checkedPlayers = Array.prototype.slice.call(document.querySelectorAll("[data-export-player]:checked")).map(function (cb) { return cb.dataset.exportPlayer; });
+      subset = allAthletes.filter(function (a) { return teamLabelFor(a) === teamLabel && checkedPlayers.indexOf(a.id) !== -1; });
+    }
 
     const rows = subset
       .slice()

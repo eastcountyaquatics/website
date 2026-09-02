@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coupon Codes | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Coupon Codes</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:700px;">
+    <div class="notice" style="margin-bottom:24px;">
+      These create real Stripe coupon codes &mdash; the same codes families type into the discount code field at checkout (e.g. <code>ecasibling2</code>). Stripe tracks how many times each one has been used.
+    </div>
+
+    <div class="admin-form">
+      <h3>Create a Coupon Code</h3>
+      <div id="form-msg" class="form-msg"></div>
+      <form id="coupon-form">
+        <div class="field">
+          <label for="code">Code</label>
+          <input type="text" id="code" placeholder="e.g. ECASIBLING2" style="text-transform:uppercase;" required>
+        </div>
+        <div class="field">
+          <label for="discount_type">Discount Type</label>
+          <select id="discount_type">
+            <option value="percent">Percent Off</option>
+            <option value="amount">Dollar Amount Off</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="value" id="value-label">Percent (1-100)</label>
+          <input type="number" id="value" step="0.01" min="0" required>
+        </div>
+        <div class="field">
+          <label for="max_redemptions">Max Uses (optional)</label>
+          <input type="number" id="max_redemptions" min="1" placeholder="Leave blank for unlimited">
+        </div>
+        <div class="field">
+          <label for="expires_at">Expires (optional)</label>
+          <input type="date" id="expires_at">
+        </div>
+        <button type="submit" id="submit-btn" class="btn btn-primary">Create Coupon Code</button>
+      </form>
+    </div>
+
+    <h3 style="margin-top:32px;">Existing Codes</h3>
+    <div id="coupon-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatDiscount(c) {
+    if (c.percent_off) return c.percent_off + "% off";
+    if (c.amount_off) return "$" + (c.amount_off / 100).toFixed(2) + " off";
+    return "";
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  document.getElementById("discount_type").addEventListener("change", function (e) {
+    document.getElementById("value-label").textContent = e.target.value === "percent" ? "Percent (1-100)" : "Dollar Amount ($)";
+  });
+
+  async function loadCoupons() {
+    const listEl = document.getElementById("coupon-list");
+    const { data, error } = await supabaseClient.functions.invoke("manage-coupons", { body: { action: "list" } });
+
+    if (error || !data || data.error) {
+      listEl.innerHTML = '<p class="muted">Could not load coupon codes: ' + escapeHtml((data && data.error) || (error && error.message) || "unknown error") + "</p>";
+      return;
+    }
+    if (!data.codes || data.codes.length === 0) {
+      listEl.innerHTML = '<p class="muted">No coupon codes yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = data.codes
+      .map(function (c) {
+        const usage = c.max_redemptions ? c.times_redeemed + " / " + c.max_redemptions + " used" : c.times_redeemed + " used";
+        return (
+          '<div class="admin-list-item">' +
+          "<div>" +
+          "<h4>" + escapeHtml(c.code) + (c.active ? "" : ' <span class="muted" style="font-weight:400;">(inactive)</span>') + "</h4>" +
+          '<div class="muted" style="font-size:13px;">' + formatDiscount(c) + " &middot; " + usage + (c.expires_at ? " &middot; expires " + formatDate(c.expires_at) : "") + "</div>" +
+          "</div>" +
+          (c.active ? '<div class="admin-list-actions"><button data-deactivate="' + c.id + '" class="danger">Deactivate</button></div>' : "") +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-deactivate]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Deactivate this code? It will stop working immediately.")) return;
+        const { data: result, error: err } = await supabaseClient.functions.invoke("manage-coupons", { body: { action: "deactivate", id: btn.dataset.deactivate } });
+        if (err || !result || result.error) {
+          alert("Could not deactivate: " + ((result && result.error) || (err && err.message) || "unknown error"));
+          return;
+        }
+        loadCoupons();
+      });
+    });
+  }
+
+  document.getElementById("coupon-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("form-msg");
+    msg.className = "form-msg";
+
+    const payload = {
+      action: "create",
+      code: document.getElementById("code").value.trim(),
+      discount_type: document.getElementById("discount_type").value,
+      value: parseFloat(document.getElementById("value").value),
+      max_redemptions: document.getElementById("max_redemptions").value || null,
+      expires_at: document.getElementById("expires_at").value || null,
+    };
+
+    const submitBtn = document.getElementById("submit-btn");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Creating...";
+
+    const { data, error } = await supabaseClient.functions.invoke("manage-coupons", { body: payload });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Create Coupon Code";
+
+    if (error || !data || data.error) {
+      msg.className = "form-msg error";
+      msg.textContent = (data && data.error) || (error && error.message) || "Could not create coupon code.";
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = "Created " + data.code + ".";
+    document.getElementById("coupon-form").reset();
+    loadCoupons();
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    loadCoupons();
+  })();
+</script>
+</body>
+</html>

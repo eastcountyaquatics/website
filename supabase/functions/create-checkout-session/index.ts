@@ -108,12 +108,30 @@ Deno.serve(async (req) => {
       agreed_at: typeof rawConsent.agreed_at === "string" ? rawConsent.agreed_at.slice(0, 40) : null,
     };
 
+    // A real Stripe Promotion Code, looked up by the code the family typed
+    // in the registration agreement modal. An unrecognized code is a hard
+    // error rather than silently charging full price -- a family who
+    // thinks they got a discount should never be charged as if they didn't.
+    let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
+    if (consent.discount_code) {
+      const promoCodes = await stripe.promotionCodes.list({
+        code: consent.discount_code.toUpperCase(),
+        active: true,
+        limit: 1,
+      });
+      if (promoCodes.data.length === 0) {
+        return json({ error: `Discount code "${consent.discount_code}" was not recognized or has expired. Remove it or double-check it to continue.` }, 400);
+      }
+      discounts = [{ promotion_code: promoCodes.data[0].id }];
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
       customer_email: user.email,
       success_url: `${siteUrl}/dashboard.html?checkout=success`,
       cancel_url: `${siteUrl}/dashboard.html?checkout=cancelled`,
+      ...(discounts ? { discounts } : {}),
       metadata: {
         user_id: user.id,
         registrations: JSON.stringify(registrations),

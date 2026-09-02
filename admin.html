@@ -87,6 +87,12 @@
           <p class="muted">Create the programs families can sign up and pay for online.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="coupons-card" style="display:none;">
+        <a href="admin-coupons.html" style="display:block;color:inherit;">
+          <h3>Coupon Codes</h3>
+          <p class="muted">Create discount codes for siblings and new athletes.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="signups-card" style="display:none;">
         <a href="admin-signups.html" style="display:block;color:inherit;">
           <h3>Sign-Ups</h3>
@@ -132,6 +138,7 @@
     }
     if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";
+      document.getElementById("coupons-card").style.display = "block";
       document.getElementById("pages-card").style.display = "block";
       document.getElementById("content-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";

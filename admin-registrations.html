@@ -57,8 +57,19 @@
       <form id="reg-form">
         <input type="hidden" id="reg-id">
         <div class="field">
+          <label for="team_slug">Team (optional)</label>
+          <select id="team_slug">
+            <option value="">Not tied to a specific team</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="season">Season</label>
+          <input type="text" id="season" placeholder="e.g. Fall 2026">
+        </div>
+        <div class="field">
           <label for="label">Label</label>
           <input type="text" id="label" placeholder="e.g. 10U Coed &ndash; Fall 2026" required>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Fills in automatically from Team + Season &mdash; edit it if you want different wording.</p>
         </div>
         <div class="field">
           <label for="description">Description (optional)</label>
@@ -71,10 +82,6 @@
         <div class="field">
           <label for="stripe_price_id">Stripe Price ID</label>
           <input type="text" id="stripe_price_id" placeholder="price_1AbCdEfGhIjKlMnOp" required>
-        </div>
-        <div class="field">
-          <label for="season">Season (optional)</label>
-          <input type="text" id="season" placeholder="e.g. Fall 2026">
         </div>
         <div class="field">
           <label for="sort_order">Display Order (lower shows first)</label>
@@ -118,6 +125,34 @@
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
   }
 
+  let teams = [];
+  function teamLabel(slug) {
+    const t = teams.find(function (x) { return x.team_slug === slug; });
+    return t ? t.team_label : "";
+  }
+
+  async function loadTeams() {
+    const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
+    teams = data || [];
+    const select = document.getElementById("team_slug");
+    select.innerHTML = '<option value="">Not tied to a specific team</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+  }
+
+  function suggestLabel() {
+    const labelField = document.getElementById("label");
+    if (labelField.dataset.touched) return;
+    const team = teamLabel(document.getElementById("team_slug").value);
+    const season = document.getElementById("season").value.trim();
+    const suggestion = [team, season].filter(Boolean).join(" – ");
+    if (suggestion) labelField.value = suggestion;
+  }
+  document.getElementById("team_slug").addEventListener("change", suggestLabel);
+  document.getElementById("season").addEventListener("input", suggestLabel);
+  document.getElementById("label").addEventListener("input", function (e) {
+    e.target.dataset.touched = "1";
+  });
+
   async function loadOptions() {
     const { data, error } = await supabaseClient
       .from("registration_options")
@@ -140,7 +175,7 @@
           '<div class="admin-list-item">' +
           "<div>" +
           "<h4>" + escapeHtml(o.label) + (o.is_open ? "" : ' <span class="muted" style="font-weight:400;">(closed)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.season ? " &middot; " + escapeHtml(o.season) : "") + "</div>" +
+          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.season ? " &middot; " + escapeHtml(o.season) : "") + (o.team_slug ? " &middot; " + escapeHtml(teamLabel(o.team_slug)) : "") + "</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
           '<button data-edit="' + o.id + '">Edit</button>' +
@@ -173,7 +208,9 @@
   function startEdit(o) {
     document.getElementById("form-title").textContent = "Edit Registration Option";
     document.getElementById("reg-id").value = o.id;
+    document.getElementById("team_slug").value = o.team_slug || "";
     document.getElementById("label").value = o.label || "";
+    document.getElementById("label").dataset.touched = "1";
     document.getElementById("description").value = o.description || "";
     document.getElementById("amount_dollars").value = ((o.amount_cents || 0) / 100).toFixed(2);
     document.getElementById("stripe_price_id").value = o.stripe_price_id || "";
@@ -188,6 +225,7 @@
   function resetForm() {
     document.getElementById("reg-form").reset();
     document.getElementById("reg-id").value = "";
+    document.getElementById("label").dataset.touched = "";
     document.getElementById("is_open").checked = true;
     document.getElementById("form-title").textContent = "Add a Registration Option";
     document.getElementById("submit-btn").textContent = "Add Registration Option";
@@ -209,6 +247,7 @@
     }
 
     const payload = {
+      team_slug: document.getElementById("team_slug").value || null,
       label: document.getElementById("label").value.trim(),
       description: document.getElementById("description").value.trim() || null,
       amount_cents: Math.round(dollars * 100),
@@ -238,6 +277,7 @@
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
+    await loadTeams();
     loadOptions();
   })();
 </script>

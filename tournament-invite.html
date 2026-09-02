@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournament Invite | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .invite-card{max-width:560px;margin:0 auto;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:32px;}
+  .invite-price{font-size:32px;font-weight:800;color:var(--blue);margin:6px 0 2px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb">Tournament Invite</span>
+    <h1 id="page-title">Tournament Invite</h1>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="invite-card" id="invite-card">
+      <p class="muted">Loading&hellip;</p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatAmount(cents) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const checkoutStatus = params.get("checkout");
+  const cardEl = document.getElementById("invite-card");
+
+  function renderError(message) {
+    cardEl.innerHTML = "<p>" + escapeHtml(message) + "</p>";
+  }
+
+  async function init() {
+    if (!token) {
+      renderError("This link is missing its invite code. Please use the exact link the club sent you.");
+      return;
+    }
+
+    const { data, error } = await supabaseClient.functions.invoke("get-tournament-invite", { body: { token: token } });
+    if (error || !data || data.error) {
+      renderError((data && data.error) || "This invite link could not be loaded. Please contact the club.");
+      return;
+    }
+
+    document.getElementById("page-title").textContent = data.tournament.name;
+    document.title = data.tournament.name + " Invite | San Diego East County Aquatics";
+
+    if (checkoutStatus === "success" || data.status === "paid") {
+      cardEl.innerHTML =
+        "<h3>You're registered!</h3>" +
+        "<p class=\"muted\">" + escapeHtml(data.athlete.full_name) + " is signed up for " + escapeHtml(data.tournament.name) + ". A receipt was sent to your email.</p>";
+      return;
+    }
+    if (checkoutStatus === "cancelled") {
+      cardEl.innerHTML =
+        '<div class="notice" style="margin-bottom:20px;">Checkout was cancelled — no payment was made. You can try again below.</div>';
+    } else {
+      cardEl.innerHTML = "";
+    }
+
+    const infoWrap = document.createElement("div");
+    infoWrap.innerHTML =
+      "<h3>" + escapeHtml(data.athlete.full_name) + "</h3>" +
+      (data.tournament.description ? '<p class="muted">' + escapeHtml(data.tournament.description) + "</p>" : "") +
+      '<p class="muted"><strong>Date:</strong> ' + formatDate(data.tournament.event_date) + "</p>" +
+      (data.tournament.requirements ? '<p class="muted"><strong>Requirements:</strong> ' + escapeHtml(data.tournament.requirements) + "</p>" : "") +
+      '<div class="invite-price">' + formatAmount(data.tier.amount_cents) + "</div>" +
+      '<p class="muted" style="margin-bottom:20px;">' + escapeHtml(data.tier.label) + "</p>";
+    cardEl.appendChild(infoWrap);
+
+    const form = document.createElement("form");
+    form.id = "invite-form";
+    form.innerHTML =
+      '<div class="field"><label for="payer_name">Your Name</label><input type="text" id="payer_name" required></div>' +
+      '<div class="field"><label for="payer_email">Your Email</label><input type="email" id="payer_email" required></div>' +
+      (data.tournament.shirt_size_enabled
+        ? '<div class="field"><label for="shirt_size">Shirt Size</label>' +
+          '<select id="shirt_size"><option value="">Select one...</option>' +
+          "<option>Youth Small</option><option>Youth Medium</option><option>Youth Large</option>" +
+          "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
+          "</select></div>"
+        : "") +
+      '<div id="invite-msg" class="form-msg"></div>' +
+      '<button type="submit" class="btn btn-primary" style="width:100%;">Pay ' + formatAmount(data.tier.amount_cents) + "</button>";
+    cardEl.appendChild(form);
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const msg = document.getElementById("invite-msg");
+      msg.className = "form-msg";
+      const submitBtn = form.querySelector("button[type=submit]");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Redirecting to payment...";
+
+      const payload = {
+        token: token,
+        payer_name: document.getElementById("payer_name").value.trim(),
+        payer_email: document.getElementById("payer_email").value.trim(),
+      };
+      const shirtSizeEl = document.getElementById("shirt_size");
+      if (shirtSizeEl) payload.shirt_size = shirtSizeEl.value;
+
+      const { data: checkoutData, error: checkoutError } = await supabaseClient.functions.invoke("create-tournament-checkout", { body: payload });
+
+      if (checkoutError || !checkoutData || !checkoutData.url) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Pay " + formatAmount(data.tier.amount_cents);
+        msg.className = "form-msg error";
+        msg.textContent = (checkoutData && checkoutData.error) || "Could not start checkout. Please try again.";
+        return;
+      }
+
+      window.location.href = checkoutData.url;
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

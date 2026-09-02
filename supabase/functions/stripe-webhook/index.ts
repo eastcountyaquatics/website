@@ -47,6 +47,19 @@ Deno.serve(async (req) => {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Tournament invite payments carry a different metadata shape (no
+  // Supabase user_id, since the family never logs in) -- handle that
+  // branch separately from season/team registration.
+  if (session.metadata?.tournament_invite_token) {
+    return await handleTournamentPayment(supabase, session);
+  }
+
   const userId = session.metadata?.user_id;
   const registrationsJson = session.metadata?.registrations;
 
@@ -67,11 +80,6 @@ Deno.serve(async (req) => {
     console.error("Could not parse registrations metadata for session", session.id);
     return new Response("bad metadata", { status: 200 });
   }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
 
   // A multi-item checkout produced one PaymentIntent for the whole cart —
   // split the total evenly across line items isn't right if prices differ,
@@ -117,3 +125,79 @@ Deno.serve(async (req) => {
 
   return new Response("ok", { status: 200 });
 });
+
+async function handleTournamentPayment(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const token = session.metadata!.tournament_invite_token!;
+
+  const { data: invite, error: inviteError } = await supabase
+    .from("tournament_invites")
+    .select("id, tournament_id, athlete_id, status")
+    .eq("token", token)
+    .maybeSingle();
+  if (inviteError || !invite) {
+    console.error("Tournament webhook: invite not found for token", token);
+    return new Response("invite not found", { status: 200 });
+  }
+
+  // Stripe delivers webhooks at-least-once, so the same event can arrive
+  // more than once. The invite's own status is the idempotency guard: once
+  // marked paid, a repeat delivery is a no-op instead of a duplicate charge
+  // record.
+  if (invite.status === "paid") {
+    return new Response("already processed", { status: 200 });
+  }
+
+  const tournamentId = session.metadata!.tournament_id ?? invite.tournament_id;
+  const athleteId = session.metadata!.athlete_id ?? invite.athlete_id;
+  const tierLabel = session.metadata!.tier_label ?? "";
+  const payerName = session.metadata!.payer_name || null;
+  const payerEmail = session.metadata!.payer_email || null;
+
+  const { data: athlete } = await supabase
+    .from("athletes")
+    .select("full_name")
+    .eq("id", athleteId)
+    .maybeSingle();
+  const { data: tournament } = await supabase
+    .from("tournaments")
+    .select("name")
+    .eq("id", tournamentId)
+    .maybeSingle();
+
+  const description = `${tournament?.name ?? "Tournament"} — ${athlete?.full_name ?? "Athlete"}${tierLabel ? ` (${tierLabel})` : ""}`;
+
+  const { error: purchaseError } = await supabase.from("purchases").insert({
+    user_id: null,
+    athlete_id: athleteId,
+    tournament_id: tournamentId,
+    tournament_invite_id: invite.id,
+    description,
+    amount_cents: session.amount_total ?? 0,
+    currency: (session.currency ?? "usd").toLowerCase(),
+    status: "paid",
+    stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id:
+      typeof session.payment_intent === "string" ? session.payment_intent : null,
+    payer_name: payerName,
+    payer_email: payerEmail,
+  });
+  if (purchaseError) {
+    console.error("Failed to insert tournament purchase for session", session.id, purchaseError);
+    return new Response("db insert failed", { status: 500 });
+  }
+
+  const { error: updateError } = await supabase
+    .from("tournament_invites")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", invite.id);
+  if (updateError) {
+    console.error("Failed to mark invite paid for session", session.id, updateError);
+    // The purchase row is already recorded; don't make Stripe retry just
+    // because this status flip failed.
+  }
+
+  return new Response("ok", { status: 200 });
+}

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournaments | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .tier-row, .invite-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;}
+  .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
+  .tournament-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
+  .tournament-detail.open{display:block;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Tournaments</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+
+    <div class="notice" style="margin-bottom:24px;">
+      Tournament pricing is set by age/gender bracket, computed using the athlete's age <strong>on the tournament's event date</strong> (not the season eligibility rule used for team placement). Invite links are unique per athlete and don't require a login to pay.
+    </div>
+
+    <div class="admin-form">
+      <h3 id="tournament-form-title">Add a Tournament</h3>
+      <div id="tournament-form-msg" class="form-msg"></div>
+      <form id="tournament-form">
+        <input type="hidden" id="t-id">
+        <div class="field">
+          <label for="t-name">Tournament Name</label>
+          <input type="text" id="t-name" placeholder="e.g. Rocktober Classic" required>
+        </div>
+        <div class="field">
+          <label for="t-event-date">Event Date</label>
+          <input type="date" id="t-event-date" required>
+        </div>
+        <div class="field">
+          <label for="t-description">Description (optional)</label>
+          <textarea id="t-description" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label for="t-requirements">Requirements (optional)</label>
+          <textarea id="t-requirements" rows="2" placeholder="e.g. USA Water Polo membership required"></textarea>
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="t-shirt-enabled" style="width:auto;">
+          <label for="t-shirt-enabled" style="margin:0;">Ask for a shirt size on the invite page</label>
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="t-published" style="width:auto;">
+          <label for="t-published" style="margin:0;">Published (visible if you build a general listing later; invite links work either way)</label>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button type="submit" id="t-submit-btn" class="btn btn-primary">Add Tournament</button>
+          <button type="button" id="t-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h3 style="margin-top:32px;">All Tournaments</h3>
+    <div id="tournament-list"><p class="muted">Loading&hellip;</p></div>
+
+    <div class="tournament-detail" id="tournament-detail">
+      <h3 id="detail-heading">Price Tiers</h3>
+      <p class="muted" style="font-size:13px;">Leave Min/Max Age or Gender blank to match anyone. The first matching tier (by display order) is used.</p>
+      <div id="tier-list"></div>
+      <form id="tier-form" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="margin:0;flex:1;min-width:140px;">
+          <label for="tier-label">Label</label>
+          <input type="text" id="tier-label" placeholder="e.g. 10U & Under" required>
+        </div>
+        <div class="field" style="margin:0;width:90px;">
+          <label for="tier-min-age">Min Age</label>
+          <input type="number" id="tier-min-age" min="0">
+        </div>
+        <div class="field" style="margin:0;width:90px;">
+          <label for="tier-max-age">Max Age</label>
+          <input type="number" id="tier-max-age" min="0">
+        </div>
+        <div class="field" style="margin:0;width:120px;">
+          <label for="tier-gender">Gender</label>
+          <select id="tier-gender">
+            <option value="">Any</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;width:110px;">
+          <label for="tier-amount">Amount ($)</label>
+          <input type="number" id="tier-amount" step="0.01" min="0" required>
+        </div>
+        <button type="submit" class="btn btn-outline-dark">Add Tier</button>
+      </form>
+
+      <h3 style="margin-top:32px;">Invite a Player</h3>
+      <div id="invite-form-msg" class="form-msg"></div>
+      <form id="invite-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="margin:0;flex:1;min-width:200px;">
+          <label for="invite-athlete">Athlete</label>
+          <select id="invite-athlete" required>
+            <option value="">Choose an athlete&hellip;</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Invite Link</button>
+      </form>
+      <div id="new-invite-link" style="display:none;" class="invite-link-box">
+        <input type="text" id="new-invite-url" readonly>
+        <button type="button" id="copy-invite-btn" class="btn btn-outline-dark">Copy</button>
+      </div>
+
+      <h4 style="margin-top:24px;">Invites Sent</h4>
+      <div id="invite-list"><p class="muted">No invites yet.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatAmount(cents) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  let tournaments = [];
+  let currentTournamentId = null;
+
+  async function loadTournaments() {
+    const { data, error } = await supabaseClient
+      .from("tournaments")
+      .select("*")
+      .order("event_date", { ascending: true });
+
+    const listEl = document.getElementById("tournament-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load tournaments: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    tournaments = data || [];
+    if (tournaments.length === 0) {
+      listEl.innerHTML = '<p class="muted">No tournaments yet. Add one above.</p>';
+      return;
+    }
+
+    listEl.innerHTML = tournaments
+      .map(function (t) {
+        return (
+          '<div class="admin-list-item" style="cursor:pointer;" data-select="' + t.id + '">' +
+          "<div>" +
+          "<h4>" + escapeHtml(t.name) + (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
+          '<div class="muted" style="font-size:13px;">' + formatDate(t.event_date) + "</div>" +
+          "</div>" +
+          '<div class="admin-list-actions"><button data-edit="' + t.id + '">Edit</button></div>' +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-select]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target.closest("button")) return;
+        selectTournament(row.dataset.select);
+      });
+    });
+    listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const t = tournaments.find(function (x) { return x.id === btn.dataset.edit; });
+        if (t) startEditTournament(t);
+      });
+    });
+  }
+
+  function startEditTournament(t) {
+    document.getElementById("tournament-form-title").textContent = "Edit Tournament";
+    document.getElementById("t-id").value = t.id;
+    document.getElementById("t-name").value = t.name;
+    document.getElementById("t-event-date").value = t.event_date;
+    document.getElementById("t-description").value = t.description || "";
+    document.getElementById("t-requirements").value = t.requirements || "";
+    document.getElementById("t-shirt-enabled").checked = !!t.shirt_size_enabled;
+    document.getElementById("t-published").checked = !!t.is_published;
+    document.getElementById("t-submit-btn").textContent = "Save Changes";
+    document.getElementById("t-cancel-btn").style.display = "inline-block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetTournamentForm() {
+    document.getElementById("tournament-form").reset();
+    document.getElementById("t-id").value = "";
+    document.getElementById("tournament-form-title").textContent = "Add a Tournament";
+    document.getElementById("t-submit-btn").textContent = "Add Tournament";
+    document.getElementById("t-cancel-btn").style.display = "none";
+  }
+  document.getElementById("t-cancel-btn").addEventListener("click", resetTournamentForm);
+
+  document.getElementById("tournament-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("tournament-form-msg");
+    msg.className = "form-msg";
+
+    const payload = {
+      name: document.getElementById("t-name").value.trim(),
+      event_date: document.getElementById("t-event-date").value,
+      description: document.getElementById("t-description").value.trim() || null,
+      requirements: document.getElementById("t-requirements").value.trim() || null,
+      shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,
+      is_published: document.getElementById("t-published").checked,
+    };
+
+    const id = document.getElementById("t-id").value;
+    const result = id
+      ? await supabaseClient.from("tournaments").update(payload).eq("id", id)
+      : await supabaseClient.from("tournaments").insert(payload);
+
+    if (result.error) {
+      msg.className = "form-msg error";
+      msg.textContent = result.error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = id ? "Tournament updated." : "Tournament added.";
+    resetTournamentForm();
+    loadTournaments();
+  });
+
+  async function selectTournament(id) {
+    currentTournamentId = id;
+    const t = tournaments.find(function (x) { return x.id === id; });
+    document.getElementById("detail-heading").textContent = "Price Tiers — " + (t ? t.name : "");
+    document.getElementById("tournament-detail").classList.add("open");
+    document.getElementById("new-invite-link").style.display = "none";
+    await Promise.all([loadTiers(), loadAthletesForInvite(), loadInvites()]);
+    document.getElementById("tournament-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function loadTiers() {
+    const { data } = await supabaseClient
+      .from("tournament_price_tiers")
+      .select("*")
+      .eq("tournament_id", currentTournamentId)
+      .order("sort_order", { ascending: true });
+
+    const listEl = document.getElementById("tier-list");
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No price tiers yet — add one below.</p>';
+      return;
+    }
+    listEl.innerHTML = data
+      .map(function (t) {
+        const ageRange = t.min_age != null || t.max_age != null
+          ? "Age " + (t.min_age != null ? t.min_age : "0") + "–" + (t.max_age != null ? t.max_age : "+")
+          : "Any age";
+        return (
+          '<div class="tier-row">' +
+          "<div><strong>" + escapeHtml(t.label) + "</strong> &middot; " + ageRange + (t.gender ? " &middot; " + escapeHtml(t.gender) : "") + "</div>" +
+          "<div style=\"display:flex;align-items:center;gap:10px;\">" + formatAmount(t.amount_cents) +
+          ' <button data-delete-tier="' + t.id + '" class="danger">Delete</button></div>' +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-delete-tier]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Delete this price tier?")) return;
+        await supabaseClient.from("tournament_price_tiers").delete().eq("id", btn.dataset.deleteTier);
+        loadTiers();
+      });
+    });
+  }
+
+  document.getElementById("tier-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const dollars = parseFloat(document.getElementById("tier-amount").value);
+    if (isNaN(dollars) || dollars < 0) return;
+
+    const { data: existing } = await supabaseClient.from("tournament_price_tiers").select("id").eq("tournament_id", currentTournamentId);
+    const payload = {
+      tournament_id: currentTournamentId,
+      label: document.getElementById("tier-label").value.trim(),
+      min_age: document.getElementById("tier-min-age").value ? parseInt(document.getElementById("tier-min-age").value, 10) : null,
+      max_age: document.getElementById("tier-max-age").value ? parseInt(document.getElementById("tier-max-age").value, 10) : null,
+      gender: document.getElementById("tier-gender").value || null,
+      amount_cents: Math.round(dollars * 100),
+      sort_order: (existing || []).length,
+    };
+    const { error } = await supabaseClient.from("tournament_price_tiers").insert(payload);
+    if (error) {
+      alert("Could not add tier: " + error.message);
+      return;
+    }
+    e.target.reset();
+    loadTiers();
+  });
+
+  async function loadAthletesForInvite() {
+    const { data } = await supabaseClient.from("athletes").select("id, full_name").order("full_name", { ascending: true });
+    const select = document.getElementById("invite-athlete");
+    select.innerHTML = '<option value="">Choose an athlete&hellip;</option>' +
+      (data || []).map(function (a) { return '<option value="' + a.id + '">' + escapeHtml(a.full_name) + "</option>"; }).join("");
+  }
+
+  async function loadInvites() {
+    const { data } = await supabaseClient
+      .from("tournament_invites")
+      .select("id, athlete_id, token, status, created_at")
+      .eq("tournament_id", currentTournamentId)
+      .order("created_at", { ascending: false });
+
+    const listEl = document.getElementById("invite-list");
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No invites yet.</p>';
+      return;
+    }
+
+    const { data: athletes } = await supabaseClient.from("athletes").select("id, full_name");
+    const nameById = {};
+    (athletes || []).forEach(function (a) { nameById[a.id] = a.full_name; });
+
+    listEl.innerHTML = data
+      .map(function (inv) {
+        const url = buildInviteUrl(inv.token);
+        return (
+          '<div class="invite-row">' +
+          "<div><strong>" + escapeHtml(nameById[inv.athlete_id] || "Unknown") + "</strong> &middot; " +
+          '<span class="status-pill ' + (inv.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(inv.status) + "</span></div>" +
+          '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(url) + '" style="padding:6px 12px;font-size:13px;">Copy Link</button>' +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        navigator.clipboard.writeText(btn.dataset.copyLink);
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
+      });
+    });
+  }
+
+  function buildInviteUrl(token) {
+    return window.location.origin + window.location.pathname.replace("admin-tournaments.html", "tournament-invite.html") + "?token=" + token;
+  }
+
+  document.getElementById("invite-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("invite-form-msg");
+    msg.className = "form-msg";
+    const athleteId = document.getElementById("invite-athlete").value;
+    if (!athleteId) return;
+
+    const { data, error } = await supabaseClient
+      .from("tournament_invites")
+      .insert({ tournament_id: currentTournamentId, athlete_id: athleteId })
+      .select("token")
+      .single();
+
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+
+    const url = buildInviteUrl(data.token);
+    document.getElementById("new-invite-url").value = url;
+    document.getElementById("new-invite-link").style.display = "flex";
+    document.getElementById("invite-form").reset();
+    loadInvites();
+  });
+
+  document.getElementById("copy-invite-btn").addEventListener("click", function () {
+    const input = document.getElementById("new-invite-url");
+    navigator.clipboard.writeText(input.value);
+    this.textContent = "Copied!";
+    setTimeout(() => { this.textContent = "Copy"; }, 1500);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    loadTournaments();
+  })();
+</script>
+</body>
+</html>

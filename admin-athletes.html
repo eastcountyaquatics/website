@@ -67,6 +67,9 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
+    <div class="notice" style="margin-bottom:16px;font-size:13px;">
+      <strong>Team &amp; age shown here use domestic age eligibility</strong>, the rule sanctioned leagues and tournaments use: a player's age for the season is their age <strong>as of August 1</strong> of the year the season runs, not their age today. A player who is 14 on August 1 plays 14U all season even after turning 15 in the fall; one who turns 15 on July 30 has already moved up to 16U. Use the Team dropdown below to override this when a player is placed differently (e.g. playing up an age group).
+    </div>
     <div class="search-box">
       <input type="text" id="roster-search" placeholder="Search by athlete, parent, or school...">
     </div>
@@ -144,16 +147,34 @@
   function formatAmount(cents) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
   }
+  // Domestic age eligibility (the rule used by USA Water Polo and most
+  // sanctioned leagues/tournaments): a player's age for a season is their
+  // age as of August 1 of the year the season is held -- not their actual
+  // age today. A player who is 14 on August 1 plays 14U all season even
+  // after turning 15; one who turns 15 on July 30 has already moved to
+  // 16U. The "season year" is the current calendar year once August 1 has
+  // passed, otherwise last year's (the season that started last August is
+  // still the one running).
+  function seasonYear() {
+    var now = new Date();
+    var aug1 = new Date(now.getFullYear(), 7, 1);
+    return now >= aug1 ? now.getFullYear() : now.getFullYear() - 1;
+  }
   function calcAge(birthdate) {
     if (!birthdate) return null;
     var dob = new Date(birthdate + "T00:00:00");
-    var diff = new Date() - dob;
-    return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+    var cutoff = new Date(seasonYear(), 7, 1);
+    var age = cutoff.getFullYear() - dob.getFullYear();
+    var hadBirthdayByCutoff =
+      cutoff.getMonth() > dob.getMonth() ||
+      (cutoff.getMonth() === dob.getMonth() && cutoff.getDate() >= dob.getDate());
+    if (!hadBirthdayByCutoff) age--;
+    return age;
   }
 
   // Age groups follow the club's team pages: 8U and 10U are coed, 12U and
-  // up split by gender. Derived from birthdate + gender so nobody has to
-  // assign each athlete by hand.
+  // up split by gender. Derived from domestic-eligibility age + gender so
+  // nobody has to assign each athlete by hand.
   const TEAM_ORDER = [
     "8U Coed", "10U Coed",
     "12U Boys", "12U Girls",

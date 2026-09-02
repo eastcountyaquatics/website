@@ -76,6 +76,19 @@
             <input type="date" id="athlete_birthdate">
           </div>
           <div class="field">
+            <label for="athlete_gender">Gender</label>
+            <select id="athlete_gender">
+              <option value="">Select one...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="athlete_school">School</label>
+            <input type="text" id="athlete_school" placeholder="e.g. Grossmont High School">
+          </div>
+          <div class="field">
             <label for="athlete_shirt_size">Shirt Size</label>
             <select id="athlete_shirt_size">
               <option value="">Select one...</option>
@@ -277,6 +290,8 @@
       full_name: name,
       parent_id: session.user.id,
       birthdate: document.getElementById("athlete_birthdate").value || null,
+      gender: document.getElementById("athlete_gender").value || null,
+      school: document.getElementById("athlete_school").value.trim() || null,
       shirt_size: document.getElementById("athlete_shirt_size").value || null,
       jammer_size: document.getElementById("athlete_jammer_size").value.trim() || null,
       experience_level: document.getElementById("athlete_experience_level").value || null,

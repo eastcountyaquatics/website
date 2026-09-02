@@ -60,7 +60,7 @@
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
     <div class="search-box">
-      <input type="text" id="roster-search" placeholder="Search by athlete or parent name...">
+      <input type="text" id="roster-search" placeholder="Search by athlete, parent, or school...">
     </div>
     <p class="muted" id="roster-count" style="margin-bottom:14px;">Loading&hellip;</p>
     <div id="roster-list"><p class="muted">Loading roster&hellip;</p></div>
@@ -107,7 +107,8 @@
           return (
             a.full_name.toLowerCase().indexOf(term) !== -1 ||
             (a.parent_name || "").toLowerCase().indexOf(term) !== -1 ||
-            (a.parent_email || "").toLowerCase().indexOf(term) !== -1
+            (a.parent_email || "").toLowerCase().indexOf(term) !== -1 ||
+            (a.school || "").toLowerCase().indexOf(term) !== -1
           );
         });
 
@@ -135,6 +136,8 @@
           '<dl class="roster-detail">' +
           "<dt>Parent / Guardian</dt><dd>" + escapeHtml(a.parent_name || "(no name on file)") + (a.parent_email ? " &middot; <a href=\"mailto:" + escapeHtml(a.parent_email) + "\">" + escapeHtml(a.parent_email) + "</a>" : "") + (a.parent_phone ? " &middot; <a href=\"tel:" + escapeHtml(a.parent_phone) + "\">" + escapeHtml(a.parent_phone) + "</a>" : "") + "</dd>" +
           (a.birthdate ? "<dt>Birthdate</dt><dd>" + formatDate(a.birthdate) + (age !== null ? " (age " + age + ")" : "") + "</dd>" : "") +
+          (a.gender ? "<dt>Gender</dt><dd>" + escapeHtml(a.gender) + "</dd>" : "") +
+          (a.school ? "<dt>School</dt><dd>" + escapeHtml(a.school) + "</dd>" : "") +
           (a.shirt_size ? "<dt>Shirt Size</dt><dd>" + escapeHtml(a.shirt_size) + "</dd>" : "") +
           (a.jammer_size ? "<dt>Speedo / Jammer Size</dt><dd>" + escapeHtml(a.jammer_size) + "</dd>" : "") +
           (a.experience_level ? "<dt>Water Polo Experience</dt><dd>" + escapeHtml(a.experience_level) + "</dd>" : "") +
@@ -160,7 +163,7 @@
   async function loadRoster() {
     const { data: athletes, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, notes, parent_id, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone")
+      .select("id, full_name, birthdate, notes, parent_id, gender, school, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone")
       .order("full_name", { ascending: true });
 
     const listEl = document.getElementById("roster-list");
@@ -198,6 +201,8 @@
         full_name: a.full_name,
         birthdate: a.birthdate,
         notes: a.notes,
+        gender: a.gender,
+        school: a.school,
         shirt_size: a.shirt_size,
         jammer_size: a.jammer_size,
         experience_level: a.experience_level,

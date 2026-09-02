@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>San Diego East County Aquatics</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .page-body{max-width:760px;margin:0 auto;}
+  .page-body h2{margin-top:32px;}
+  .page-body h3{margin-top:24px;}
+  .page-body p{margin-bottom:16px;line-height:1.7;}
+  .page-body ul,.page-body ol{margin:0 0 16px 20px;line-height:1.7;}
+  .page-body li{margin-bottom:6px;}
+  .page-body img{max-width:100%;border-radius:var(--radius);}
+  .page-body blockquote{margin:0 0 16px;padding:12px 18px;border-left:3px solid var(--gold);background:#f7f9fc;}
+  .page-body table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+  .page-body th,.page-body td{border:1px solid #e3e6f0;padding:8px 10px;text-align:left;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb" id="page-breadcrumb">&nbsp;</span>
+    <h1 id="page-title">&nbsp;</h1>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="page-body" id="page-body">
+      <p class="muted">Loading&hellip;</p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/nav-pages.js"></script>
+<script>
+  (async function () {
+    const slug = new URLSearchParams(window.location.search).get("slug");
+    const titleEl = document.getElementById("page-title");
+    const bodyEl = document.getElementById("page-body");
+
+    function notFound(message) {
+      document.title = "Page Not Found | San Diego East County Aquatics";
+      titleEl.textContent = "Page Not Found";
+      bodyEl.innerHTML =
+        '<p class="muted">' + message + '</p>' +
+        '<p><a href="index.html" class="btn btn-primary">Back to Home</a></p>';
+    }
+
+    if (!slug) {
+      notFound("No page was specified.");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseClient
+        .from("pages")
+        .select("title, nav_label, body_html, meta_description")
+        .eq("slug", slug)
+        .eq("is_published", true)
+        .maybeSingle();
+
+      if (error || !data) {
+        notFound("We couldn't find that page. It may have been moved or unpublished.");
+        return;
+      }
+
+      document.title = data.title + " | San Diego East County Aquatics";
+      if (data.meta_description) {
+        const meta = document.createElement("meta");
+        meta.name = "description";
+        meta.content = data.meta_description;
+        document.head.appendChild(meta);
+      }
+      document.getElementById("page-breadcrumb").textContent = data.nav_label || data.title;
+      titleEl.textContent = data.title;
+      bodyEl.innerHTML = sanitizeHtml(data.body_html);
+    } catch (e) {
+      notFound("This page is temporarily unavailable. Please try again shortly.");
+    }
+  })();
+</script>
+</body>
+</html>

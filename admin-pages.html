@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pages | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .editor-toolbar{display:flex;gap:6px;flex-wrap:wrap;padding:8px;border:1px solid #d7e6ee;border-bottom:none;border-radius:8px 8px 0 0;background:#f7f9fc;}
+  .editor-toolbar button{padding:6px 10px;border:1px solid #d7e6ee;background:#fff;border-radius:5px;cursor:pointer;font-size:13px;}
+  .editor-toolbar button:hover{background:#eef3f8;}
+  .editor-area{min-height:260px;padding:14px;border:1px solid #d7e6ee;border-radius:0 0 8px 8px;background:#fff;line-height:1.7;overflow-y:auto;}
+  .editor-area:focus{outline:2px solid var(--blue);outline-offset:-2px;}
+  .editor-area h2{font-size:22px;margin:18px 0 8px;}
+  .editor-area h3{font-size:18px;margin:16px 0 6px;}
+  .editor-area ul,.editor-area ol{margin-left:20px;}
+  .page-url{font-size:13px;word-break:break-all;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Pages</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:820px;">
+
+    <div class="admin-form">
+      <h3 id="form-title">Add a Page</h3>
+      <div id="form-msg" class="form-msg"></div>
+      <form id="page-form">
+        <input type="hidden" id="page-id">
+        <div class="field">
+          <label for="title">Page Title</label>
+          <input type="text" id="title" placeholder="e.g. Summer League 2027" required>
+        </div>
+        <div class="field">
+          <label for="slug">Web Address</label>
+          <input type="text" id="slug" placeholder="summer-league-2027" required pattern="[a-z0-9\-]+">
+          <p class="muted page-url" style="margin-top:4px;">Lowercase letters, numbers and dashes. Page will live at <code id="slug-preview">page.html?slug=&hellip;</code></p>
+        </div>
+        <div class="field">
+          <label>Content</label>
+          <div class="editor-toolbar">
+            <button type="button" data-cmd="bold"><strong>B</strong></button>
+            <button type="button" data-cmd="italic"><em>I</em></button>
+            <button type="button" data-block="H2">Heading</button>
+            <button type="button" data-block="H3">Subheading</button>
+            <button type="button" data-block="P">Normal</button>
+            <button type="button" data-cmd="insertUnorderedList">&bull; List</button>
+            <button type="button" data-cmd="insertOrderedList">1. List</button>
+            <button type="button" id="link-btn">Link</button>
+            <button type="button" data-cmd="removeFormat">Clear</button>
+          </div>
+          <div class="editor-area" id="editor" contenteditable="true"></div>
+        </div>
+        <div class="field">
+          <label for="meta_description">Search Description (optional)</label>
+          <input type="text" id="meta_description" placeholder="One sentence shown in Google results">
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="show_in_nav" style="width:auto;">
+          <label for="show_in_nav" style="margin:0;">Show in the top menu</label>
+        </div>
+        <div class="field">
+          <label for="sort_order">Menu Order</label>
+          <input type="number" id="sort_order" value="0">
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="is_published" style="width:auto;">
+          <label for="is_published" style="margin:0;">Published (visible to everyone)</label>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Save Page</button>
+          <button type="button" id="cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h3 style="margin-top:32px;">All Pages</h3>
+    <div id="page-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function slugify(str) {
+    return String(str || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  const editor = document.getElementById("editor");
+
+  document.querySelectorAll("[data-cmd]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      editor.focus();
+      document.execCommand(btn.dataset.cmd, false, null);
+    });
+  });
+  document.querySelectorAll("[data-block]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      editor.focus();
+      document.execCommand("formatBlock", false, btn.dataset.block);
+    });
+  });
+  document.getElementById("link-btn").addEventListener("click", function () {
+    const url = prompt("Link address (https://... or another page like teams.html)");
+    if (!url) return;
+    editor.focus();
+    document.execCommand("createLink", false, url);
+  });
+
+  // Keep pasted content plain so styling from Word/Docs doesn't leak in.
+  editor.addEventListener("paste", function (e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  });
+
+  document.getElementById("title").addEventListener("input", function (e) {
+    const slugField = document.getElementById("slug");
+    if (!document.getElementById("page-id").value && !slugField.dataset.touched) {
+      slugField.value = slugify(e.target.value);
+      updateSlugPreview();
+    }
+  });
+  document.getElementById("slug").addEventListener("input", function (e) {
+    e.target.dataset.touched = "1";
+    updateSlugPreview();
+  });
+  function updateSlugPreview() {
+    const slug = document.getElementById("slug").value || "…";
+    document.getElementById("slug-preview").textContent = "page.html?slug=" + slug;
+  }
+
+  async function loadPages() {
+    const { data, error } = await supabaseClient
+      .from("pages")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    const listEl = document.getElementById("page-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load pages: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No pages yet. Create your first one above.</p>';
+      return;
+    }
+
+    listEl.innerHTML = data
+      .map(function (p) {
+        return (
+          '<div class="admin-list-item">' +
+          "<div>" +
+          "<h4>" + escapeHtml(p.title) +
+          (p.is_published ? "" : ' <span class="muted" style="font-weight:400;">(draft)</span>') +
+          (p.show_in_nav ? ' <span class="muted" style="font-weight:400;">· in menu</span>' : "") +
+          "</h4>" +
+          '<div class="muted page-url"><a href="page.html?slug=' + encodeURIComponent(p.slug) + '" target="_blank" rel="noopener">page.html?slug=' + escapeHtml(p.slug) + "</a></div>" +
+          "</div>" +
+          '<div class="admin-list-actions">' +
+          '<button data-edit="' + p.id + '">Edit</button>' +
+          '<button data-delete="' + p.id + '" class="danger">Delete</button>' +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const page = data.find(function (x) { return x.id === btn.dataset.edit; });
+        if (page) startEdit(page);
+      });
+    });
+    listEl.querySelectorAll("[data-delete]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Delete this page? This cannot be undone.")) return;
+        const { error } = await supabaseClient.from("pages").delete().eq("id", btn.dataset.delete);
+        if (error) {
+          alert("Could not delete: " + error.message);
+          return;
+        }
+        loadPages();
+      });
+    });
+  }
+
+  function startEdit(p) {
+    document.getElementById("form-title").textContent = "Edit Page";
+    document.getElementById("page-id").value = p.id;
+    document.getElementById("title").value = p.title || "";
+    document.getElementById("slug").value = p.slug || "";
+    document.getElementById("slug").dataset.touched = "1";
+    document.getElementById("meta_description").value = p.meta_description || "";
+    document.getElementById("show_in_nav").checked = !!p.show_in_nav;
+    document.getElementById("sort_order").value = p.sort_order || 0;
+    document.getElementById("is_published").checked = !!p.is_published;
+    editor.innerHTML = sanitizeHtml(p.body_html || "");
+    document.getElementById("cancel-btn").style.display = "inline-block";
+    updateSlugPreview();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    document.getElementById("page-form").reset();
+    document.getElementById("page-id").value = "";
+    document.getElementById("slug").dataset.touched = "";
+    editor.innerHTML = "";
+    document.getElementById("form-title").textContent = "Add a Page";
+    document.getElementById("cancel-btn").style.display = "none";
+    document.getElementById("form-msg").textContent = "";
+    updateSlugPreview();
+  }
+  document.getElementById("cancel-btn").addEventListener("click", resetForm);
+
+  document.getElementById("page-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("form-msg");
+    msg.className = "form-msg";
+
+    const slug = slugify(document.getElementById("slug").value);
+    if (!slug) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter a valid web address.";
+      return;
+    }
+
+    const payload = {
+      title: document.getElementById("title").value.trim(),
+      slug: slug,
+      nav_label: document.getElementById("title").value.trim(),
+      meta_description: document.getElementById("meta_description").value.trim() || null,
+      // Sanitized before storing as well as before rendering, so nothing
+      // unexpected ever lands in the database.
+      body_html: sanitizeHtml(editor.innerHTML),
+      show_in_nav: document.getElementById("show_in_nav").checked,
+      sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
+      is_published: document.getElementById("is_published").checked,
+    };
+
+    const id = document.getElementById("page-id").value;
+    const result = id
+      ? await supabaseClient.from("pages").update(payload).eq("id", id)
+      : await supabaseClient.from("pages").insert(payload);
+
+    if (result.error) {
+      msg.className = "form-msg error";
+      msg.textContent = result.error.message.indexOf("duplicate") !== -1
+        ? "That web address is already used by another page."
+        : result.error.message;
+      return;
+    }
+
+    const wasEdit = !!id;
+    resetForm(); // clears form-msg, so set the message after it
+    msg.className = "form-msg success";
+    msg.textContent = wasEdit ? "Page updated." : "Page created.";
+    loadPages();
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    loadPages();
+  })();
+</script>
+</body>
+</html>

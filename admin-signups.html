@@ -48,7 +48,14 @@
   <div class="container">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
       <p class="muted" id="signup-count" style="margin:0;">Loading&hellip;</p>
-      <button type="button" id="export-csv-btn" class="btn btn-primary" disabled>Export CSV for QuickBooks</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" id="export-qb-btn" class="btn btn-primary" disabled>Export for QuickBooks</button>
+        <button type="button" id="export-csv-btn" class="btn btn-outline-dark" disabled>Export Full Details</button>
+      </div>
+    </div>
+
+    <div class="notice" style="margin-bottom:18px;">
+      <strong>Export for QuickBooks</strong> gives you the 3-column format QuickBooks' bank import expects (Date, Description, Amount) with <code>MM/DD/YYYY</code> dates &mdash; upload it under Transactions &rarr; Bank transactions &rarr; Upload from file. <strong>Export Full Details</strong> is the complete record (athlete, parent email, Stripe IDs) for your own files.
     </div>
 
     <div id="signups-loading"><p class="muted">Loading sign-ups&hellip;</p></div>
@@ -105,6 +112,41 @@
       return '"' + str.replace(/"/g, '""') + '"';
     }
     return str;
+  }
+  // QuickBooks reads dates against the company file's regional setting;
+  // MM/DD/YYYY is what a US QuickBooks file expects. A textual date like
+  // "Aug 10, 2026" is the most common reason an import gets rejected.
+  function qbDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return mm + "/" + dd + "/" + d.getFullYear();
+  }
+  // Keep the description plain ASCII -- the em-dash we use for display
+  // turns into mojibake in Excel/QuickBooks on some systems.
+  function asciiSafe(str) {
+    return String(str == null ? "" : str)
+      .replace(/[‒-―−]/g, "-")
+      .replace(/[‘’]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/[^\x20-\x7E]/g, "");
+  }
+  function downloadCsv(filename, lines) {
+    // Leading BOM so Excel and QuickBooks read it as UTF-8.
+    const csv = "﻿" + lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function todayStamp() {
+    return new Date().toISOString().slice(0, 10);
   }
 
   let loadedRows = [];
@@ -172,8 +214,26 @@
 
     document.getElementById("signups-table-wrap").style.display = "block";
     document.getElementById("export-csv-btn").disabled = false;
+    document.getElementById("export-qb-btn").disabled = false;
   }
 
+  // QuickBooks bank-import format: exactly Date, Description, Amount.
+  document.getElementById("export-qb-btn").addEventListener("click", function () {
+    if (!loadedRows.length) return;
+    const lines = [["Date", "Description", "Amount"].join(",")];
+    loadedRows.forEach(function (r) {
+      const who = r.family_name || r.family_email || "";
+      const description = asciiSafe(r.description + (who ? " (" + who + ")" : ""));
+      lines.push(
+        [qbDate(r.date), description, ((r.amount_cents || 0) / 100).toFixed(2)]
+          .map(csvField)
+          .join(",")
+      );
+    });
+    downloadCsv("eca-quickbooks-" + todayStamp() + ".csv", lines);
+  });
+
+  // Full record for the club's own files -- not a QuickBooks import format.
   document.getElementById("export-csv-btn").addEventListener("click", function () {
     if (!loadedRows.length) return;
     const header = ["Date", "Family Name", "Family Email", "Item", "Amount", "Currency", "Status", "Stripe Checkout Session", "Stripe Payment Intent"];
@@ -181,10 +241,10 @@
     loadedRows.forEach(function (r) {
       lines.push(
         [
-          formatDate(r.date),
-          r.family_name,
+          qbDate(r.date),
+          asciiSafe(r.family_name),
           r.family_email,
-          r.description,
+          asciiSafe(r.description),
           ((r.amount_cents || 0) / 100).toFixed(2),
           (r.currency || "usd").toUpperCase(),
           r.status,
@@ -195,16 +255,7 @@
           .join(",")
       );
     });
-    const csv = lines.join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "eca-signups-" + new Date().toISOString().slice(0, 10) + ".csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadCsv("eca-signups-" + todayStamp() + ".csv", lines);
   });
 
   (async function () {

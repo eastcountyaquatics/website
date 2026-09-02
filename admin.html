@@ -108,9 +108,11 @@
       document.getElementById("schedules-card").style.display = "block";
       document.getElementById("athletes-card").style.display = "block";
     }
+    if (auth.role === "owner" || auth.role === "accountant") {
+      document.getElementById("signups-card").style.display = "block";
+    }
     if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";
-      document.getElementById("signups-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";
     }
   })();

@@ -208,7 +208,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner"]);
+    const auth = await requireRole(["owner", "accountant"]);
     if (!auth) return;
     loadSignups();
   })();

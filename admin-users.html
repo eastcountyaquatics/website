@@ -46,8 +46,38 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
-    <p class="muted">Give someone owner, coach, or staff access once they've created an account on the site. Owners can edit everything; coaches can edit their own coach listing and, later, their team's schedule; staff access is read-only until you grant more.</p>
-    <div id="user-list" style="margin-top:24px;"><p class="muted">Loading accounts&hellip;</p></div>
+    <p class="muted"><strong>Owners</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Accountants</strong> get Sign-Ups and the QuickBooks export only.</p>
+
+    <div class="admin-form" style="margin-top:24px;">
+      <h3>Assign Access</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:14px;">Start typing to pick an existing account, or enter any email &mdash; if they haven't signed up yet, the role is applied automatically when they do.</p>
+      <div id="assign-msg" class="form-msg"></div>
+      <form id="assign-form">
+        <div class="field">
+          <label for="assign_email">Email</label>
+          <input type="email" id="assign_email" list="known-emails" placeholder="coach@example.com" required autocomplete="off">
+          <datalist id="known-emails"></datalist>
+        </div>
+        <div class="field">
+          <label for="assign_role">Role</label>
+          <select id="assign_role" required>
+            <option value="owner">Owner</option>
+            <option value="coach" selected>Coach</option>
+            <option value="accountant">Accountant</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Assign Access</button>
+      </form>
+    </div>
+
+    <div id="pending-wrap" style="margin-top:32px;display:none;">
+      <h3>Waiting on Sign-Up</h3>
+      <p class="muted" style="font-size:13px;">These people don't have accounts yet. Their role activates the moment they sign up with this email.</p>
+      <div id="pending-list"></div>
+    </div>
+
+    <h3 style="margin-top:32px;">Accounts</h3>
+    <div id="user-list"><p class="muted">Loading accounts&hellip;</p></div>
   </div>
 </section>
 
@@ -71,6 +101,88 @@
     return div.innerHTML;
   }
 
+  var knownProfiles = [];
+
+  async function loadPending() {
+    const { data } = await supabaseClient
+      .from("pending_role_assignments")
+      .select("email, role")
+      .order("created_at", { ascending: false });
+
+    const wrap = document.getElementById("pending-wrap");
+    const listEl = document.getElementById("pending-list");
+    if (!data || data.length === 0) {
+      wrap.style.display = "none";
+      return;
+    }
+    wrap.style.display = "block";
+    listEl.innerHTML = data
+      .map(function (p) {
+        return (
+          '<div class="admin-list-item">' +
+          "<div>" +
+          "<h4>" + escapeHtml(p.email) + "</h4>" +
+          '<div class="muted" style="font-size:13px;">Will become ' + escapeHtml(p.role) + " on sign-up</div>" +
+          "</div>" +
+          '<div class="admin-list-actions">' +
+          '<button data-cancel="' + escapeHtml(p.email) + '" class="danger">Cancel</button>' +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-cancel]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const { error } = await supabaseClient
+          .from("pending_role_assignments")
+          .delete()
+          .eq("email", btn.dataset.cancel);
+        if (error) {
+          alert("Could not cancel: " + error.message);
+          return;
+        }
+        loadPending();
+      });
+    });
+  }
+
+  document.getElementById("assign-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("assign-msg");
+    msg.className = "form-msg";
+    const email = document.getElementById("assign_email").value.trim().toLowerCase();
+    const role = document.getElementById("assign_role").value;
+    if (!email) return;
+
+    const existing = knownProfiles.find(function (p) {
+      return (p.email || "").toLowerCase() === email;
+    });
+
+    let error;
+    if (existing) {
+      ({ error } = await supabaseClient.from("profiles").update({ role: role }).eq("id", existing.id));
+    } else {
+      ({ error } = await supabaseClient
+        .from("pending_role_assignments")
+        .upsert({ email: email, role: role }, { onConflict: "email" }));
+    }
+
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = existing
+      ? escapeHtml(email) + " is now " + role + "."
+      : "Saved. " + escapeHtml(email) + " becomes " + role + " as soon as they sign up.";
+    document.getElementById("assign-form").reset();
+    loadUsers();
+    loadPending();
+  });
+
   async function loadUsers() {
     const { data, error } = await supabaseClient
       .from("profiles")
@@ -87,9 +199,14 @@
       return;
     }
 
+    knownProfiles = data;
+    document.getElementById("known-emails").innerHTML = data
+      .map(function (u) { return '<option value="' + escapeHtml(u.email) + '">'; })
+      .join("");
+
     listEl.innerHTML = data
       .map(function (u) {
-        const roles = ["", "owner", "coach", "staff"];
+        const roles = ["", "owner", "coach", "accountant"];
         const options = roles
           .map(function (r) {
             const label = r === "" ? "No admin access" : r.charAt(0).toUpperCase() + r.slice(1);
@@ -129,6 +246,7 @@
     const auth = await requireRole(["owner"]);
     if (!auth) return;
     loadUsers();
+    loadPending();
   })();
 </script>
 </body>

@@ -24,6 +24,9 @@
   .roster-detail dd{margin:2px 0 0;}
   .search-box{margin-bottom:18px;}
   .search-box input{width:100%;padding:10px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;}
+  .team-group{margin-bottom:28px;}
+  .team-group-head{margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid var(--gold);font-size:17px;}
+  .team-group-head .muted{font-weight:400;font-size:13px;}
 </style>
 </head>
 <body>
@@ -97,6 +100,29 @@
     return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
   }
 
+  // Age groups follow the club's team pages: 8U and 10U are coed, 12U and
+  // up split by gender. Derived from birthdate + gender so nobody has to
+  // assign each athlete by hand.
+  const TEAM_ORDER = [
+    "8U Coed", "10U Coed",
+    "12U Boys", "12U Girls",
+    "14U Boys", "14U Girls",
+    "16U Boys", "16U Girls",
+    "18U Boys", "18U Girls",
+  ];
+
+  function deriveTeam(age, gender) {
+    if (age === null) return "Needs birthdate";
+    if (age <= 8) return "8U Coed";
+    if (age <= 10) return "10U Coed";
+    const bracket = age <= 12 ? "12U" : age <= 14 ? "14U" : age <= 16 ? "16U" : age <= 18 ? "18U" : null;
+    if (!bracket) return "Aged out (19+)";
+    const g = (gender || "").toLowerCase();
+    if (g === "male") return bracket + " Boys";
+    if (g === "female") return bracket + " Girls";
+    return bracket + " — needs gender";
+  }
+
   let allAthletes = [];
 
   function render(filterText) {
@@ -121,8 +147,21 @@
       return;
     }
 
-    listEl.innerHTML = filtered
-      .map(function (a) {
+    const byTeam = {};
+    filtered.forEach(function (a) {
+      const team = deriveTeam(calcAge(a.birthdate), a.gender);
+      if (!byTeam[team]) byTeam[team] = [];
+      byTeam[team].push(a);
+    });
+    const teamNames = Object.keys(byTeam).sort(function (x, y) {
+      const ix = TEAM_ORDER.indexOf(x), iy = TEAM_ORDER.indexOf(y);
+      if (ix === -1 && iy === -1) return x.localeCompare(y);
+      if (ix === -1) return 1;
+      if (iy === -1) return -1;
+      return ix - iy;
+    });
+
+    function renderAthlete(a) {
         const age = calcAge(a.birthdate);
         const regList = a.registrations.length
           ? "<ul>" + a.registrations.map(function (r) { return "<li>" + escapeHtml(r.description) + " &mdash; " + formatDate(r.created_at) + "</li>"; }).join("") + "</ul>"
@@ -147,6 +186,18 @@
           (a.notes ? "<dt>Medical / Allergy Notes</dt><dd>" + escapeHtml(a.notes) + "</dd>" : "") +
           "<dt>Registrations</dt>" + regList +
           "</dl>" +
+          "</div>"
+        );
+    }
+
+    listEl.innerHTML = teamNames
+      .map(function (team) {
+        const members = byTeam[team];
+        return (
+          '<div class="team-group">' +
+          '<h3 class="team-group-head">' + escapeHtml(team) +
+          ' <span class="muted">' + members.length + " player" + (members.length === 1 ? "" : "s") + "</span></h3>" +
+          members.map(renderAthlete).join("") +
           "</div>"
         );
       })

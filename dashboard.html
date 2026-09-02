@@ -66,7 +66,8 @@
         <h3>My Athletes</h3>
         <p class="muted" style="margin-bottom:14px;">Add your children here so you can register them for programs below.</p>
         <div id="athlete-list"><p class="muted">Loading&hellip;</p></div>
-        <form id="athlete-form" style="margin-top:16px;">
+        <button type="button" id="add-athlete-toggle" class="btn btn-outline-dark" style="margin-top:16px;">+ Add an Athlete</button>
+        <form id="athlete-form" style="margin-top:16px;display:none;">
           <div class="field">
             <label for="athlete_name">Full Name</label>
             <input type="text" id="athlete_name" placeholder="Athlete's full name" required>
@@ -127,7 +128,10 @@
             <label for="athlete_notes">Medical / Allergy Notes</label>
             <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about"></textarea>
           </div>
-          <button type="submit" class="btn btn-outline-dark">Add Athlete</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Save Athlete</button>
+            <button type="button" id="add-athlete-cancel" class="btn btn-outline-dark">Cancel</button>
+          </div>
         </form>
         <div id="athlete-form-msg" class="form-msg"></div>
       </div>
@@ -236,10 +240,31 @@
     return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
   }
 
+  function toggleAthleteForm(show) {
+    document.getElementById("athlete-form").style.display = show ? "block" : "none";
+    document.getElementById("add-athlete-toggle").style.display = show ? "none" : "inline-block";
+    if (!show) {
+      document.getElementById("athlete-form").reset();
+      document.getElementById("athlete-form-msg").textContent = "";
+    }
+  }
+  document.getElementById("add-athlete-toggle").addEventListener("click", function () {
+    toggleAthleteForm(true);
+  });
+  document.getElementById("add-athlete-cancel").addEventListener("click", function () {
+    toggleAthleteForm(false);
+  });
+
+  function detailRow(label, value) {
+    if (!value) return "";
+    return '<div style="margin-top:8px;"><strong style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;">' +
+      label + '</strong><div class="muted">' + escapeHtml(value) + "</div></div>";
+  }
+
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate")
+      .select("id, full_name, birthdate, gender, school, shirt_size, jammer_size, experience_level, emergency_contact_name, emergency_contact_phone, notes")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -255,15 +280,35 @@
         .map(function (a) {
           const age = calcAge(a.birthdate);
           return (
-            '<div class="admin-list-item"><div><h4 style="margin:0;font-size:15px;">' +
+            '<div class="admin-list-item athlete-row" data-athlete-row="' + a.id + '" style="display:block;cursor:pointer;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+            '<h4 style="margin:0;font-size:15px;">' +
             escapeHtml(a.full_name) +
             (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") +
-            '</h4></div><div class="admin-list-actions"><button data-remove-athlete="' +
-            a.id +
-            '" class="danger">Remove</button></div></div>'
+            "</h4>" +
+            '<div class="admin-list-actions"><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
+            "</div>" +
+            '<div class="athlete-detail" style="display:none;padding-top:10px;margin-top:10px;border-top:1px solid #eef1f7;">' +
+            detailRow("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "") +
+            detailRow("Gender", a.gender) +
+            detailRow("School", a.school) +
+            detailRow("Shirt Size", a.shirt_size) +
+            detailRow("Speedo / Jammer Size", a.jammer_size) +
+            detailRow("Water Polo Experience", a.experience_level) +
+            detailRow("Emergency Contact", [a.emergency_contact_name, a.emergency_contact_phone].filter(Boolean).join(" · ")) +
+            detailRow("Medical / Allergy Notes", a.notes) +
+            "</div>" +
+            "</div>"
           );
         })
         .join("");
+      listEl.querySelectorAll("[data-athlete-row]").forEach(function (row) {
+        row.addEventListener("click", function (e) {
+          if (e.target.closest("button")) return;
+          const detail = row.querySelector(".athlete-detail");
+          detail.style.display = detail.style.display === "none" ? "block" : "none";
+        });
+      });
       listEl.querySelectorAll("[data-remove-athlete]").forEach(function (btn) {
         btn.addEventListener("click", async function () {
           if (!confirm("Remove this athlete from your account?")) return;
@@ -281,7 +326,6 @@
     e.preventDefault();
     const msg = document.getElementById("athlete-form-msg");
     msg.className = "form-msg";
-    const form = e.target;
     const name = document.getElementById("athlete_name").value.trim();
     if (!name) return;
 
@@ -305,7 +349,7 @@
       msg.textContent = error.message;
       return;
     }
-    form.reset();
+    toggleAthleteForm(false);
     loadAthletes();
   });
 

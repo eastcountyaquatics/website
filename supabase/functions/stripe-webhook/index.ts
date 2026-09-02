@@ -90,7 +90,9 @@ Deno.serve(async (req) => {
     description: `${r.registration_label} — ${r.athlete_name}`,
     amount_cents: amountByOption.get(r.registration_option_id) ?? 0,
     currency: (session.currency ?? "usd").toLowerCase(),
-    status: "succeeded",
+    // Must match the purchases_status_check constraint:
+    // pending | paid | refunded | canceled
+    status: "paid",
     stripe_checkout_session_id: session.id,
     stripe_payment_intent_id:
       typeof session.payment_intent === "string" ? session.payment_intent : null,

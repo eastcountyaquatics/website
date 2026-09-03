@@ -12,8 +12,9 @@
 // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
 // After deploying, register the webhook URL in the Stripe dashboard
-// (Developers -> Webhooks) for the checkout.session.completed event, then
-// copy the signing secret into STRIPE_WEBHOOK_SECRET.
+// (Developers -> Webhooks) for the checkout.session.completed,
+// customer.subscription.updated, and customer.subscription.deleted
+// events, then copy the signing secret into STRIPE_WEBHOOK_SECRET.
 
 import Stripe from "npm:stripe@^17";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -41,6 +42,19 @@ Deno.serve(async (req) => {
     return new Response("Invalid signature", { status: 400 });
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Stripe sends subscription lifecycle events (pause/resume happen via
+  // our own manage-masters-subscription function and update the DB
+  // directly, but a failed payment or an external cancellation only ever
+  // shows up here) separately from checkout.session.completed.
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    return await handleMastersSubscriptionEvent(supabase, event.data.object as Stripe.Subscription);
+  }
+
   if (event.type !== "checkout.session.completed") {
     // Not an event we care about; acknowledge so Stripe stops retrying.
     return new Response("ignored", { status: 200 });
@@ -48,16 +62,15 @@ Deno.serve(async (req) => {
 
   const session = event.data.object as Stripe.Checkout.Session;
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-
   // Tournament invite payments carry a different metadata shape (no
   // Supabase user_id, since the family never logs in) -- handle that
   // branch separately from season/team registration.
   if (session.metadata?.tournament_invite_token) {
     return await handleTournamentPayment(supabase, session);
+  }
+
+  if (session.mode === "subscription" && session.metadata?.masters_tier) {
+    return await handleMastersCheckout(supabase, session);
   }
 
   const userId = session.metadata?.user_id;
@@ -200,4 +213,63 @@ async function handleTournamentPayment(
   }
 
   return new Response("ok", { status: 200 });
+}
+
+async function handleMastersCheckout(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const userId = session.metadata!.user_id;
+  const tier = session.metadata!.masters_tier;
+  if (!userId || !tier || typeof session.subscription !== "string") {
+    console.error("Masters checkout webhook missing expected fields on session", session.id);
+    return new Response("missing metadata", { status: 200 });
+  }
+
+  const { error } = await supabase.from("masters_subscriptions").upsert(
+    {
+      user_id: userId,
+      tier,
+      stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+      stripe_subscription_id: session.subscription,
+      status: "active",
+    },
+    { onConflict: "stripe_subscription_id" }
+  );
+  if (error) {
+    console.error("Failed to record masters subscription for session", session.id, error);
+    return new Response("db insert failed", { status: 500 });
+  }
+
+  return new Response("ok", { status: 200 });
+}
+
+async function handleMastersSubscriptionEvent(
+  supabase: ReturnType<typeof createClient>,
+  sub: Stripe.Subscription
+) {
+  // NOTE: this status-mapping logic is duplicated in
+  // manage-masters-subscription -- keep both copies in sync.
+  const status = mapSubscriptionStatus(sub);
+  const { error } = await supabase
+    .from("masters_subscriptions")
+    .update({
+      status,
+      current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+    })
+    .eq("stripe_subscription_id", sub.id);
+  if (error) {
+    console.error("Failed to sync masters subscription status for", sub.id, error);
+    // A row might not exist yet if this event raced the checkout webhook;
+    // that's fine, the checkout handler will set the correct status.
+  }
+  return new Response("ok", { status: 200 });
+}
+
+function mapSubscriptionStatus(sub: Stripe.Subscription): string {
+  if (sub.pause_collection) return "paused";
+  if (sub.status === "canceled" || sub.status === "incomplete_expired") return "canceled";
+  if (sub.status === "past_due" || sub.status === "unpaid") return "past_due";
+  if (sub.status === "active" || sub.status === "trialing") return "active";
+  return "pending";
 }

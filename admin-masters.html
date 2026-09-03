@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masters Membership | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Masters Membership</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+
+    <div class="notice" style="margin-bottom:24px;">
+      Masters is billed separately from team registration &mdash; members pay themselves on a monthly subscription they can pause anytime, priced by whether they're 25 &amp; under or 26+. The $13 pay-to-play option on the public Masters page is a plain one-time charge and doesn't use any of this &mdash; set it up as a regular registration option instead.
+    </div>
+
+    <h3>Monthly Pricing</h3>
+    <div id="pricing-msg" class="form-msg"></div>
+    <div id="pricing-form-wrap">
+      <div class="admin-form" style="margin-bottom:16px;">
+        <label for="price-25-under" style="display:block;font-weight:700;margin-bottom:6px;">25 &amp; Under &mdash; Monthly Rate ($)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="price-25-under" step="0.01" min="0" style="flex:1;">
+          <button type="button" class="btn btn-outline-dark" data-save-tier="25_under">Save</button>
+        </div>
+        <p class="muted" id="price-25-under-current" style="font-size:13px;margin-top:6px;"></p>
+      </div>
+      <div class="admin-form">
+        <label for="price-26-plus" style="display:block;font-weight:700;margin-bottom:6px;">26+ &mdash; Monthly Rate ($)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="price-26-plus" step="0.01" min="0" style="flex:1;">
+          <button type="button" class="btn btn-outline-dark" data-save-tier="26_plus">Save</button>
+        </div>
+        <p class="muted" id="price-26-plus-current" style="font-size:13px;margin-top:6px;"></p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:32px;">Members</h3>
+    <div id="members-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatAmount(cents) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+  const TIER_LABELS = { "25_under": "25 & Under", "26_plus": "26+" };
+
+  async function loadPricing() {
+    const { data, error } = await supabaseClient.functions.invoke("manage-masters-pricing", { body: { action: "get" } });
+    if (error || !data || data.error) return;
+    (data.tiers || []).forEach(function (t) {
+      const input = document.getElementById("price-" + t.tier.replace("_", "-"));
+      const current = document.getElementById("price-" + t.tier.replace("_", "-") + "-current");
+      if (input) input.value = (t.amount_cents / 100).toFixed(2);
+      if (current) current.textContent = "Currently " + formatAmount(t.amount_cents) + "/month" + (t.label ? " (“" + t.label + "”)" : "");
+    });
+  }
+
+  document.querySelectorAll("[data-save-tier]").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      const tier = btn.dataset.saveTier;
+      const input = document.getElementById("price-" + tier.replace("_", "-"));
+      const dollars = parseFloat(input.value);
+      const msg = document.getElementById("pricing-msg");
+      msg.className = "form-msg";
+      if (isNaN(dollars) || dollars <= 0) {
+        msg.className = "form-msg error";
+        msg.textContent = "Enter a monthly amount greater than 0.";
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+      const { data, error } = await supabaseClient.functions.invoke("manage-masters-pricing", {
+        body: { action: "set", tier: tier, label: TIER_LABELS[tier], amount_dollars: dollars },
+      });
+      btn.disabled = false;
+      btn.textContent = "Save";
+      if (error || !data || data.error) {
+        msg.className = "form-msg error";
+        msg.textContent = (data && data.error) || (error && error.message) || "Could not save pricing.";
+        return;
+      }
+      msg.className = "form-msg success";
+      msg.textContent = TIER_LABELS[tier] + " pricing updated. New subscribers will be charged the new rate; existing members keep their current rate.";
+      loadPricing();
+    });
+  });
+
+  async function loadMembers() {
+    const listEl = document.getElementById("members-list");
+    const { data: subs, error } = await supabaseClient
+      .from("masters_subscriptions")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load members: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!subs || subs.length === 0) {
+      listEl.innerHTML = '<p class="muted">No Masters members yet.</p>';
+      return;
+    }
+
+    const userIds = [...new Set(subs.map(function (s) { return s.user_id; }))];
+    const { data: profiles } = await supabaseClient.from("profiles").select("id, email, full_name").in("id", userIds);
+    const profileById = {};
+    (profiles || []).forEach(function (p) { profileById[p.id] = p; });
+
+    listEl.innerHTML = subs
+      .map(function (s) {
+        const p = profileById[s.user_id];
+        const name = (p && (p.full_name || p.email)) || "Unknown member";
+        return (
+          '<div class="admin-list-item">' +
+          "<div>" +
+          "<h4>" + escapeHtml(name) + "</h4>" +
+          '<div class="muted" style="font-size:13px;">' + TIER_LABELS[s.tier] + " &middot; " +
+          '<span class="status-pill ' + (s.status === "active" ? "paid" : s.status === "canceled" ? "canceled" : "pending") + '">' + escapeHtml(s.status) + "</span>" +
+          (s.current_period_end ? " &middot; renews " + formatDate(s.current_period_end) : "") + "</div>" +
+          "</div>" +
+          '<div class="admin-list-actions">' +
+          (s.status === "active" ? '<button data-action="pause" data-id="' + s.id + '">Pause</button>' : "") +
+          (s.status === "paused" ? '<button data-action="resume" data-id="' + s.id + '">Resume</button>' : "") +
+          (s.status === "active" || s.status === "paused" ? '<button data-action="cancel" data-id="' + s.id + '" class="danger">Cancel</button>' : "") +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-action]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const action = btn.dataset.action;
+        if (action === "cancel" && !confirm("Cancel this member's Masters subscription? This can't be undone -- they'd need to sign up again.")) return;
+        btn.disabled = true;
+        const { data, error: err } = await supabaseClient.functions.invoke("manage-masters-subscription", {
+          body: { action: action, subscription_id: btn.dataset.id },
+        });
+        if (err || !data || data.error) {
+          alert("Could not " + action + ": " + ((data && data.error) || (err && err.message) || "unknown error"));
+          btn.disabled = false;
+          return;
+        }
+        loadMembers();
+      });
+    });
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    loadPricing();
+    loadMembers();
+  })();
+</script>
+</body>
+</html>

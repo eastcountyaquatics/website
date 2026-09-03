@@ -99,6 +99,12 @@
           <p class="muted">Create discount codes for siblings and new athletes.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="masters-card" style="display:none;">
+        <a href="admin-masters.html" style="display:block;color:inherit;">
+          <h3>Masters Membership</h3>
+          <p class="muted">Set monthly pricing by age bracket and manage member subscriptions.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="signups-card" style="display:none;">
         <a href="admin-signups.html" style="display:block;color:inherit;">
           <h3>Sign-Ups</h3>
@@ -146,6 +152,7 @@
     if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";
       document.getElementById("coupons-card").style.display = "block";
+      document.getElementById("masters-card").style.display = "block";
       document.getElementById("pages-card").style.display = "block";
       document.getElementById("content-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";

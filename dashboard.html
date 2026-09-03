@@ -185,6 +185,19 @@
   </div>
 </section>
 
+<section class="section-tight">
+  <div class="container">
+    <div class="dash-grid" style="grid-template-columns:1fr;">
+      <div class="dash-card">
+        <h3>Masters Membership</h3>
+        <p class="muted" style="margin-bottom:14px;">A separate monthly subscription from team registration &mdash; billed to you directly, and you can pause it anytime. See <a href="masters.html" style="color:var(--blue);font-weight:700;">the Masters page</a> for practice details.</p>
+        <div id="masters-msg" class="form-msg"></div>
+        <div id="masters-section"><p class="muted">Loading&hellip;</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div id="consent-overlay" class="consent-overlay" style="display:none;">
   <div class="consent-modal">
     <h3>Before You Pay</h3>
@@ -318,7 +331,7 @@
   function showCheckoutBanner() {
     var params = new URLSearchParams(window.location.search);
     var status = params.get("checkout");
-    if (!status) return;
+    var mastersStatus = params.get("masters");
     var banner = document.getElementById("checkout-banner");
     if (status === "success") {
       banner.innerHTML =
@@ -332,10 +345,102 @@
         "Checkout was cancelled &mdash; no payment was made. You can try again below anytime." +
         "</div></div>";
       banner.style.display = "block";
+    } else if (mastersStatus === "success") {
+      banner.innerHTML =
+        '<div class="container" style="padding-top:20px;"><div class="notice" style="border-color:var(--blue);background:#eef1ff;color:#1a1a4d;">' +
+        "You're subscribed to Masters! See your membership status below." +
+        "</div></div>";
+      banner.style.display = "block";
+    } else if (mastersStatus === "cancelled") {
+      banner.innerHTML =
+        '<div class="container" style="padding-top:20px;"><div class="notice">' +
+        "Checkout was cancelled &mdash; no subscription was started." +
+        "</div></div>";
+      banner.style.display = "block";
     }
+    if (!status && !mastersStatus) return;
     params.delete("checkout");
+    params.delete("masters");
     var newUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
     window.history.replaceState({}, "", newUrl);
+  }
+
+  var MASTERS_TIER_LABELS = { "25_under": "25 & Under", "26_plus": "26+" };
+
+  async function loadMastersSection() {
+    var wrap = document.getElementById("masters-section");
+    var msg = document.getElementById("masters-msg");
+
+    const { data: sub } = await supabaseClient
+      .from("masters_subscriptions")
+      .select("id, tier, status, current_period_end")
+      .in("status", ["pending", "active", "paused", "past_due"])
+      .maybeSingle();
+
+    if (sub) {
+      wrap.innerHTML =
+        "<p><strong>" + MASTERS_TIER_LABELS[sub.tier] + "</strong> &middot; " +
+        '<span class="status-pill ' + (sub.status === "active" ? "paid" : "pending") + '">' + escapeHtml(sub.status) + "</span>" +
+        (sub.current_period_end ? '<span class="muted"> &middot; renews ' + formatDate(sub.current_period_end) + "</span>" : "") +
+        "</p>" +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">' +
+        (sub.status === "active" ? '<button type="button" class="btn btn-outline-dark" data-masters-action="pause">Pause Membership</button>' : "") +
+        (sub.status === "paused" ? '<button type="button" class="btn btn-primary" data-masters-action="resume">Resume Membership</button>' : "") +
+        (sub.status === "active" || sub.status === "paused" ? '<button type="button" class="btn btn-outline-dark" data-masters-action="cancel">Cancel Membership</button>' : "") +
+        "</div>";
+
+      wrap.querySelectorAll("[data-masters-action]").forEach(function (btn) {
+        btn.addEventListener("click", async function () {
+          var action = btn.dataset.mastersAction;
+          if (action === "cancel" && !confirm("Cancel your Masters membership? You'd need to sign up again to rejoin.")) return;
+          btn.disabled = true;
+          msg.className = "form-msg";
+          const { data, error } = await supabaseClient.functions.invoke("manage-masters-subscription", { body: { action: action } });
+          btn.disabled = false;
+          if (error || !data || data.error) {
+            msg.className = "form-msg error";
+            msg.textContent = (data && data.error) || (error && error.message) || "Something went wrong.";
+            return;
+          }
+          loadMastersSection();
+        });
+      });
+      return;
+    }
+
+    const { data: tiers } = await supabaseClient.from("masters_price_tiers").select("tier, label, amount_cents").order("tier");
+    if (!tiers || tiers.length === 0) {
+      wrap.innerHTML = '<p class="muted">Masters membership signup isn\'t set up yet &mdash; contact the club.</p>';
+      return;
+    }
+
+    wrap.innerHTML = tiers
+      .map(function (t) {
+        return (
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e3e6f0;border-radius:8px;padding:12px 16px;margin-bottom:10px;">' +
+          "<div><strong>" + escapeHtml(t.label || MASTERS_TIER_LABELS[t.tier]) + "</strong><div class=\"muted\">" + formatAmount(t.amount_cents) + "/month, pause anytime</div></div>" +
+          '<button type="button" class="btn btn-primary" data-masters-subscribe="' + t.tier + '">Subscribe</button>' +
+          "</div>"
+        );
+      })
+      .join("");
+
+    wrap.querySelectorAll("[data-masters-subscribe]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        btn.disabled = true;
+        btn.textContent = "Redirecting...";
+        msg.className = "form-msg";
+        const { data, error } = await supabaseClient.functions.invoke("create-masters-subscription", { body: { tier: btn.dataset.mastersSubscribe } });
+        if (error || !data || !data.url) {
+          btn.disabled = false;
+          btn.textContent = "Subscribe";
+          msg.className = "form-msg error";
+          msg.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+          return;
+        }
+        window.location.href = data.url;
+      });
+    });
   }
 
   var myAthletes = [];
@@ -603,6 +708,7 @@
     document.getElementById("dash-email").textContent = user.email;
 
     loadAthletes();
+    loadMastersSection();
 
     const { data: profile } = await supabaseClient
       .from("profiles")

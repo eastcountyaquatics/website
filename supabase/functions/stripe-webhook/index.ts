@@ -113,6 +113,20 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Stripe delivers webhooks at-least-once -- a repeat delivery of the same
+  // session would otherwise insert a second, duplicate set of purchase rows.
+  // stripe_checkout_session_id is what ties a delivery back to "have we
+  // already recorded this"; same guard as the tournament/Masters branches.
+  const { data: alreadyRecorded } = await supabase
+    .from("purchases")
+    .select("id")
+    .eq("stripe_checkout_session_id", session.id)
+    .limit(1)
+    .maybeSingle();
+  if (alreadyRecorded) {
+    return new Response("already processed", { status: 200 });
+  }
+
   const rows = registrations.map((r) => ({
     user_id: userId,
     athlete_id: r.athlete_id,

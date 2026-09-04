@@ -381,13 +381,12 @@
             '<span class="status-pill ' + (invite.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(invite.status) + "</span> " +
             '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(buildInviteUrl(invite.token)) + '" style="padding:4px 10px;font-size:12px;">Copy Link</button>';
         }
-        const noRsvpYet = !rsvp;
         return (
           '<div class="roster-row">' +
           "<div><strong>" + escapeHtml(a.full_name) + "</strong> &middot; " + responsePill + "</div>" +
           '<div style="display:flex;align-items:center;gap:10px;">' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;' + (noRsvpYet ? "color:#aaa;" : "") + '">' +
-          '<input type="checkbox" data-roster-athlete="' + a.id + '" ' + (onRoster ? "checked" : "") + (noRsvpYet ? " disabled" : "") + ' style="width:auto;"> On Roster</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;">' +
+          '<input type="checkbox" data-roster-athlete="' + a.id + '" data-roster-response="' + escapeHtml(response || "yes") + '" ' + (onRoster ? "checked" : "") + ' style="width:auto;"> On Roster</label>' +
           paymentBit +
           "</div>" +
           "</div>"
@@ -398,11 +397,20 @@
     listEl.querySelectorAll("[data-roster-athlete]").forEach(function (cb) {
       cb.addEventListener("change", async function () {
         cb.disabled = true;
-        const { error } = await supabaseClient
-          .from("tournament_rsvps")
-          .update({ on_roster: cb.checked })
-          .eq("tournament_id", currentTournamentId)
-          .eq("athlete_id", cb.dataset.rosterAthlete);
+        // Coaches can select straight off the team list, RSVP or not --
+        // this is an upsert so an athlete with no RSVP row yet gets one
+        // created here, defaulting to "yes" since being put on the roster
+        // implies they're going. An existing RSVP's actual response is
+        // left untouched (only on_roster changes for it).
+        const { error } = await supabaseClient.from("tournament_rsvps").upsert(
+          {
+            tournament_id: currentTournamentId,
+            athlete_id: cb.dataset.rosterAthlete,
+            response: cb.dataset.rosterResponse,
+            on_roster: cb.checked,
+          },
+          { onConflict: "tournament_id,athlete_id" }
+        );
         if (error) alert("Could not update roster: " + error.message);
         loadRoster();
       });

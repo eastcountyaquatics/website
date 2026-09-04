@@ -167,6 +167,69 @@
     if (el) el.style.outline = "";
   }
 
+  // Many list items on the site are an icon + a bold label + a muted
+  // description (e.g. "🍂 Fall — September-November..."), which is exactly
+  // the kind of block that made the raw-HTML textarea feel unfriendly.
+  // When a block's markup is EXACTLY that shape, with nothing but plain
+  // text inside each piece (a block with a link or nested tag in it falls
+  // back to the raw editor instead, since a plain-text field can't hold a
+  // link without losing it), give it three plain-text fields instead and
+  // rebuild the original markup around whatever gets typed -- the tags and
+  // their attributes never change, only the text inside them.
+  function isPlainText(el) {
+    return Array.prototype.every.call(el.childNodes, function (n) { return n.nodeType === 3; });
+  }
+
+  function parseInfoItem(html) {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    const top = Array.prototype.filter.call(container.childNodes, function (n) { return n.nodeType === 1; });
+    if (top.length !== 2 || top[0].tagName !== "SPAN" || top[1].tagName !== "DIV") return null;
+    if (!isPlainText(top[0])) return null;
+
+    const wrapperChildren = Array.prototype.filter.call(top[1].childNodes, function (n) { return n.nodeType === 1; });
+    if (wrapperChildren.length < 1 || wrapperChildren.length > 2) return null;
+    if (wrapperChildren[0].tagName !== "STRONG" || !isPlainText(wrapperChildren[0])) return null;
+    if (wrapperChildren.length === 2 && !isPlainText(wrapperChildren[1])) return null;
+
+    return {
+      iconShell: top[0].cloneNode(false),
+      wrapperShell: top[1].cloneNode(false),
+      labelShell: wrapperChildren[0].cloneNode(false),
+      descShell: wrapperChildren.length === 2 ? wrapperChildren[1].cloneNode(false) : null,
+      icon: top[0].textContent,
+      label: wrapperChildren[0].textContent,
+      desc: wrapperChildren.length === 2 ? wrapperChildren[1].textContent : "",
+    };
+  }
+
+  function buildInfoItemHtml(parsed, icon, label, desc) {
+    const iconEl = parsed.iconShell.cloneNode(false);
+    iconEl.textContent = icon;
+    const labelEl = parsed.labelShell.cloneNode(false);
+    labelEl.textContent = label;
+    const wrapperEl = parsed.wrapperShell.cloneNode(false);
+    wrapperEl.appendChild(labelEl);
+    if (parsed.descShell) {
+      const descEl = parsed.descShell.cloneNode(false);
+      descEl.textContent = desc;
+      wrapperEl.appendChild(descEl);
+    }
+    return iconEl.outerHTML + wrapperEl.outerHTML;
+  }
+
+  // A block with no nested tags at all (most headings and short labels)
+  // doesn't need HTML editing either -- reading it as raw innerHTML shows
+  // things like "Men's &amp; Women's Masters" instead of "Men's & Women's
+  // Masters" the moment the text has an ampersand, em dash, or apostrophe
+  // that got entity-encoded. Decode it to plain text for editing and
+  // re-escape on save so it still renders identically.
+  function isPlainTextValue(html) {
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    return isPlainText(container) ? container.textContent : null;
+  }
+
   async function loadPage(path) {
     blocksEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
     previewWrap.style.display = "block";
@@ -209,11 +272,29 @@
         const edited = typeof byKey[b.key] === "string";
         const value = edited ? byKey[b.key] : b.original;
         const label = b.tag === "li" ? "list item" : b.tag;
+        const parsed = parseInfoItem(value);
+        const plainText = parsed ? null : isPlainTextValue(value);
+
+        const editorHtml = parsed
+          ? '<div class="info-item-fields">' +
+            '<div class="field" style="margin-bottom:8px;"><label style="font-size:12px;">Icon</label>' +
+            '<input type="text" data-info-field="icon" value="' + escapeHtml(parsed.icon) + '" style="width:70px;text-align:center;font-size:18px;"></div>' +
+            '<div class="field" style="margin-bottom:' + (parsed.descShell ? "8px" : "0") + ';"><label style="font-size:12px;">Label</label>' +
+            '<input type="text" data-info-field="label" value="' + escapeHtml(parsed.label) + '"></div>' +
+            (parsed.descShell
+              ? '<div class="field" style="margin-bottom:0;"><label style="font-size:12px;">Description</label>' +
+                '<textarea data-info-field="desc" rows="2">' + escapeHtml(parsed.desc) + "</textarea></div>"
+              : "") +
+            "</div>"
+          : plainText !== null
+          ? '<textarea data-plain-text rows="' + (plainText.length > 160 ? 4 : 2) + '">' + escapeHtml(plainText) + "</textarea>"
+          : '<textarea rows="' + (value.length > 160 ? 4 : 2) + '">' + escapeHtml(value) + "</textarea>";
+
         return (
           '<div class="block-card' + (edited ? " edited" : "") + '" data-key="' + escapeHtml(b.key) + '">' +
           '<span class="block-tag">' + escapeHtml(label) + "</span>" +
           (edited ? ' <span class="block-msg">edited</span>' : "") +
-          '<textarea rows="' + (value.length > 160 ? 4 : 2) + '">' + escapeHtml(value) + "</textarea>" +
+          editorHtml +
           '<div class="block-actions">' +
           '<button type="button" class="btn btn-primary" data-save>Save</button>' +
           (edited ? '<button type="button" class="btn btn-outline-dark" data-revert>Revert</button>' : "") +
@@ -226,19 +307,44 @@
 
     blocksEl.querySelectorAll(".block-card").forEach(function (card) {
       const key = card.dataset.key;
-      const textarea = card.querySelector("textarea");
       const msg = card.querySelector("[data-msg]");
       const original = (defaults.find(function (d) { return d.key === key; }) || {}).original || "";
+      const infoFields = card.querySelector(".info-item-fields");
 
-      textarea.addEventListener("input", function () {
-        setPreviewContent(key, sanitizeHtml(textarea.value));
+      function currentHtml() {
+        if (infoFields) {
+          const shells = parseInfoItem(original);
+          const descInput = infoFields.querySelector('[data-info-field="desc"]');
+          return buildInfoItemHtml(
+            shells,
+            infoFields.querySelector('[data-info-field="icon"]').value,
+            infoFields.querySelector('[data-info-field="label"]').value,
+            descInput ? descInput.value : ""
+          );
+        }
+        const textarea = card.querySelector("textarea");
+        // A plain-text block (data-plain-text) shows decoded text, so an
+        // ampersand or em dash typed there is a literal character, not an
+        // attempted HTML entity -- escape it going back in. A block that
+        // legitimately has nested tags (a link, bold text) still round-trips
+        // as real HTML through the sanitizer, same as before.
+        return textarea.dataset.plainText !== undefined
+          ? escapeHtml(textarea.value.trim())
+          : sanitizeHtml(textarea.value.trim());
+      }
+
+      const inputs = infoFields
+        ? Array.prototype.slice.call(infoFields.querySelectorAll("input, textarea"))
+        : [card.querySelector("textarea")];
+      inputs.forEach(function (input) {
+        input.addEventListener("input", function () { setPreviewContent(key, currentHtml()); });
+        input.addEventListener("focus", function () { highlightPreview(key); });
+        input.addEventListener("blur", function () { unhighlightPreview(key); });
       });
-      textarea.addEventListener("focus", function () { highlightPreview(key); });
-      textarea.addEventListener("blur", function () { unhighlightPreview(key); });
 
       card.querySelector("[data-save]").addEventListener("click", async function () {
         msg.textContent = "Saving...";
-        const content = sanitizeHtml(textarea.value.trim());
+        const content = currentHtml();
         const { error } = await supabaseClient
           .from("content_blocks")
           .upsert({ block_key: key, page_path: path, content: content }, { onConflict: "block_key" });
@@ -255,7 +361,16 @@
             msg.textContent = error.message;
             return;
           }
-          textarea.value = original;
+          if (infoFields) {
+            const shells = parseInfoItem(original);
+            infoFields.querySelector('[data-info-field="icon"]').value = shells.icon;
+            infoFields.querySelector('[data-info-field="label"]').value = shells.label;
+            const descInput = infoFields.querySelector('[data-info-field="desc"]');
+            if (descInput) descInput.value = shells.desc;
+          } else {
+            const textarea = card.querySelector("textarea");
+            textarea.value = textarea.dataset.plainText !== undefined ? isPlainTextValue(original) : original;
+          }
           setPreviewContent(key, original);
           card.classList.remove("edited");
           revertBtn.remove();

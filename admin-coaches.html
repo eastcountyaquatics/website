@@ -74,7 +74,14 @@
         </div>
         <div class="field">
           <label for="photo_url">Photo URL (optional)</label>
-          <input type="text" id="photo_url" placeholder="images/coach-example.jpg">
+          <div style="display:flex;gap:14px;align-items:center;">
+            <input type="text" id="photo_url" placeholder="images/coach-example.jpg" style="flex:1;">
+            <div id="photo-preview" style="width:64px;height:64px;border-radius:50%;flex-shrink:0;background:#eef1f7;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+              <img id="photo-preview-img" style="display:none;width:100%;height:100%;object-fit:cover;" alt="Preview">
+              <span id="photo-preview-empty" class="muted" style="font-size:10px;text-align:center;">No photo</span>
+            </div>
+          </div>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Shown as a circle everywhere on the site &mdash; a square, centered headshot crops best.</p>
         </div>
         <div class="field">
           <label for="sort_order">Display Order (lower shows first)</label>
@@ -112,6 +119,22 @@
     div.textContent = str || "";
     return div.innerHTML;
   }
+
+  function updatePhotoPreview() {
+    const url = document.getElementById("photo_url").value.trim();
+    const img = document.getElementById("photo-preview-img");
+    const empty = document.getElementById("photo-preview-empty");
+    if (!url) {
+      img.style.display = "none";
+      empty.textContent = "No photo";
+      empty.style.display = "block";
+      return;
+    }
+    img.onload = function () { img.style.display = "block"; empty.style.display = "none"; };
+    img.onerror = function () { img.style.display = "none"; empty.textContent = "Can't load"; empty.style.display = "block"; };
+    img.src = url;
+  }
+  document.getElementById("photo_url").addEventListener("input", updatePhotoPreview);
 
   async function loadCoaches() {
     const { data, error } = await supabaseClient
@@ -184,6 +207,7 @@
     document.getElementById("sort_order").value = coach.sort_order || 0;
     document.getElementById("submit-btn").textContent = "Save Changes";
     document.getElementById("cancel-edit-btn").style.display = "inline-block";
+    updatePhotoPreview();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -193,6 +217,7 @@
     document.getElementById("form-title").textContent = "Add a Coach";
     document.getElementById("submit-btn").textContent = "Add Coach";
     document.getElementById("cancel-edit-btn").style.display = "none";
+    updatePhotoPreview();
   }
 
   document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);

@@ -53,6 +53,15 @@
 
 <div id="checkout-banner" style="display:none;"></div>
 
+<div id="staff-admin-banner" style="display:none;">
+  <div class="container" style="padding-top:20px;">
+    <div class="notice" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-left-color:var(--blue);background:#eef1ff;color:#1a1a4d;">
+      <span>You have staff access to this club's admin tools.</span>
+      <a href="admin.html" class="btn btn-primary" style="white-space:nowrap;">Go to Admin Panel &rarr;</a>
+    </div>
+  </div>
+</div>
+
 <section class="section-tight">
   <div class="container">
     <div class="dash-grid">
@@ -868,6 +877,10 @@
     currentUser = user;
     document.getElementById("dash-greeting").textContent = "Welcome back";
     document.getElementById("dash-email").textContent = user.email;
+
+    getUserRole(user.id).then(function (role) {
+      if (role) document.getElementById("staff-admin-banner").style.display = "block";
+    });
 
     await loadAthletes();
     loadTournamentsSection();

@@ -16,7 +16,7 @@ async function renderNavAuthSlot(session) {
 
   if (session) {
     const role = await getUserRole(session.user.id);
-    const adminLink = role ? '<a href="admin.html">Admin</a>' : "";
+    const adminLink = role ? '<a href="admin.html" class="nav-btn nav-btn-admin">Admin</a>' : "";
     slot.innerHTML =
       adminLink +
       '<a href="dashboard.html" class="nav-btn">My Account</a>' +

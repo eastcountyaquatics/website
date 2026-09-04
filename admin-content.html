@@ -22,6 +22,12 @@
   .block-msg{font-size:12px;color:#6b7280;}
   .page-picker{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;}
   .page-picker select{padding:9px 12px;border:1px solid #d7e6ee;border-radius:6px;min-width:240px;}
+  .editor-layout{display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start;}
+  .blocks-pane{max-height:calc(100vh - 220px);overflow-y:auto;padding-right:4px;}
+  .preview-pane-wrap{position:sticky;top:16px;}
+  .preview-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin-bottom:8px;}
+  #preview-frame{width:100%;height:calc(100vh - 250px);min-height:500px;border:1px solid #d7e6ee;border-radius:8px;background:#fff;}
+  @media (max-width: 960px){.editor-layout{grid-template-columns:1fr;} .blocks-pane{max-height:none;} .preview-pane-wrap{position:static;} #preview-frame{height:500px;}}
 </style>
 </head>
 <body>
@@ -56,9 +62,9 @@
 </section>
 
 <section class="section-tight">
-  <div class="container" style="max-width:820px;">
+  <div class="container" style="max-width:1400px;">
     <div class="notice" style="margin-bottom:20px;">
-      Pick a page to edit the words on it. The page's design stays exactly as it is &mdash; you're only changing text. Edited blocks are marked with a gold bar, and <strong>Revert</strong> puts the original wording back.
+      Pick a page to edit the words on it. The preview on the right is the real page &mdash; type in a box on the left and watch it update live, before you even save. Click into a box to see exactly where it lives on the page. <strong>Save</strong> makes it permanent; <strong>Revert</strong> puts the original wording back.
     </div>
 
     <div class="page-picker">
@@ -96,7 +102,13 @@
       <a id="view-page-link" href="#" target="_blank" rel="noopener" style="display:none;font-weight:700;color:var(--blue);">View page &rarr;</a>
     </div>
 
-    <div id="blocks"><p class="muted">Choose a page above to see its text.</p></div>
+    <div class="editor-layout">
+      <div class="blocks-pane" id="blocks"><p class="muted">Choose a page above to see its text.</p></div>
+      <div class="preview-pane-wrap" id="preview-wrap" style="display:none;">
+        <div class="preview-label">Live Preview &mdash; the actual page</div>
+        <iframe id="preview-frame" title="Live page preview"></iframe>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -122,9 +134,43 @@
   }
 
   const blocksEl = document.getElementById("blocks");
+  const previewWrap = document.getElementById("preview-wrap");
+  const previewFrame = document.getElementById("preview-frame");
+
+  // The iframe is the real page, loaded fresh -- same origin, so we can
+  // reach into its DOM directly. Every helper below no-ops quietly if the
+  // iframe hasn't finished loading yet or the element isn't on the page,
+  // since the live preview is a nice-to-have, never a blocker to editing.
+  function previewElement(key) {
+    try {
+      return previewFrame.contentDocument.querySelector('[data-cms="' + key + '"]');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setPreviewContent(key, html) {
+    const el = previewElement(key);
+    if (el) el.innerHTML = html;
+  }
+
+  function highlightPreview(key) {
+    const el = previewElement(key);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.style.outline = "3px solid var(--gold)";
+    el.style.outlineOffset = "2px";
+  }
+
+  function unhighlightPreview(key) {
+    const el = previewElement(key);
+    if (el) el.style.outline = "";
+  }
 
   async function loadPage(path) {
     blocksEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
+    previewWrap.style.display = "block";
+    previewFrame.src = path;
 
     // Read the page's own HTML to discover its editable blocks and their
     // original wording, so nothing has to be pre-registered in the database.
@@ -184,6 +230,12 @@
       const msg = card.querySelector("[data-msg]");
       const original = (defaults.find(function (d) { return d.key === key; }) || {}).original || "";
 
+      textarea.addEventListener("input", function () {
+        setPreviewContent(key, sanitizeHtml(textarea.value));
+      });
+      textarea.addEventListener("focus", function () { highlightPreview(key); });
+      textarea.addEventListener("blur", function () { unhighlightPreview(key); });
+
       card.querySelector("[data-save]").addEventListener("click", async function () {
         msg.textContent = "Saving...";
         const content = sanitizeHtml(textarea.value.trim());
@@ -204,6 +256,7 @@
             return;
           }
           textarea.value = original;
+          setPreviewContent(key, original);
           card.classList.remove("edited");
           revertBtn.remove();
           msg.textContent = "Back to the original wording.";
@@ -217,6 +270,8 @@
     if (!e.target.value) {
       blocksEl.innerHTML = '<p class="muted">Choose a page above to see its text.</p>';
       link.style.display = "none";
+      previewWrap.style.display = "none";
+      previewFrame.src = "about:blank";
       return;
     }
     link.href = e.target.value;

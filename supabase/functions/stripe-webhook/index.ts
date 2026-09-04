@@ -13,8 +13,12 @@
 //
 // After deploying, register the webhook URL in the Stripe dashboard
 // (Developers -> Webhooks) for the checkout.session.completed,
-// customer.subscription.updated, and customer.subscription.deleted
-// events, then copy the signing secret into STRIPE_WEBHOOK_SECRET.
+// customer.subscription.updated, customer.subscription.deleted, and
+// invoice.paid events, then copy the signing secret into
+// STRIPE_WEBHOOK_SECRET. invoice.paid is what records every Masters
+// membership charge (first month and every renewal) into purchases --
+// without it, Masters revenue never shows up in Sign-Ups or the
+// QuickBooks export.
 
 import Stripe from "npm:stripe@^17";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -53,6 +57,16 @@ Deno.serve(async (req) => {
   // shows up here) separately from checkout.session.completed.
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
     return await handleMastersSubscriptionEvent(supabase, event.data.object as Stripe.Subscription);
+  }
+
+  // Every Masters charge -- the first month and every renewal after it --
+  // is its own invoice, and Stripe pays+fires invoice.paid for all of them
+  // uniformly (including the very first one created by Checkout). This is
+  // the one place a purchases row is recorded for Masters revenue; nothing
+  // is inserted from checkout.session.completed below, or the first month
+  // would be double-counted.
+  if (event.type === "invoice.paid") {
+    return await handleMastersInvoicePaid(supabase, event.data.object as Stripe.Invoice);
   }
 
   if (event.type !== "checkout.session.completed") {
@@ -252,6 +266,60 @@ async function handleMastersCheckout(
   );
   if (error) {
     console.error("Failed to record masters subscription for session", session.id, error);
+    return new Response("db insert failed", { status: 500 });
+  }
+
+  return new Response("ok", { status: 200 });
+}
+
+async function handleMastersInvoicePaid(
+  supabase: ReturnType<typeof createClient>,
+  invoice: Stripe.Invoice
+) {
+  const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+  if (!subscriptionId) {
+    // Not a subscription invoice -- nothing for us to do with it.
+    return new Response("no subscription on invoice", { status: 200 });
+  }
+
+  const { data: sub } = await supabase
+    .from("masters_subscriptions")
+    .select("user_id, tier")
+    .eq("stripe_subscription_id", subscriptionId)
+    .maybeSingle();
+  if (!sub) {
+    // Extremely narrow race: this invoice.paid event arrived before the
+    // checkout.session.completed webhook created the subscription row.
+    // Nothing to attribute the purchase to yet -- Stripe still has the
+    // payment on record, so this can be reconciled by hand if it ever
+    // actually happens, rather than guessing at a user to attach it to.
+    console.error("Masters invoice.paid: no matching subscription for", subscriptionId);
+    return new Response("no matching subscription", { status: 200 });
+  }
+
+  const paymentIntentId = typeof invoice.payment_intent === "string" ? invoice.payment_intent : null;
+
+  // Idempotency: Stripe delivers webhooks at-least-once.
+  if (paymentIntentId) {
+    const { data: existing } = await supabase
+      .from("purchases")
+      .select("id")
+      .eq("stripe_payment_intent_id", paymentIntentId)
+      .maybeSingle();
+    if (existing) return new Response("already processed", { status: 200 });
+  }
+
+  const tierLabel = sub.tier === "25_under" ? "25 & Under" : "26+";
+  const { error } = await supabase.from("purchases").insert({
+    user_id: sub.user_id,
+    description: `Masters Membership (${tierLabel})`,
+    amount_cents: invoice.amount_paid ?? 0,
+    currency: (invoice.currency ?? "usd").toLowerCase(),
+    status: "paid",
+    stripe_payment_intent_id: paymentIntentId,
+  });
+  if (error) {
+    console.error("Failed to insert masters purchase for invoice", invoice.id, error);
     return new Response("db insert failed", { status: 500 });
   }
 

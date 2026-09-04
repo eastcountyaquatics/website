@@ -112,6 +112,17 @@
         "<p class=\"muted\">" + escapeHtml(data.athlete.full_name) + " is signed up for " + escapeHtml(data.tournament.name) + ". A receipt was sent to your email.</p>";
       return;
     }
+    // Payment cutoff passed, event over, or tournament not published yet:
+    // show why rather than a Pay button that checkout will refuse.
+    if (data.closed_reason) {
+      cardEl.innerHTML =
+        "<h3>" + escapeHtml(data.athlete.full_name) + "</h3>" +
+        '<p class="muted"><strong>Date:</strong> ' + formatDate(data.tournament.event_date) + "</p>" +
+        '<div class="form-msg error" style="display:block;">' + escapeHtml(data.closed_reason) + "</div>" +
+        '<p class="muted" style="margin-top:16px;">Questions? <a href="contact.html">Get in touch with the club.</a></p>';
+      return;
+    }
+
     if (checkoutStatus === "cancelled") {
       cardEl.innerHTML =
         '<div class="notice" style="margin-bottom:20px;">Checkout was cancelled — no payment was made. You can try again below.</div>';
@@ -124,6 +135,10 @@
       "<h3>" + escapeHtml(data.athlete.full_name) + "</h3>" +
       (data.tournament.description ? '<p class="muted">' + escapeHtml(data.tournament.description) + "</p>" : "") +
       '<p class="muted"><strong>Date:</strong> ' + formatDate(data.tournament.event_date) + "</p>" +
+      (data.tournament.rsvp_deadline
+        ? '<p class="muted"><strong>Pay by:</strong> ' + formatDate(data.tournament.rsvp_deadline) +
+          " — only athletes paid by this date are on the official roster.</p>"
+        : "") +
       (data.tournament.requirements ? '<p class="muted"><strong>Requirements:</strong> ' + escapeHtml(data.tournament.requirements) + "</p>" : "") +
       '<div class="invite-price">' + formatAmount(data.tier.amount_cents) + "</div>" +
       '<p class="muted" style="margin-bottom:20px;">' + escapeHtml(data.tier.label) + "</p>";

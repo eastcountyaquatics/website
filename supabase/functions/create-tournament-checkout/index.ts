@@ -44,6 +44,12 @@ Deno.serve(async (req) => {
       return json({ error: "This invite has already been paid." }, 409);
     }
 
+    // Checked here and not only on the invite page: this endpoint takes
+    // money and is reachable without a login, so the page's Pay button
+    // being hidden is not a control.
+    const closed = paymentClosedReason(tournament);
+    if (closed) return json({ error: closed }, 409);
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2024-06-20",
     });
@@ -101,7 +107,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, description, event_date, requirements, shirt_size_enabled")
+    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline")
     .eq("id", invite.tournament_id)
     .maybeSingle();
   if (tournamentError || !tournament) return { error: "This tournament could not be found.", status: 404 } as const;
@@ -137,6 +143,41 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
   }
 
   return { invite, tournament, athlete, tier } as const;
+}
+
+// NOTE: duplicated in the other tournament function -- each Edge Function
+// deploys as an independent bundle with no shared module between them.
+// Keep them in sync.
+//
+// The club makes every family agree that "only players who have paid for a
+// tournament/game by the payment cutoff date/time will be included on the
+// official roster and eligible to play... a late fee may be added if late."
+// The cutoff was stored in rsvp_deadline but nothing enforced it, so a
+// parent could pay after it and reasonably expect a spot -- leaving the
+// club to either refund them or seat them over someone who paid on time.
+function paymentClosedReason(tournament: {
+  is_published?: boolean | null;
+  rsvp_deadline?: string | null;
+  event_date?: string | null;
+}): string | null {
+  if (!tournament.is_published) {
+    return "This tournament isn't open for payment yet. Please contact the club.";
+  }
+  const today = clubToday();
+  if (tournament.rsvp_deadline && today > tournament.rsvp_deadline) {
+    return "The payment cutoff for this tournament has passed. Please contact the club — a spot may still be available, and a late fee may apply.";
+  }
+  if (tournament.event_date && today > tournament.event_date) {
+    return "This tournament has already taken place.";
+  }
+  return null;
+}
+
+// The club is in El Cajon, CA. A cutoff of "Oct 3" means the end of Oct 3
+// Pacific -- comparing against UTC would close payment at 5pm local the
+// day before.
+function clubToday(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 }
 
 function calcAgeAsOf(birthdate: string, asOfDate: string): number {

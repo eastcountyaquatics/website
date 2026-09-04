@@ -105,6 +105,12 @@
           <p class="muted">Set monthly pricing by age bracket and manage member subscriptions.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="messages-card" style="display:none;">
+        <a href="admin-messages.html" style="display:block;color:inherit;">
+          <h3>Messages <span id="messages-unread" style="display:none;background:var(--gold);color:#1c1c1c;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:middle;"></span></h3>
+          <p class="muted">Questions sent through the contact form, addressed to you.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="signups-card" style="display:none;">
         <a href="admin-signups.html" style="display:block;color:inherit;">
           <h3>Sign-Ups</h3>
@@ -145,6 +151,8 @@
       document.getElementById("athletes-card").style.display = "block";
       document.getElementById("attendance-card").style.display = "block";
       document.getElementById("tournaments-card").style.display = "block";
+      document.getElementById("messages-card").style.display = "block";
+      showUnreadMessages();
     }
     if (auth.role === "owner" || auth.role === "accountant") {
       document.getElementById("signups-card").style.display = "block";
@@ -156,6 +164,20 @@
       document.getElementById("pages-card").style.display = "block";
       document.getElementById("content-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";
+    }
+
+    async function showUnreadMessages() {
+      // A coach never learns a message arrived unless something tells them.
+      // This badge on the admin home is that signal.
+      const { count } = await supabaseClient
+        .from("contact_messages")
+        .select("id", { count: "exact", head: true })
+        .is("read_at", null)
+        .eq("archived", false);
+      if (!count) return;
+      const badge = document.getElementById("messages-unread");
+      badge.textContent = count + " new";
+      badge.style.display = "inline-block";
     }
   })();
 </script>

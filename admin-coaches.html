@@ -69,6 +69,13 @@
           <input type="text" id="team_group" placeholder="e.g. 14U Boys, Club Founders">
         </div>
         <div class="field">
+          <label for="profile_id">Account (for contact form messages)</label>
+          <select id="profile_id">
+            <option value="">Not linked &mdash; messages go to the owner</option>
+          </select>
+          <p class="field-hint">Linking an account sends this coach's contact-form messages straight to their own inbox. Until then the owner receives them.</p>
+        </div>
+        <div class="field">
           <label for="bio">Bio (optional)</label>
           <textarea id="bio" rows="3"></textarea>
         </div>
@@ -205,6 +212,7 @@
     document.getElementById("bio").value = coach.bio || "";
     document.getElementById("photo_url").value = coach.photo_url || "";
     document.getElementById("sort_order").value = coach.sort_order || 0;
+    document.getElementById("profile_id").value = coach.profile_id || "";
     document.getElementById("submit-btn").textContent = "Save Changes";
     document.getElementById("cancel-edit-btn").style.display = "inline-block";
     updatePhotoPreview();
@@ -218,6 +226,26 @@
     document.getElementById("submit-btn").textContent = "Add Coach";
     document.getElementById("cancel-edit-btn").style.display = "none";
     updatePhotoPreview();
+  }
+
+  // Only owners manage account links; a coach editing their own bio should
+  // not be able to point a coach record at somebody else's login.
+  async function loadAccountOptions(canLink) {
+    const select = document.getElementById("profile_id");
+    if (!canLink) {
+      select.disabled = true;
+      return;
+    }
+    const { data } = await supabaseClient
+      .from("profiles")
+      .select("id, full_name, email")
+      .order("full_name", { ascending: true });
+    (data || []).forEach(function (p) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = (p.full_name || "(no name)") + " \u2014 " + p.email;
+      select.appendChild(opt);
+    });
   }
 
   document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
@@ -235,6 +263,11 @@
       photo_url: document.getElementById("photo_url").value.trim() || null,
       sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
     };
+
+    // Only send this when the picker is live, so a coach saving their own bio
+    // doesn't blank out a link an owner set.
+    const profileSelect = document.getElementById("profile_id");
+    if (!profileSelect.disabled) payload.profile_id = profileSelect.value || null;
 
     const id = document.getElementById("coach-id").value;
     const result = id
@@ -256,6 +289,7 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+    await loadAccountOptions(auth.role === "owner");
     canEdit = auth.role === "owner" || auth.role === "coach";
     if (!canEdit) {
       document.getElementById("coach-form-wrap").style.display = "none";

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messages | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Messages</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .msg-item{border:1px solid #e3edf3;border-radius:10px;padding:16px 18px;margin-bottom:14px;background:#fff;}
+  .msg-item.unread{border-left:4px solid var(--gold);background:#fffdf5;}
+  .msg-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline;}
+  .msg-from{font-weight:700;font-size:15px;}
+  .msg-when{font-size:12.5px;color:var(--muted);white-space:nowrap;}
+  .msg-meta{font-size:13px;color:var(--muted);margin-top:2px;}
+  .msg-body{margin:12px 0 14px;white-space:pre-wrap;line-height:1.55;font-size:14.5px;}
+  .msg-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .msg-actions button,.msg-actions a{font-size:13px;padding:7px 13px;border-radius:6px;border:1px solid #d7e6ee;background:#fff;cursor:pointer;font-family:inherit;text-decoration:none;color:var(--ink);}
+  .msg-actions .primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700;}
+  .msg-tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;}
+  .msg-tabs button{padding:8px 16px;border-radius:999px;border:1px solid #d7e6ee;background:#fff;cursor:pointer;font-family:inherit;font-size:14px;}
+  .msg-tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700;}
+  .msg-badge{display:inline-block;background:var(--gold);color:#1c1c1c;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;margin-left:6px;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+    <div id="inbox-scope" class="notice" style="margin-bottom:20px;display:none;"></div>
+    <div id="list-msg" class="form-msg"></div>
+
+    <div class="msg-tabs">
+      <button data-filter="unread" class="active">Unread <span id="count-unread" class="msg-badge" style="display:none;">0</span></button>
+      <button data-filter="open">All open</button>
+      <button data-filter="archived">Archived</button>
+    </div>
+
+    <div id="message-list"><p class="muted">Loading...</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : str;
+    return div.innerHTML;
+  }
+  function formatWhen(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+      " at " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+
+  var currentFilter = "unread";
+  var coachNames = {};
+  var isOwner = false;
+
+  document.querySelectorAll(".msg-tabs button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".msg-tabs button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter;
+      loadMessages();
+    });
+  });
+
+  async function loadCoachNames() {
+    const { data } = await supabaseClient.from("coaches").select("id, full_name");
+    (data || []).forEach(function (c) { coachNames[c.id] = c.full_name; });
+  }
+
+  async function loadMessages() {
+    const listEl = document.getElementById("message-list");
+    const msgEl = document.getElementById("list-msg");
+    msgEl.className = "form-msg";
+
+    let query = supabaseClient
+      .from("contact_messages")
+      .select("id, recipient_coach_id, sender_name, sender_email, topic, body, created_at, read_at, replied_at, archived")
+      .order("created_at", { ascending: false });
+
+    if (currentFilter === "unread") query = query.is("read_at", null).eq("archived", false);
+    else if (currentFilter === "open") query = query.eq("archived", false);
+    else query = query.eq("archived", true);
+
+    const { data, error } = await query;
+    if (error) {
+      msgEl.className = "form-msg error";
+      msgEl.textContent = "Could not load messages: " + error.message;
+      listEl.innerHTML = "";
+      return;
+    }
+
+    await refreshUnreadCount();
+
+    if (!data || !data.length) {
+      listEl.innerHTML = '<p class="muted">' + (
+        currentFilter === "unread" ? "No unread messages. Nice." :
+        currentFilter === "archived" ? "Nothing archived yet." :
+        "No messages yet."
+      ) + "</p>";
+      return;
+    }
+
+    listEl.innerHTML = data.map(function (m) {
+      const who = m.sender_name || "Anonymous";
+      const to = m.recipient_coach_id
+        ? (coachNames[m.recipient_coach_id] || "a coach")
+        : "the club (general)";
+      const unread = !m.read_at && !m.archived;
+
+      // The @ goes back in literally: it is legal unencoded in a mailto and
+      // older desktop mail clients mishandle %40.
+      // The reply button is a mailto: so the coach answers from their own
+      // address -- the club sends no mail of its own, and a reply that comes
+      // from a real person is what a parent expects anyway.
+      const replyBtn = m.sender_email
+        ? '<a class="primary" data-reply="' + m.id + '" href="mailto:' + encodeURIComponent(m.sender_email).replace(/%40/g, "@") +
+          "?subject=" + encodeURIComponent("Re: your message to East County Aquatics" + (m.topic ? " (" + m.topic + ")" : "")) +
+          "&body=" + encodeURIComponent(
+            "\n\n\n--- You wrote on " + formatWhen(m.created_at) + " ---\n" + m.body
+          ) + '">Reply by Email</a>'
+        : '<span class="muted" style="font-size:13px;align-self:center;">Posted anonymously &mdash; no reply address</span>';
+
+      return '<div class="msg-item' + (unread ? " unread" : "") + '" data-msg="' + m.id + '">' +
+        '<div class="msg-top">' +
+          '<div>' +
+            '<div class="msg-from">' + escapeHtml(who) +
+              (m.replied_at ? '<span class="msg-badge" style="background:#b9e6c6;">Replied</span>' : "") + "</div>" +
+            '<div class="msg-meta">' +
+              (m.sender_email ? escapeHtml(m.sender_email) + " &middot; " : "") +
+              (isOwner ? "To " + escapeHtml(to) : "") +
+              (m.topic ? (isOwner ? " &middot; " : "") + escapeHtml(m.topic) : "") +
+            "</div>" +
+          "</div>" +
+          '<div class="msg-when">' + formatWhen(m.created_at) + "</div>" +
+        "</div>" +
+        '<div class="msg-body">' + escapeHtml(m.body) + "</div>" +
+        '<div class="msg-actions">' + replyBtn +
+          (unread ? '<button data-read="' + m.id + '">Mark read</button>' : "") +
+          '<button data-archive="' + m.id + '">' + (m.archived ? "Move back to inbox" : "Archive") + "</button>" +
+        "</div>" +
+      "</div>";
+    }).join("");
+
+    wireActions();
+  }
+
+  function wireActions() {
+    document.querySelectorAll("[data-read]").forEach(function (btn) {
+      btn.addEventListener("click", function () { patch(btn.dataset.read, { read_at: new Date().toISOString() }); });
+    });
+    document.querySelectorAll("[data-archive]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const archiving = btn.textContent === "Archive";
+        const patchData = { archived: archiving };
+        // Archiving an unread message counts as having dealt with it.
+        if (archiving) patchData.read_at = new Date().toISOString();
+        patch(btn.dataset.archive, patchData);
+      });
+    });
+    document.querySelectorAll("[data-reply]").forEach(function (link) {
+      // Opening the mail client is the closest thing to proof of a reply we
+      // have; mark it so the inbox shows what has been answered.
+      link.addEventListener("click", function () {
+        patch(link.dataset.reply, { replied_at: new Date().toISOString(), read_at: new Date().toISOString() });
+      });
+    });
+  }
+
+  async function patch(id, values) {
+    const msgEl = document.getElementById("list-msg");
+    const { error } = await supabaseClient.from("contact_messages").update(values).eq("id", id);
+    if (error) {
+      msgEl.className = "form-msg error";
+      msgEl.textContent = "Could not update that message: " + error.message;
+      return;
+    }
+    loadMessages();
+  }
+
+  async function refreshUnreadCount() {
+    const { count } = await supabaseClient
+      .from("contact_messages")
+      .select("id", { count: "exact", head: true })
+      .is("read_at", null)
+      .eq("archived", false);
+    const badge = document.getElementById("count-unread");
+    if (count) { badge.textContent = count; badge.style.display = "inline-block"; }
+    else { badge.style.display = "none"; }
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    isOwner = auth.role === "owner";
+
+    const scope = document.getElementById("inbox-scope");
+    if (isOwner) {
+      scope.style.display = "block";
+      scope.innerHTML = "You're seeing <strong>every</strong> message sent through the contact form, including ones addressed to coaches who don't have a login yet. Link a coach to their account on the <a href=\"admin-coaches.html\">Coaches</a> page so their messages go straight to them.";
+    } else {
+      // A coach with no linked coach record sees an empty inbox, which looks
+      // broken rather than empty. Say which it is.
+      const { data: linked } = await supabaseClient
+        .from("coaches").select("id").eq("profile_id", auth.session.user.id);
+      if (!linked || !linked.length) {
+        scope.style.display = "block";
+        scope.textContent = "Your account isn't linked to a coach profile yet, so no messages can be routed to you. Ask the club owner to link it on the Coaches page.";
+      }
+    }
+
+    await loadCoachNames();
+    loadMessages();
+  })();
+</script>
+</body>
+</html>

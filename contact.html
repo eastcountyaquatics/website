@@ -22,6 +22,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .contact-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+  #contact-form textarea{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;}
+  #contact-form textarea:focus{outline:2px solid var(--aqua);outline-offset:1px;border-color:var(--blue);}
+  #contact-form select{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;}
+</style>
 </head>
 <body>
 
@@ -73,10 +79,54 @@
           <li data-cms="contact-0009"><span class="info-icon">📘</span><div><strong>Facebook</strong><div class="muted"><a href="https://www.facebook.com/SanDiegoECA/" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;">facebook.com/SanDiegoECA</a></div></div></li>
         </ul>
       </div>
-      <div class="card" style="border-top-color:var(--gold);text-align:center;">
+      <div class="card" style="border-top-color:var(--gold);">
         <h3 data-cms="contact-0010">Contact Form</h3>
-        <p class="muted" data-cms="contact-0011">Use our contact form to reach the club &mdash; you may post anonymously or share an email for a reply.</p>
-        <a href="https://forms.gle/8RfU6NryHoWc85CCA" target="_blank" rel="noopener" class="btn btn-primary">Open Contact Form</a>
+        <p class="muted" data-cms="contact-0011">Pick who you'd like to reach and your message goes straight to them. Leave your name and email blank to post anonymously &mdash; we just won't be able to write back.</p>
+
+        <div id="contact-msg" class="form-msg"></div>
+
+        <form id="contact-form">
+          <div class="field">
+            <label for="contact-to">Send to</label>
+            <select id="contact-to" name="contact-to">
+              <option value="">The club (general question)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="contact-topic">Topic <span class="muted" style="font-weight:400;">(optional)</span></label>
+            <select id="contact-topic" name="contact-topic">
+              <option value="">Choose one...</option>
+              <option>Joining the club</option>
+              <option>Practice or schedule question</option>
+              <option>Tournaments</option>
+              <option>Billing or registration</option>
+              <option>Masters program</option>
+              <option>Concern or feedback</option>
+              <option>Something else</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="contact-name">Your name <span class="muted" style="font-weight:400;">(optional)</span></label>
+            <input type="text" id="contact-name" name="contact-name" autocomplete="name" maxlength="120">
+          </div>
+          <div class="field">
+            <label for="contact-email">Your email <span class="muted" style="font-weight:400;">(optional)</span></label>
+            <input type="email" id="contact-email" name="contact-email" autocomplete="email" maxlength="200">
+            <p class="field-hint">Only needed if you'd like a reply.</p>
+          </div>
+          <div class="field">
+            <label for="contact-body">Message</label>
+            <textarea id="contact-body" name="contact-body" rows="6" maxlength="5000" required></textarea>
+            <p class="field-hint"><span id="contact-count">0</span> / 5000</p>
+          </div>
+          <!-- Bot trap: a real person never fills this in. Hidden from
+               assistive tech too, so a screen-reader user is not asked. -->
+          <div class="contact-hp" aria-hidden="true">
+            <label for="contact-website">Website</label>
+            <input type="text" id="contact-website" name="website" tabindex="-1" autocomplete="off">
+          </div>
+          <button type="submit" id="contact-submit" class="btn btn-primary" style="width:100%;">Send Message</button>
+        </form>
       </div>
     </div>
   </div>
@@ -153,5 +203,100 @@
 <script src="js/main.js"></script>
 <script src="js/nav-pages.js"></script>
 <script src="js/content-blocks.js"></script>
+<script>
+  // Recipients come from the public coaches roster. Coaches without a linked
+  // account still appear: their messages land in the owner's inbox, so a
+  // parent picking them is never a dead end.
+  (async function loadRecipients() {
+    const select = document.getElementById("contact-to");
+    const { data } = await supabaseClient
+      .from("coaches")
+      .select("id, full_name, role_title, team_group")
+      .order("team_group", { ascending: true })
+      .order("sort_order", { ascending: true });
+    if (!data || !data.length) return;
+
+    const groups = {};
+    data.forEach(function (c) {
+      const key = c.team_group || "Coaching Staff";
+      (groups[key] = groups[key] || []).push(c);
+    });
+    Object.keys(groups).forEach(function (groupName) {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = groupName;
+      groups[groupName].forEach(function (c) {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.full_name + (c.role_title ? " \u2014 " + c.role_title : "");
+        optgroup.appendChild(opt);
+      });
+      select.appendChild(optgroup);
+    });
+  })();
+
+  const bodyField = document.getElementById("contact-body");
+  const countEl = document.getElementById("contact-count");
+  bodyField.addEventListener("input", function () {
+    countEl.textContent = bodyField.value.length;
+  });
+
+  document.getElementById("contact-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("contact-msg");
+    const btn = document.getElementById("contact-submit");
+    msg.className = "form-msg";
+
+    const body = bodyField.value.trim();
+    if (!body) {
+      msg.className = "form-msg error";
+      msg.textContent = "Please write a message before sending.";
+      return;
+    }
+
+    // Honeypot filled in means a bot. Show the normal success message so it
+    // learns nothing, but don't store anything.
+    if (document.getElementById("contact-website").value) {
+      msg.className = "form-msg success";
+      msg.textContent = "Thanks! Your message has been sent.";
+      document.getElementById("contact-form").reset();
+      countEl.textContent = "0";
+      return;
+    }
+
+    const email = document.getElementById("contact-email").value.trim();
+    if (email && email.indexOf("@") === -1) {
+      msg.className = "form-msg error";
+      msg.textContent = "That email address doesn't look right. Fix it, or leave it blank to post anonymously.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+
+    const { error } = await supabaseClient.from("contact_messages").insert({
+      recipient_coach_id: document.getElementById("contact-to").value || null,
+      sender_name: document.getElementById("contact-name").value.trim() || null,
+      sender_email: email || null,
+      topic: document.getElementById("contact-topic").value || null,
+      body: body,
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Send Message";
+
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = "Sorry, your message could not be sent. Please email eastcountyaquatics@gmail.com instead.";
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = email
+      ? "Thanks! Your message has been sent and we'll reply to " + email + "."
+      : "Thanks! Your message has been sent. You didn't leave an email, so we won't be able to write back.";
+    document.getElementById("contact-form").reset();
+    countEl.textContent = "0";
+  });
+</script>
 </body>
 </html>

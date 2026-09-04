@@ -332,6 +332,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
@@ -525,7 +526,7 @@
         });
         if (error || !data || !data.url) {
           msg.className = "form-msg error";
-          msg.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+          msg.textContent = await functionErrorMessage(error, data, "Could not start checkout. Please try again.");
           btn.disabled = false;
           btn.textContent = "Pay Now";
           return;
@@ -569,7 +570,7 @@
           btn.disabled = false;
           if (error || !data || data.error) {
             msg.className = "form-msg error";
-            msg.textContent = (data && data.error) || (error && error.message) || "Something went wrong.";
+            msg.textContent = await functionErrorMessage(error, data, "Something went wrong.");
             return;
           }
           loadMastersSection();
@@ -605,7 +606,7 @@
           btn.disabled = false;
           btn.textContent = "Subscribe";
           msg.className = "form-msg error";
-          msg.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+          msg.textContent = await functionErrorMessage(error, data, "Could not start checkout. Please try again.");
           return;
         }
         window.location.href = data.url;
@@ -812,21 +813,41 @@
   // of how many athletes/programs are in the cart, since these are family/
   // season-level acknowledgments rather than per-athlete ones.
   var pendingCheckout = null;
+  var consentOpener = null;
 
   function openConsentModal(items, btn, msgEl) {
     pendingCheckout = { items: items, btn: btn, msgEl: msgEl };
+    consentOpener = btn;
     document.getElementById("consent-msg").textContent = "";
     document.querySelectorAll("[data-consent-required]").forEach(function (cb) { cb.checked = false; });
     document.getElementById("consent-heard-about").value = "";
     document.getElementById("consent-referral-name").value = "";
     document.getElementById("consent-discount-code").value = "";
     document.getElementById("consent-overlay").style.display = "flex";
+    // Move focus into the dialog, or a keyboard/screen-reader user is left
+    // tabbing through the page behind an overlay they can't see past.
+    const firstBox = document.querySelector("[data-consent-required]");
+    if (firstBox) firstBox.focus();
   }
   function closeConsentModal() {
     document.getElementById("consent-overlay").style.display = "none";
     pendingCheckout = null;
+    if (consentOpener) {
+      consentOpener.focus();
+      consentOpener = null;
+    }
   }
   document.getElementById("consent-cancel-btn").addEventListener("click", closeConsentModal);
+
+  // Escape and a click on the backdrop both dismiss it, the way every other
+  // dialog on the web does. Without these the only way out was the Cancel
+  // button, which sits below six checkboxes and scrolls off small screens.
+  document.getElementById("consent-overlay").addEventListener("click", function (e) {
+    if (e.target === this) closeConsentModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && pendingCheckout) closeConsentModal();
+  });
 
   document.getElementById("consent-continue-btn").addEventListener("click", async function () {
     if (!pendingCheckout) return;
@@ -860,7 +881,7 @@
 
     if (error || !data || !data.url) {
       consentMsg.className = "form-msg error";
-      consentMsg.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+      consentMsg.textContent = await functionErrorMessage(error, data, "Could not start checkout. Please try again.");
       return;
     }
 

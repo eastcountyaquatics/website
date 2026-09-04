@@ -66,6 +66,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/main.js"></script>
 <script>
   function escapeHtml(str) {
@@ -98,7 +99,7 @@
 
     const { data, error } = await supabaseClient.functions.invoke("get-tournament-invite", { body: { token: token } });
     if (error || !data || data.error) {
-      renderError((data && data.error) || "This invite link could not be loaded. Please contact the club.");
+      renderError(await functionErrorMessage(error, data, "This invite link could not be loaded. Please contact the club."));
       return;
     }
 
@@ -166,7 +167,7 @@
         submitBtn.disabled = false;
         submitBtn.textContent = "Pay " + formatAmount(data.tier.amount_cents);
         msg.className = "form-msg error";
-        msg.textContent = (checkoutData && checkoutData.error) || "Could not start checkout. Please try again.";
+        msg.textContent = await functionErrorMessage(checkoutError, checkoutData, "Could not start checkout. Please try again.");
         return;
       }
 

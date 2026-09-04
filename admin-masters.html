@@ -88,6 +88,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -107,7 +108,15 @@
 
   async function loadPricing() {
     const { data, error } = await supabaseClient.functions.invoke("manage-masters-pricing", { body: { action: "get" } });
-    if (error || !data || data.error) return;
+    if (error || !data || data.error) {
+      // Silently returning left the panel looking like pricing simply
+      // hadn't been set yet, which is indistinguishable from Stripe being
+      // misconfigured -- the actual cause every time so far.
+      const msg = document.getElementById("pricing-msg");
+      msg.className = "form-msg error";
+      msg.textContent = "Could not load current pricing: " + (await functionErrorMessage(error, data, "unknown error"));
+      return;
+    }
     (data.tiers || []).forEach(function (t) {
       const input = document.getElementById("price-" + t.tier.replace("_", "-"));
       const current = document.getElementById("price-" + t.tier.replace("_", "-") + "-current");
@@ -137,7 +146,7 @@
       btn.textContent = "Save";
       if (error || !data || data.error) {
         msg.className = "form-msg error";
-        msg.textContent = (data && data.error) || (error && error.message) || "Could not save pricing.";
+        msg.textContent = await functionErrorMessage(error, data, "Could not save pricing.");
         return;
       }
       msg.className = "form-msg success";
@@ -198,7 +207,7 @@
           body: { action: action, subscription_id: btn.dataset.id },
         });
         if (err || !data || data.error) {
-          alert("Could not " + action + ": " + ((data && data.error) || (err && err.message) || "unknown error"));
+          alert("Could not " + action + ": " + (await functionErrorMessage(err, data, "unknown error")));
           btn.disabled = false;
           return;
         }

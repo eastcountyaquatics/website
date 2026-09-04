@@ -97,6 +97,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -124,7 +125,7 @@
     const { data, error } = await supabaseClient.functions.invoke("manage-coupons", { body: { action: "list" } });
 
     if (error || !data || data.error) {
-      listEl.innerHTML = '<p class="muted">Could not load coupon codes: ' + escapeHtml((data && data.error) || (error && error.message) || "unknown error") + "</p>";
+      listEl.innerHTML = '<p class="muted">Could not load coupon codes: ' + escapeHtml(await functionErrorMessage(error, data, "unknown error")) + "</p>";
       return;
     }
     if (!data.codes || data.codes.length === 0) {
@@ -152,7 +153,7 @@
         if (!confirm("Deactivate this code? It will stop working immediately.")) return;
         const { data: result, error: err } = await supabaseClient.functions.invoke("manage-coupons", { body: { action: "deactivate", id: btn.dataset.deactivate } });
         if (err || !result || result.error) {
-          alert("Could not deactivate: " + ((result && result.error) || (err && err.message) || "unknown error"));
+          alert("Could not deactivate: " + (await functionErrorMessage(err, result, "unknown error")));
           return;
         }
         loadCoupons();
@@ -185,7 +186,7 @@
 
     if (error || !data || data.error) {
       msg.className = "form-msg error";
-      msg.textContent = (data && data.error) || (error && error.message) || "Could not create coupon code.";
+      msg.textContent = await functionErrorMessage(error, data, "Could not create coupon code.");
       return;
     }
 

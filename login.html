@@ -97,7 +97,31 @@
 
     if (error) {
       msg.className = "form-msg error";
-      msg.textContent = error.message;
+      // Two failures are common enough to be worth explaining. Everything
+      // else falls through to whatever the auth server said.
+      if (/email not confirmed/i.test(error.message)) {
+        msg.textContent = "Your email address hasn't been confirmed yet. Check your inbox (and spam folder) for the confirmation link — ";
+        const resend = document.createElement("a");
+        resend.href = "#";
+        resend.textContent = "send it again";
+        resend.addEventListener("click", async function (ev) {
+          ev.preventDefault();
+          resend.replaceWith(document.createTextNode("sending..."));
+          await supabaseClient.auth.resend({
+            type: "signup",
+            email: email,
+            options: { emailRedirectTo: window.location.origin + window.location.pathname },
+          });
+          msg.className = "form-msg success";
+          msg.textContent = "Confirmation email sent. Check your inbox, then sign in.";
+        });
+        msg.appendChild(resend);
+        msg.appendChild(document.createTextNode("."));
+      } else if (/invalid login credentials/i.test(error.message)) {
+        msg.textContent = "That email and password don't match an account. Check for typos, or use “Forgot your password?” below.";
+      } else {
+        msg.textContent = error.message;
+      }
       return;
     }
 

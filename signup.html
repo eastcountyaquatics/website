@@ -56,11 +56,12 @@
       </div>
       <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" autocomplete="new-password" minlength="6" required>
+        <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
+        <p class="field-hint">At least 8 characters.</p>
       </div>
       <div class="field">
         <label for="confirm_password">Confirm Password</label>
-        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="6" required>
+        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="8" required>
       </div>
       <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Create Account</button>
     </form>
@@ -98,6 +99,14 @@
     if (password !== confirmPassword) {
       msg.className = "form-msg error";
       msg.textContent = "Passwords do not match.";
+      return;
+    }
+
+    // These accounts gate minors' birthdates, schools, medical notes and
+    // emergency contacts, so don't lean on the auth server's 6-char floor.
+    if (password.length < 8) {
+      msg.className = "form-msg error";
+      msg.textContent = "Please choose a password of at least 8 characters.";
       return;
     }
 

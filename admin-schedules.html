@@ -20,7 +20,15 @@
   .sched-form{margin-top:16px;display:none;}
   .sched-form.open{display:block;}
   .sched-form .field{margin-bottom:12px;}
-  .sched-form textarea{min-height:80px;}
+  .sched-editor{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+  .line-row{display:flex;gap:8px;margin-bottom:8px;}
+  .line-row input{flex:1;}
+  .line-row button{flex-shrink:0;padding:8px 14px;color:#c0392b;border:1px solid #f0c4c0;border-radius:6px;background:#fff;font-weight:700;cursor:pointer;}
+  .line-row button:hover{background:#fdecec;}
+  .preview-pane{background:#f7f8fc;border:1px dashed #c7cee0;border-radius:8px;padding:20px;position:sticky;top:16px;}
+  .preview-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a92a8;margin-bottom:10px;}
+  .preview-empty{color:#8a92a8;font-style:italic;font-size:14px;}
+  @media (max-width: 760px){.sched-editor{grid-template-columns:1fr;} .preview-pane{position:static;}}
 </style>
 </head>
 <body>
@@ -55,9 +63,9 @@
 </section>
 
 <section class="section-tight">
-  <div class="container" style="max-width:820px;">
+  <div class="container" style="max-width:1100px;">
     <div class="notice" style="margin-bottom:24px;">
-      Toggle a team <strong>Published</strong> when its schedule is ready for families to see. Unpublished schedules are only visible here in admin.
+      Toggle a team <strong>Published</strong> when its schedule is ready for families to see. Unpublished schedules are only visible here in admin. The box on the right shows exactly what families will see as you type.
     </div>
     <div id="sched-list"><p class="muted">Loading&hellip;</p></div>
   </div>
@@ -82,14 +90,67 @@
     div.textContent = str || "";
     return div.innerHTML;
   }
-  function linesToArray(text) {
-    return (text || "")
-      .split("\n")
-      .map(function (l) { return l.trim(); })
-      .filter(function (l) { return l.length > 0; });
+  function addLineRow(container, value) {
+    const row = document.createElement("div");
+    row.className = "line-row";
+    row.innerHTML =
+      '<input type="text" value="' + escapeHtml(value || "") + '" placeholder="e.g. Mondays &amp; Wednesdays, 5:30-7:00 pm @ Grossmont HS">' +
+      '<button type="button" class="danger" data-remove-line title="Remove">&times;</button>';
+    row.querySelector("[data-remove-line]").addEventListener("click", function () {
+      const form = row.closest(".sched-form");
+      row.remove();
+      updatePreview(form.dataset.form);
+    });
+    container.appendChild(row);
   }
-  function arrayToLines(arr) {
-    return Array.isArray(arr) ? arr.join("\n") : "";
+
+  function renderLineList(container, values) {
+    container.innerHTML = "";
+    const arr = Array.isArray(values) ? values : [];
+    if (arr.length === 0) {
+      addLineRow(container, "");
+    } else {
+      arr.forEach(function (v) { addLineRow(container, v); });
+    }
+  }
+
+  function collectLines(container) {
+    return Array.from(container.querySelectorAll("input"))
+      .map(function (input) { return input.value.trim(); })
+      .filter(function (v) { return v.length > 0; });
+  }
+
+  function linesToHtml(arr) {
+    if (!arr || arr.length === 0) return "";
+    return "<ul>" + arr.map(function (l) { return "<li>" + escapeHtml(l) + "</li>"; }).join("") + "</ul>";
+  }
+
+  function updatePreview(id) {
+    const form = document.querySelector('.sched-form[data-form="' + id + '"]');
+    const preview = document.querySelector('[data-preview="' + id + '"]');
+    if (!form || !preview) return;
+
+    const get = function (field) { return form.querySelector('[data-field="' + field + '"]').value.trim(); };
+    const seasonLabel = get("season_label");
+    const dateRange = get("date_range");
+    const requirements = get("requirements");
+    const practiceLines = collectLines(form.querySelector('[data-line-list="practice_lines"]'));
+    const notes = collectLines(form.querySelector('[data-line-list="notes"]'));
+
+    const hasContent = seasonLabel || dateRange || requirements || practiceLines.length || notes.length;
+    if (!hasContent) {
+      preview.innerHTML = '<div class="preview-label">Live Preview &mdash; what families see</div><p class="preview-empty">Nothing here yet. Start filling in the form and this updates as you type.</p>';
+      return;
+    }
+
+    preview.innerHTML =
+      '<div class="preview-label">Live Preview &mdash; what families see on this team\'s page</div>' +
+      '<span class="kicker">Practice Schedule</span>' +
+      "<h3 style=\"margin:6px 0 2px;\">" + escapeHtml(seasonLabel || "Current Schedule") + "</h3>" +
+      (dateRange ? '<p class="muted" style="margin-bottom:14px;">' + escapeHtml(dateRange) + "</p>" : "") +
+      (practiceLines.length ? '<div class="card" style="margin-bottom:14px;">' + linesToHtml(practiceLines) + "</div>" : "") +
+      (requirements ? '<p class="muted" style="font-style:italic;">' + escapeHtml(requirements) + "</p>" : "") +
+      (notes.length ? '<div class="muted" style="margin-top:14px;font-size:13px;">' + linesToHtml(notes) + "</div>" : "");
   }
 
   async function loadSchedules() {
@@ -123,20 +184,49 @@
           (s.season_label ? escapeHtml(s.season_label) : "No season set") +
           (s.date_range ? " &middot; " + escapeHtml(s.date_range) : "") +
           "</p>" +
-          '<button type="button" class="btn btn-outline-dark" data-edit-toggle="' + s.id + '" style="margin-top:10px;">Edit Schedule</button>' +
+          '<button type="button" class="btn btn-outline-dark" data-edit-toggle="' + s.id + '" style="margin-top:10px;">' +
+          (s.season_label || s.date_range || (s.practice_lines && s.practice_lines.length) ? "Edit Schedule" : "Set Up Schedule") +
+          "</button>" +
           '<div class="sched-form" data-form="' + s.id + '">' +
+          '<div class="sched-editor">' +
+          '<div class="sched-editor-fields">' +
           '<div class="field"><label>Season Label</label><input type="text" data-field="season_label" value="' + escapeHtml(s.season_label) + '" placeholder="e.g. 2026 Fall Season"></div>' +
           '<div class="field"><label>Date Range</label><input type="text" data-field="date_range" value="' + escapeHtml(s.date_range) + '" placeholder="e.g. August 17 &ndash; October 31"></div>' +
-          '<div class="field"><label>Requirements</label><textarea data-field="requirements" placeholder="Swim test details, membership level required, etc.">' + escapeHtml(s.requirements) + "</textarea></div>" +
-          '<div class="field"><label>Practice Times (one per line)</label><textarea data-field="practice_lines" placeholder="Mondays &amp; Wednesdays, 5:30-7:00 pm @ Grossmont HS">' + escapeHtml(arrayToLines(s.practice_lines)) + "</textarea></div>" +
-          '<div class="field"><label>Notes (one per line)</label><textarea data-field="notes" placeholder="No practice Labor Day (9/7)">' + escapeHtml(arrayToLines(s.notes)) + "</textarea></div>" +
+          '<div class="field"><label>Requirements <span class="muted" style="font-weight:400;">(optional)</span></label><textarea data-field="requirements" placeholder="Swim test details, membership level required, etc." style="min-height:60px;">' + escapeHtml(s.requirements) + "</textarea></div>" +
+          '<div class="field"><label>Practice Times</label><div class="line-list" data-line-list="practice_lines"></div>' +
+          '<button type="button" class="btn btn-outline-dark" data-add-line="practice_lines" style="padding:6px 14px;font-size:13px;">+ Add Practice Time</button></div>' +
+          '<div class="field"><label>Notes <span class="muted" style="font-weight:400;">(optional &mdash; holidays, reminders, etc.)</span></label><div class="line-list" data-line-list="notes"></div>' +
+          '<button type="button" class="btn btn-outline-dark" data-add-line="notes" style="padding:6px 14px;font-size:13px;">+ Add Note</button></div>' +
           '<div class="form-msg" data-form-msg="' + s.id + '"></div>' +
           '<button type="button" class="btn btn-primary" data-save="' + s.id + '">Save Schedule</button>' +
+          "</div>" +
+          '<div class="preview-pane" data-preview="' + s.id + '"></div>' +
+          "</div>" +
           "</div>" +
           "</div>"
         );
       })
       .join("");
+
+    data.forEach(function (s) {
+      const form = listEl.querySelector('[data-form="' + s.id + '"]');
+      renderLineList(form.querySelector('[data-line-list="practice_lines"]'), s.practice_lines);
+      renderLineList(form.querySelector('[data-line-list="notes"]'), s.notes);
+      updatePreview(s.id);
+      // Any keystroke anywhere in this team's form -- a named field or a
+      // practice-time/note row -- refreshes that team's preview pane live.
+      form.addEventListener("input", function () { updatePreview(s.id); });
+    });
+
+    listEl.querySelectorAll("[data-add-line]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const form = btn.closest(".sched-form");
+        const listContainer = form.querySelector('[data-line-list="' + btn.dataset.addLine + '"]');
+        addLineRow(listContainer, "");
+        listContainer.querySelectorAll("input").item(listContainer.children.length - 1).focus();
+        updatePreview(form.dataset.form);
+      });
+    });
 
     listEl.querySelectorAll("[data-edit-toggle]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -173,8 +263,8 @@
           season_label: get("season_label").trim() || null,
           date_range: get("date_range").trim() || null,
           requirements: get("requirements").trim() || null,
-          practice_lines: linesToArray(get("practice_lines")),
-          notes: linesToArray(get("notes")),
+          practice_lines: collectLines(card.querySelector('[data-line-list="practice_lines"]')),
+          notes: collectLines(card.querySelector('[data-line-list="notes"]')),
         };
 
         btn.disabled = true;

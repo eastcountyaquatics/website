@@ -108,7 +108,18 @@
     return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
   function csvField(value) {
-    const str = String(value == null ? "" : value);
+    let str = String(value == null ? "" : value);
+    // Excel, Google Sheets and LibreOffice treat a cell starting with
+    // = + - @ (or tab/CR) as a formula. Family name, referral name and
+    // discount code are typed by parents in the checkout consent modal, so
+    // this export carries their text straight into the owner's spreadsheet.
+    // A leading apostrophe makes the cell literal text.
+    //
+    // Plain numbers are left alone on purpose: refunds are negative and
+    // QuickBooks has to keep reading the Amount column as an amount.
+    if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) {
+      str = "'" + str;
+    }
     if (/[",\n]/.test(str)) {
       return '"' + str.replace(/"/g, '""') + '"';
     }

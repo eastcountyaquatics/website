@@ -430,7 +430,16 @@
   });
 
   function csvField(value) {
-    const str = String(value == null ? "" : value);
+    let str = String(value == null ? "" : value);
+    // Excel, Google Sheets and LibreOffice treat a cell starting with
+    // = + - @ (or tab/CR) as a formula. Athlete name, school, parent name,
+    // emergency contacts and coach notes are all free text typed by
+    // families, so a roster export is untrusted input landing in the
+    // owner's spreadsheet. A leading apostrophe makes the cell literal.
+    // Plain numbers (age, USWP number) pass through untouched.
+    if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) {
+      str = "'" + str;
+    }
     return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
   }
 

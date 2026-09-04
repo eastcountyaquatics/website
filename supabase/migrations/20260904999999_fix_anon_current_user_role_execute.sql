@@ -1,0 +1,25 @@
+-- LIVE BUG FIX: logged-out visitors could not read any table whose RLS
+-- has a SELECT policy calling public.current_user_role().
+--
+-- 20260820164222_add_roles_and_coaches.sql revoked EXECUTE on that
+-- function from anon, intending to keep it off the public PostgREST RPC
+-- surface. The unintended consequence: Postgres evaluates RLS policy
+-- expressions as the *querying* role, so an anonymous visitor hitting
+-- any table with an "owners and coaches can view all X" SELECT policy
+-- got a hard "permission denied for function current_user_role" instead
+-- of the rows their "anyone can view published X" policy should have
+-- allowed. Affected, all public-facing:
+--   schedules            -> team practice schedules never rendered
+--   pages                -> CMS pages + the nav injection on every page
+--   tournaments          -> public tournament reads
+--   registration_options -> "anyone can view open registration options"
+-- The client scripts swallow the error and fall back to static content,
+-- so this failed silently rather than visibly -- which is why published
+-- schedules appeared to do nothing.
+--
+-- Granting anon EXECUTE leaks nothing: the function takes no arguments
+-- and is only ever "select role from profiles where id = auth.uid()".
+-- For an anonymous caller auth.uid() is null, so it returns null, the
+-- owner/coach policies evaluate false as intended, and the public
+-- "is_published" policies do the actual work.
+grant execute on function public.current_user_role() to anon;

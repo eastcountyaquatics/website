@@ -59,14 +59,18 @@ async function requireAuth() {
 }
 
 // Call on admin pages. Redirects to login.html if signed out, or to
-// dashboard.html if signed in but not an owner/coach/staff account.
+// dashboard.html if signed in but not a staff account.
 // Pass e.g. ["owner"] to further restrict a page to just owners.
 async function requireRole(allowedRoles) {
   const session = await requireAuth();
   if (!session) return null;
 
   const role = await getUserRole(session.user.id);
-  const roles = allowedRoles || ["owner", "coach", "staff"];
+  // 'staff' was dropped back in 20260902171905 and 'accountant' replaced
+  // it, but this default never caught up -- so an accountant got the Admin
+  // nav button, then bounced off admin.html, which has a card built
+  // specifically for them. The role was unusable end to end.
+  const roles = allowedRoles || ["owner", "coach", "accountant"];
   if (!role || roles.indexOf(role) === -1) {
     window.location.href = "dashboard.html";
     return null;

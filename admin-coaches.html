@@ -254,7 +254,7 @@
   });
 
   (async function () {
-    const auth = await requireRole();
+    const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
     canEdit = auth.role === "owner" || auth.role === "coach";
     if (!canEdit) {

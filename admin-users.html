@@ -102,6 +102,7 @@
   }
 
   var knownProfiles = [];
+  var currentUserId = null;
 
   async function loadPending() {
     const { data } = await supabaseClient
@@ -175,9 +176,11 @@
     }
 
     msg.className = "form-msg success";
+    // textContent escapes on its own; escapeHtml here would render a literal
+    // "&amp;" for an address containing an ampersand.
     msg.textContent = existing
-      ? escapeHtml(email) + " is now " + role + "."
-      : "Saved. " + escapeHtml(email) + " becomes " + role + " as soon as they sign up.";
+      ? email + " is now " + role + "."
+      : "Saved. " + email + " becomes " + role + " as soon as they sign up.";
     document.getElementById("assign-form").reset();
     loadUsers();
     loadPending();
@@ -221,7 +224,9 @@
           '<div class="muted" style="font-size:13px;">' + escapeHtml(u.email) + "</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
-          '<select data-user="' + u.id + '" style="padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;">' + options + "</select>" +
+          (u.id === currentUserId
+            ? '<span class="muted" style="font-size:13px;">You (' + escapeHtml(u.role || "no access") + ")</span>"
+            : '<select data-user="' + u.id + '" style="padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;">' + options + "</select>") +
           "</div>" +
           "</div>"
         );
@@ -229,15 +234,25 @@
       .join("");
 
     listEl.querySelectorAll("select[data-user]").forEach(function (sel) {
+      // Remember what was stored, so a rejected change doesn't leave the
+      // dropdown displaying a role the database never accepted.
+      sel.dataset.savedRole = sel.value;
       sel.addEventListener("change", async function () {
         const newRole = sel.value || null;
+        const msg = document.getElementById("assign-msg");
         const { error } = await supabaseClient
           .from("profiles")
           .update({ role: newRole })
           .eq("id", sel.dataset.user);
         if (error) {
-          alert("Could not update role: " + error.message);
+          sel.value = sel.dataset.savedRole;
+          msg.className = "form-msg error";
+          msg.textContent = "Could not update role: " + error.message;
+          return;
         }
+        sel.dataset.savedRole = sel.value;
+        msg.className = "form-msg success";
+        msg.textContent = "Role updated.";
       });
     });
   }
@@ -245,6 +260,12 @@
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
+    // Your own row shows your role as text rather than a dropdown. Demoting
+    // yourself locks you out of every admin page with no way back through
+    // the site, and with one owner in the club that mis-click ends access
+    // for everyone. (The database refuses it too -- see
+    // 20260904154852_block_removing_last_owner.)
+    currentUserId = auth.session.user.id;
     loadUsers();
     loadPending();
   })();

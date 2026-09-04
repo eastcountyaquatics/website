@@ -189,6 +189,18 @@
   <div class="container">
     <div class="dash-grid" style="grid-template-columns:1fr;">
       <div class="dash-card">
+        <h3>Tournaments</h3>
+        <p class="muted" style="margin-bottom:14px;">RSVP your athlete for their team's upcoming tournaments. Once a coach confirms the roster, you'll be able to pay here.</p>
+        <div id="tournaments-section"><p class="muted">Loading&hellip;</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container">
+    <div class="dash-grid" style="grid-template-columns:1fr;">
+      <div class="dash-card">
         <h3>Masters Membership</h3>
         <p class="muted" style="margin-bottom:14px;">A separate monthly subscription from team registration &mdash; billed to you directly, and you can pause it anytime. See <a href="masters.html" style="color:var(--blue);font-weight:700;">the Masters page</a> for practice details.</p>
         <div id="masters-msg" class="form-msg"></div>
@@ -365,6 +377,155 @@
     window.history.replaceState({}, "", newUrl);
   }
 
+  var currentUser = null;
+  var currentProfile = null;
+
+  async function loadTournamentsSection() {
+    const wrap = document.getElementById("tournaments-section");
+    const teamSlugs = [...new Set((myAthletes || []).map(function (a) { return a.team_slug; }).filter(Boolean))];
+    if (teamSlugs.length === 0) {
+      wrap.innerHTML = '<p class="muted">No tournaments to RSVP for yet &mdash; make sure your athlete has a team assigned.</p>';
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: tlist } = await supabaseClient
+      .from("tournaments")
+      .select("id, name, event_date, team_slug, rsvp_deadline")
+      .eq("is_published", true)
+      .in("team_slug", teamSlugs)
+      .gte("event_date", today)
+      .order("event_date", { ascending: true });
+
+    if (!tlist || tlist.length === 0) {
+      wrap.innerHTML = '<p class="muted">No upcoming tournaments right now.</p>';
+      return;
+    }
+
+    const athleteIds = myAthletes.map(function (a) { return a.id; });
+    const { data: rsvpRows } = await supabaseClient
+      .from("tournament_rsvps")
+      .select("tournament_id, athlete_id, response, on_roster")
+      .in("athlete_id", athleteIds);
+    const rsvpByKey = {};
+    (rsvpRows || []).forEach(function (r) { rsvpByKey[r.tournament_id + ":" + r.athlete_id] = r; });
+
+    const { data: inviteRows } = await supabaseClient
+      .from("tournament_invites")
+      .select("id, tournament_id, athlete_id, token, status")
+      .in("athlete_id", athleteIds);
+    const inviteByKey = {};
+    (inviteRows || []).forEach(function (i) { inviteByKey[i.tournament_id + ":" + i.athlete_id] = i; });
+
+    const cards = [];
+    tlist.forEach(function (t) {
+      myAthletes.filter(function (a) { return a.team_slug === t.team_slug; }).forEach(function (a) {
+        const key = t.id + ":" + a.id;
+        cards.push({ t: t, a: a, rsvp: rsvpByKey[key], invite: inviteByKey[key] });
+      });
+    });
+
+    if (cards.length === 0) {
+      wrap.innerHTML = '<p class="muted">No upcoming tournaments right now.</p>';
+      return;
+    }
+
+    // Fetch the current price for any pending payment so the button can
+    // show a real dollar amount rather than a bare "Pay Now".
+    for (const c of cards) {
+      if (c.rsvp && c.rsvp.on_roster && c.invite && c.invite.status !== "paid") {
+        const { data: details } = await supabaseClient.functions.invoke("get-tournament-invite", { body: { token: c.invite.token } });
+        if (details && !details.error) c.tier = details.tier;
+      }
+    }
+
+    wrap.innerHTML = cards
+      .map(function (c) {
+        const response = c.rsvp ? c.rsvp.response : null;
+        const onRoster = c.rsvp ? !!c.rsvp.on_roster : false;
+        const deadlinePassed = c.t.rsvp_deadline && c.t.rsvp_deadline < today;
+
+        let body =
+          '<h4 style="margin-bottom:2px;">' + escapeHtml(c.t.name) + "</h4>" +
+          '<p class="muted" style="margin-bottom:10px;">' + escapeHtml(c.a.full_name) + " &middot; " + formatDate(c.t.event_date) +
+          (c.t.rsvp_deadline ? " &middot; RSVP by " + formatDate(c.t.rsvp_deadline) : "") + "</p>";
+
+        if (onRoster) {
+          body += '<div class="form-msg success">You\'re on the roster!</div>';
+          if (c.invite && c.invite.status === "paid") {
+            body += '<p class="muted">Payment received &mdash; you\'re all set.</p>';
+          } else if (c.invite) {
+            body += '<div class="form-msg" id="tpay-msg-' + c.invite.id + '"></div>' +
+              '<button type="button" class="btn btn-primary" data-pay-token="' + escapeHtml(c.invite.token) + '" data-pay-msg="tpay-msg-' + c.invite.id + '">' +
+              "Pay" + (c.tier ? " " + formatAmount(c.tier.amount_cents) : "") + " Now</button>";
+          }
+        } else if (response) {
+          body += '<p class="muted">You responded <strong>' + escapeHtml(response) + "</strong>." +
+            (deadlinePassed ? "" : " Coaches haven't finalized the roster yet.") + "</p>";
+          if (!deadlinePassed) {
+            body += '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+              ["yes", "maybe", "no"].map(function (opt) {
+                return '<button type="button" class="btn ' + (response === opt ? "btn-primary" : "btn-outline-dark") + '" data-rsvp-tournament="' + c.t.id + '" data-rsvp-athlete="' + c.a.id + '" data-rsvp-response="' + opt + '" style="text-transform:capitalize;">' + opt + "</button>";
+              }).join("") + "</div>";
+          }
+        } else if (deadlinePassed) {
+          body += '<p class="muted">RSVP closed.</p>';
+        } else {
+          body += '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+            ["yes", "maybe", "no"].map(function (opt) {
+              return '<button type="button" class="btn btn-outline-dark" data-rsvp-tournament="' + c.t.id + '" data-rsvp-athlete="' + c.a.id + '" data-rsvp-response="' + opt + '" style="text-transform:capitalize;">' + opt + "</button>";
+            }).join("") + "</div>";
+        }
+
+        return '<div style="border:1px solid #e3e6f0;border-radius:8px;padding:16px;margin-bottom:12px;">' + body + "</div>";
+      })
+      .join("");
+
+    wrap.querySelectorAll("[data-rsvp-response]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        btn.disabled = true;
+        const { error } = await supabaseClient.from("tournament_rsvps").upsert(
+          {
+            tournament_id: btn.dataset.rsvpTournament,
+            athlete_id: btn.dataset.rsvpAthlete,
+            response: btn.dataset.rsvpResponse,
+            responded_at: new Date().toISOString(),
+          },
+          { onConflict: "tournament_id,athlete_id" }
+        );
+        if (error) {
+          alert("Could not save RSVP: " + error.message);
+          btn.disabled = false;
+          return;
+        }
+        loadTournamentsSection();
+      });
+    });
+
+    wrap.querySelectorAll("[data-pay-token]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        btn.disabled = true;
+        btn.textContent = "Redirecting...";
+        const msg = document.getElementById(btn.dataset.payMsg);
+        const { data, error } = await supabaseClient.functions.invoke("create-tournament-checkout", {
+          body: {
+            token: btn.dataset.payToken,
+            payer_name: (currentProfile && currentProfile.full_name) || (currentUser && currentUser.email) || "",
+            payer_email: (currentUser && currentUser.email) || "",
+          },
+        });
+        if (error || !data || !data.url) {
+          msg.className = "form-msg error";
+          msg.textContent = (data && data.error) || "Could not start checkout. Please try again.";
+          btn.disabled = false;
+          btn.textContent = "Pay Now";
+          return;
+        }
+        window.location.href = data.url;
+      });
+    });
+  }
+
   var MASTERS_TIER_LABELS = { "25_under": "25 & Under", "26_plus": "26+" };
 
   async function loadMastersSection() {
@@ -476,7 +637,7 @@
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, sex, gender, school, uswp_number, shirt_size, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, notes")
+      .select("id, full_name, birthdate, sex, gender, school, team_slug, uswp_number, shirt_size, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, notes")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -704,10 +865,12 @@
     showCheckoutBanner();
 
     const user = session.user;
+    currentUser = user;
     document.getElementById("dash-greeting").textContent = "Welcome back";
     document.getElementById("dash-email").textContent = user.email;
 
-    loadAthletes();
+    await loadAthletes();
+    loadTournamentsSection();
     loadMastersSection();
 
     const { data: profile } = await supabaseClient
@@ -715,6 +878,7 @@
       .select("full_name, email, phone, created_at")
       .eq("id", user.id)
       .single();
+    currentProfile = profile;
 
     if (profile && profile.full_name) {
       document.getElementById("dash-greeting").textContent = "Welcome back, " + profile.full_name;

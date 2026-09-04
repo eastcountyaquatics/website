@@ -13,7 +13,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  .tier-row, .invite-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;}
+  .tier-row, .invite-row, .roster-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;flex-wrap:wrap;}
+  .response-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+  .response-pill.yes{background:#e9f8ee;color:#1c7a3a;}
+  .response-pill.no{background:#f1f1f3;color:#5a5a5a;}
+  .response-pill.maybe{background:#fff8e6;color:#8a6a00;}
+  .response-pill.none{background:#f1f1f3;color:#8a8a8a;}
   .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
   .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
   .tournament-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
@@ -70,6 +75,17 @@
         <div class="field">
           <label for="t-event-date">Event Date</label>
           <input type="date" id="t-event-date" required>
+        </div>
+        <div class="field">
+          <label for="t-team-slug">Team (optional)</label>
+          <select id="t-team-slug">
+            <option value="">Not tied to a specific team</option>
+          </select>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Set this to let that team's families RSVP and to build a roster below. Leave blank for a standalone invite-only tournament.</p>
+        </div>
+        <div class="field">
+          <label for="t-rsvp-deadline">RSVP Deadline (optional)</label>
+          <input type="date" id="t-rsvp-deadline">
         </div>
         <div class="field">
           <label for="t-description">Description (optional)</label>
@@ -129,7 +145,14 @@
         <button type="submit" class="btn btn-outline-dark">Add Tier</button>
       </form>
 
+      <div id="roster-section" style="display:none;">
+        <h3 style="margin-top:32px;">RSVP &amp; Roster</h3>
+        <p class="muted" style="font-size:13px;">Families RSVP from their dashboard. Check a "Yes" athlete onto the roster once you've decided who's going &mdash; that automatically creates their payment link.</p>
+        <div id="roster-list"></div>
+      </div>
+
       <h3 style="margin-top:32px;">Invite a Player</h3>
+      <p class="muted" style="font-size:13px;">For a one-off invite outside the team roster above (e.g. a player from another team, or a standalone tournament with no team set).</p>
       <div id="invite-form-msg" class="form-msg"></div>
       <form id="invite-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
         <div class="field" style="margin:0;flex:1;min-width:200px;">
@@ -179,7 +202,20 @@
   }
 
   let tournaments = [];
+  let teams = [];
   let currentTournamentId = null;
+
+  async function loadTeams() {
+    const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
+    teams = data || [];
+    const select = document.getElementById("t-team-slug");
+    select.innerHTML = '<option value="">Not tied to a specific team</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+  }
+  function teamLabel(slug) {
+    const t = teams.find(function (x) { return x.team_slug === slug; });
+    return t ? t.team_label : slug;
+  }
 
   async function loadTournaments() {
     const { data, error } = await supabaseClient
@@ -204,7 +240,7 @@
           '<div class="admin-list-item" style="cursor:pointer;" data-select="' + t.id + '">' +
           "<div>" +
           "<h4>" + escapeHtml(t.name) + (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatDate(t.event_date) + "</div>" +
+          '<div class="muted" style="font-size:13px;">' + formatDate(t.event_date) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + "</div>" +
           "</div>" +
           '<div class="admin-list-actions"><button data-edit="' + t.id + '">Edit</button></div>' +
           "</div>"
@@ -232,6 +268,8 @@
     document.getElementById("t-id").value = t.id;
     document.getElementById("t-name").value = t.name;
     document.getElementById("t-event-date").value = t.event_date;
+    document.getElementById("t-team-slug").value = t.team_slug || "";
+    document.getElementById("t-rsvp-deadline").value = t.rsvp_deadline || "";
     document.getElementById("t-description").value = t.description || "";
     document.getElementById("t-requirements").value = t.requirements || "";
     document.getElementById("t-shirt-enabled").checked = !!t.shirt_size_enabled;
@@ -258,6 +296,8 @@
     const payload = {
       name: document.getElementById("t-name").value.trim(),
       event_date: document.getElementById("t-event-date").value,
+      team_slug: document.getElementById("t-team-slug").value || null,
+      rsvp_deadline: document.getElementById("t-rsvp-deadline").value || null,
       description: document.getElementById("t-description").value.trim() || null,
       requirements: document.getElementById("t-requirements").value.trim() || null,
       shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,
@@ -287,8 +327,93 @@
     document.getElementById("detail-heading").textContent = "Price Tiers — " + (t ? t.name : "");
     document.getElementById("tournament-detail").classList.add("open");
     document.getElementById("new-invite-link").style.display = "none";
-    await Promise.all([loadTiers(), loadAthletesForInvite(), loadInvites()]);
+    await Promise.all([loadTiers(), loadAthletesForInvite(), loadInvites(), loadRoster()]);
     document.getElementById("tournament-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function loadRoster() {
+    const t = tournaments.find(function (x) { return x.id === currentTournamentId; });
+    const sectionEl = document.getElementById("roster-section");
+    const listEl = document.getElementById("roster-list");
+    if (!t || !t.team_slug) {
+      sectionEl.style.display = "none";
+      return;
+    }
+    sectionEl.style.display = "block";
+    listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
+
+    const { data: rosterAthletes } = await supabaseClient
+      .from("athletes")
+      .select("id, full_name")
+      .eq("team_slug", t.team_slug)
+      .order("full_name", { ascending: true });
+
+    const { data: rsvps } = await supabaseClient
+      .from("tournament_rsvps")
+      .select("id, athlete_id, response, on_roster")
+      .eq("tournament_id", currentTournamentId);
+    const rsvpByAthlete = {};
+    (rsvps || []).forEach(function (r) { rsvpByAthlete[r.athlete_id] = r; });
+
+    const { data: rosterInvites } = await supabaseClient
+      .from("tournament_invites")
+      .select("athlete_id, token, status")
+      .eq("tournament_id", currentTournamentId);
+    const inviteByAthlete = {};
+    (rosterInvites || []).forEach(function (i) { inviteByAthlete[i.athlete_id] = i; });
+
+    if (!rosterAthletes || rosterAthletes.length === 0) {
+      listEl.innerHTML = '<p class="muted">No athletes are assigned to this team yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = rosterAthletes
+      .map(function (a) {
+        const rsvp = rsvpByAthlete[a.id];
+        const response = rsvp ? rsvp.response : null;
+        const onRoster = rsvp ? !!rsvp.on_roster : false;
+        const invite = inviteByAthlete[a.id];
+        const responsePill = '<span class="response-pill ' + (response || "none") + '">' +
+          (response ? response.charAt(0).toUpperCase() + response.slice(1) : "No response") + "</span>";
+        let paymentBit = "";
+        if (onRoster && invite) {
+          paymentBit =
+            '<span class="status-pill ' + (invite.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(invite.status) + "</span> " +
+            '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(buildInviteUrl(invite.token)) + '" style="padding:4px 10px;font-size:12px;">Copy Link</button>';
+        }
+        const noRsvpYet = !rsvp;
+        return (
+          '<div class="roster-row">' +
+          "<div><strong>" + escapeHtml(a.full_name) + "</strong> &middot; " + responsePill + "</div>" +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;' + (noRsvpYet ? "color:#aaa;" : "") + '">' +
+          '<input type="checkbox" data-roster-athlete="' + a.id + '" ' + (onRoster ? "checked" : "") + (noRsvpYet ? " disabled" : "") + ' style="width:auto;"> On Roster</label>' +
+          paymentBit +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-roster-athlete]").forEach(function (cb) {
+      cb.addEventListener("change", async function () {
+        cb.disabled = true;
+        const { error } = await supabaseClient
+          .from("tournament_rsvps")
+          .update({ on_roster: cb.checked })
+          .eq("tournament_id", currentTournamentId)
+          .eq("athlete_id", cb.dataset.rosterAthlete);
+        if (error) alert("Could not update roster: " + error.message);
+        loadRoster();
+      });
+    });
+    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        navigator.clipboard.writeText(btn.dataset.copyLink);
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
+      });
+    });
   }
 
   async function loadTiers() {
@@ -437,6 +562,7 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+    await loadTeams();
     loadTournaments();
   })();
 </script>

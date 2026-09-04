@@ -4,13 +4,26 @@
 // be trusted blindly: a compromised admin account could otherwise inject a
 // script that reads any signed-in visitor's Supabase session out of
 // localStorage. Anything not on the allowlist below is dropped.
+//
+// The security property this must hold: no script execution, ever. CSS
+// cannot execute script in modern browsers, so class/style are allowed
+// (the site's own editable blocks are full of them) while every scripting
+// vector -- tags, event handlers, javascript: URLs -- is stripped.
 (function (global) {
+  // Allowed on any allowed tag. Purely presentational; neither can run code.
+  const GLOBAL_ATTRS = ["class", "style"];
+
   const ALLOWED_TAGS = {
     P: [], BR: [], STRONG: [], B: [], EM: [], I: [], U: [],
     H2: [], H3: [], H4: [],
     UL: [], OL: [], LI: [],
     BLOCKQUOTE: [], HR: [],
-    A: ["href", "title"],
+    // SPAN/DIV carry the site's own structure inside editable blocks --
+    // e.g. <span class="info-icon">🍂</span><div class="muted">…</div>.
+    // Dropping them silently destroyed the layout of ~95 list items across
+    // the site the moment anyone edited one.
+    SPAN: [], DIV: [],
+    A: ["href", "title", "target", "rel"],
     IMG: ["src", "alt"],
     TABLE: [], THEAD: [], TBODY: [], TR: [], TH: [], TD: [],
   };
@@ -32,6 +45,15 @@
     return null;
   }
 
+  // Inline CSS is kept for colors/weights/sizes the site's own content
+  // uses, minus anything that can fetch or (on legacy engines) execute.
+  function safeStyle(value) {
+    const style = String(value || "").trim();
+    if (!style) return null;
+    if (/url\s*\(|expression\s*\(|javascript:|vbscript:|behaviou?r\s*:|@import|<|\\/i.test(style)) return null;
+    return style;
+  }
+
   function clean(node) {
     const children = Array.prototype.slice.call(node.childNodes);
     children.forEach(function (child) {
@@ -46,14 +68,22 @@
         return;
       }
 
-      const allowedAttrs = ALLOWED_TAGS[child.tagName];
-      if (!allowedAttrs) {
-        // Unknown tag: keep its text content, drop the tag itself.
+      const tagAttrs = ALLOWED_TAGS[child.tagName];
+      if (!tagAttrs) {
+        // Unknown tag: keep its contents, drop the tag itself.
+        //
+        // Clean the subtree FIRST. The loop above iterates a snapshot taken
+        // before this promotion, so anything moved up here is never revisited
+        // -- without this, <foo><img src=x onerror=…></foo> (or any payload
+        // wrapped in a tag that isn't on the allowlist) sailed straight
+        // through with its event handler intact.
+        clean(child);
         while (child.firstChild) node.insertBefore(child.firstChild, child);
         node.removeChild(child);
         return;
       }
 
+      const allowedAttrs = tagAttrs.concat(GLOBAL_ATTRS);
       Array.prototype.slice.call(child.attributes).forEach(function (attr) {
         const name = attr.name.toLowerCase();
         if (allowedAttrs.indexOf(name) === -1) {
@@ -69,6 +99,11 @@
           const src = safeUrl(attr.value, true);
           if (src === null) child.removeAttribute("src");
           else child.setAttribute("src", src);
+        }
+        if (name === "style") {
+          const style = safeStyle(attr.value);
+          if (style === null) child.removeAttribute("style");
+          else child.setAttribute("style", style);
         }
       });
 

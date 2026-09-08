@@ -696,7 +696,19 @@
       listEl.querySelectorAll("[data-remove-athlete]").forEach(function (btn) {
         btn.addEventListener("click", async function () {
           if (!confirm("Remove this athlete from your account?")) return;
-          await supabaseClient.from("athletes").delete().eq("id", btn.dataset.removeAthlete);
+          // The database refuses this for an athlete with payments on file --
+          // removing them would undo a paid registration or tournament entry
+          // and drop them from a coach's roster. Show the reason rather than
+          // appearing to do nothing.
+          const { error } = await supabaseClient
+            .from("athletes").delete().eq("id", btn.dataset.removeAthlete);
+          if (error) {
+            const msg = document.getElementById("athlete-form-msg");
+            msg.className = "form-msg error";
+            msg.textContent = error.message;
+            msg.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+          }
           loadAthletes();
           loadRegistrationOptions();
         });

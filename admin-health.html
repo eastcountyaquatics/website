@@ -222,6 +222,12 @@
         : "If you lose access to this account, nobody can reach the admin panel and there is no way back in from the site. Add a second owner \u2014 you can pre-assign the role to an email before they sign up.",
       ownerCount > 1 ? null : '<a href="admin-users.html">Add a second owner</a>');
 
+    // Not detectable from the browser -- Supabase Auth settings aren't
+    // exposed to the client. Listed as a one-time manual check because it is
+    // a real open finding on the project and easy to forget.
+    add("Access", "info", "Leaked-password protection: check once in Supabase",
+      "Supabase can reject passwords known from public breaches (HaveIBeenPwned). It is currently off on this project. Turn it on under Authentication \u2192 Policies; this page cannot verify it for you.");
+
     const { data: unlinkedCoaches } = await supabaseClient
       .from("coaches").select("id, full_name").is("profile_id", null);
     if (unlinkedCoaches && unlinkedCoaches.length) {

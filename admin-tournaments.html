@@ -483,8 +483,14 @@
     listEl.querySelectorAll("[data-delete-tier]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
         if (!confirm("Delete this price tier?")) return;
-        await supabaseClient.from("tournament_price_tiers").delete().eq("id", btn.dataset.deleteTier);
+        const { error } = await supabaseClient
+          .from("tournament_price_tiers").delete().eq("id", btn.dataset.deleteTier);
+        if (error) {
+          alert("Could not delete that price tier: " + error.message);
+          return;
+        }
         loadTiers();
+        loadPayments();
       });
     });
   }

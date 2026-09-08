@@ -105,6 +105,12 @@
           <p class="muted">Set monthly pricing by age bracket and manage member subscriptions.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="hours-card" style="display:none;">
+        <a href="admin-hours.html" style="display:block;color:inherit;">
+          <h3>Coach Hours</h3>
+          <p class="muted">Hours logged at roll call, totalled per coach for payroll.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="messages-card" style="display:none;">
         <a href="admin-messages.html" style="display:block;color:inherit;">
           <h3>Messages <span id="messages-unread" style="display:none;background:var(--gold);color:#1c1c1c;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:middle;"></span></h3>
@@ -152,6 +158,7 @@
       document.getElementById("attendance-card").style.display = "block";
       document.getElementById("tournaments-card").style.display = "block";
       document.getElementById("messages-card").style.display = "block";
+      document.getElementById("hours-card").style.display = "block";
       showUnreadMessages();
     }
     if (auth.role === "owner" || auth.role === "accountant") {

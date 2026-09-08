@@ -21,6 +21,12 @@
   .attendance-row .status{font-size:12px;color:var(--muted,#6b7280);min-width:70px;text-align:right;}
   .attendance-summary{font-size:14px;font-weight:700;margin-bottom:14px;}
 </style>
+<style>
+  .attendance-row.absent{background:#fdecec;border-color:#f5c2c2;}
+  .attendance-row.absent .att-name{text-decoration:line-through;color:#a12626;}
+  .att-toggle{border:1px solid #d7e6ee;background:#fff;border-radius:6px;padding:6px 14px;font-size:13px;font-family:inherit;cursor:pointer;min-width:92px;}
+  .attendance-row.absent .att-toggle{background:#a12626;border-color:#a12626;color:#fff;font-weight:700;}
+</style>
 </head>
 <body>
 
@@ -68,8 +74,19 @@
       </div>
     </div>
 
+    <div class="field" id="hours-field" style="display:none;">
+      <label for="coach-hours">Hours you coached this session</label>
+      <input type="number" id="coach-hours" min="0.25" max="24" step="0.25" inputmode="decimal" placeholder="e.g. 1.5" style="max-width:180px;">
+      <p class="field-hint">Saved with the roll call below. Only you and the club owner see your hours.</p>
+    </div>
+
     <div id="attendance-summary" class="attendance-summary"></div>
+    <div id="roll-status" class="form-msg"></div>
     <div id="attendance-list"><p class="muted">Choose a team and date to take roll call.</p></div>
+
+    <div id="roll-save-bar" style="display:none;position:sticky;bottom:0;background:#fff;padding:14px 0;border-top:1px solid #e3edf3;margin-top:8px;">
+      <button type="button" id="save-roll-btn" class="btn btn-primary" style="width:100%;">Save Roll Call</button>
+    </div>
   </div>
 </section>
 
@@ -128,6 +145,13 @@
 
   let teams = [];
   let allAthletes = [];
+  let currentUserId = null;
+  // Athlete ids currently marked ABSENT. Everyone not in here is present --
+  // the coaches asked for it this way round because on a normal day only a
+  // couple of swimmers are missing, so it is two taps instead of fifteen.
+  let absentIds = new Set();
+  let rollExists = false;
+  let currentMembers = [];
 
   async function init() {
     const [{ data: teamRows }, { data: athleteRows }] = await Promise.all([
@@ -146,6 +170,48 @@
 
     teamSelect.addEventListener("change", loadRollCall);
     dateInput.addEventListener("change", loadRollCall);
+    document.getElementById("save-roll-btn").addEventListener("click", saveRollCall);
+  }
+
+  function updateSummary() {
+    const present = currentMembers.length - absentIds.size;
+    document.getElementById("attendance-summary").textContent =
+      absentIds.size === 0
+        ? "Everyone present \u2014 " + present + " of " + currentMembers.length
+        : absentIds.size + " absent \u2014 " + present + " of " + currentMembers.length + " present";
+  }
+
+  function renderRows() {
+    const listEl = document.getElementById("attendance-list");
+    listEl.innerHTML = currentMembers
+      .map(function (a) {
+        const absent = absentIds.has(a.id);
+        return (
+          '<div class="attendance-row' + (absent ? " absent" : "") + '" data-row="' + a.id + '">' +
+          '<span class="att-name">' + escapeHtml(a.full_name) + "</span>" +
+          '<button type="button" class="att-toggle" data-athlete="' + a.id + '" aria-pressed="' + absent + '">' +
+          (absent ? "Absent" : "Here") + "</button>" +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-athlete]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const id = btn.dataset.athlete;
+        if (absentIds.has(id)) absentIds.delete(id);
+        else absentIds.add(id);
+        renderRows();
+        updateSummary();
+        markUnsaved();
+      });
+    });
+  }
+
+  function markUnsaved() {
+    const status = document.getElementById("roll-status");
+    status.className = "form-msg error";
+    status.textContent = "Not saved yet \u2014 tap Save Roll Call below.";
   }
 
   async function loadRollCall() {
@@ -153,73 +219,145 @@
     const date = document.getElementById("attendance-date").value;
     const listEl = document.getElementById("attendance-list");
     const summaryEl = document.getElementById("attendance-summary");
+    const status = document.getElementById("roll-status");
+    status.className = "form-msg";
+    status.textContent = "";
 
     if (!teamSlug || !date) {
       listEl.innerHTML = '<p class="muted">Choose a team and date to take roll call.</p>';
       summaryEl.textContent = "";
+      document.getElementById("roll-save-bar").style.display = "none";
+      document.getElementById("hours-field").style.display = "none";
       return;
     }
 
-    const members = allAthletes
+    currentMembers = allAthletes
       .filter(function (a) { return athleteTeamSlug(a) === teamSlug; })
       .sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
 
-    if (members.length === 0) {
+    if (currentMembers.length === 0) {
       listEl.innerHTML = '<p class="muted">No athletes on this team yet.</p>';
       summaryEl.textContent = "";
+      document.getElementById("roll-save-bar").style.display = "none";
+      document.getElementById("hours-field").style.display = "none";
       return;
     }
 
     listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
 
-    const { data: existing } = await supabaseClient
-      .from("attendance")
-      .select("athlete_id, present")
-      .eq("team_slug", teamSlug)
-      .eq("session_date", date);
+    const [{ data: existing }, { data: hoursRow }] = await Promise.all([
+      supabaseClient
+        .from("attendance")
+        .select("athlete_id, present, updated_at")
+        .eq("team_slug", teamSlug)
+        .eq("session_date", date),
+      supabaseClient
+        .from("coach_hours")
+        .select("hours")
+        .eq("team_slug", teamSlug)
+        .eq("session_date", date)
+        .eq("coach_id", currentUserId)
+        .maybeSingle(),
+    ]);
 
-    const presentByAthlete = {};
-    (existing || []).forEach(function (r) { presentByAthlete[r.athlete_id] = r.present; });
+    // No saved rows means roll was never taken for this date -- which is not
+    // the same as "everyone showed up". Only rows the coach actually saved
+    // count as attendance, so an untouched date stays visibly untaken.
+    rollExists = !!(existing && existing.length);
+    absentIds = new Set();
+    (existing || []).forEach(function (r) { if (!r.present) absentIds.add(r.athlete_id); });
 
-    function updateSummary() {
-      const checked = listEl.querySelectorAll("input:checked").length;
-      summaryEl.textContent = checked + " of " + members.length + " present";
+    document.getElementById("hours-field").style.display = "block";
+    document.getElementById("coach-hours").value = hoursRow ? hoursRow.hours : "";
+    document.getElementById("roll-save-bar").style.display = "block";
+
+    if (rollExists) {
+      const last = (existing || []).reduce(function (acc, r) {
+        return !acc || r.updated_at > acc ? r.updated_at : acc;
+      }, null);
+      status.className = "form-msg success";
+      status.textContent = "Roll saved" + (last ? " " + new Date(last).toLocaleString("en-US", {
+        month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + ". Change anything and save again.";
+      document.getElementById("save-roll-btn").textContent = "Update Roll Call";
+    } else {
+      status.className = "form-msg";
+      status.textContent = "";
+      document.getElementById("save-roll-btn").textContent = "Save Roll Call";
     }
 
-    listEl.innerHTML = members
-      .map(function (a) {
-        const present = !!presentByAthlete[a.id];
-        return (
-          '<div class="attendance-row">' +
-          '<label><input type="checkbox" data-athlete="' + a.id + '"' + (present ? " checked" : "") + "> " + escapeHtml(a.full_name) + "</label>" +
-          '<span class="status" data-status="' + a.id + '"></span>' +
-          "</div>"
-        );
-      })
-      .join("");
-
+    renderRows();
     updateSummary();
+  }
 
-    listEl.querySelectorAll("input[data-athlete]").forEach(function (cb) {
-      cb.addEventListener("change", async function () {
-        const athleteId = cb.dataset.athlete;
-        const statusEl = listEl.querySelector('[data-status="' + athleteId + '"]');
-        statusEl.textContent = "Saving…";
-        const { error } = await supabaseClient
-          .from("attendance")
-          .upsert(
-            { team_slug: teamSlug, athlete_id: athleteId, session_date: date, present: cb.checked },
-            { onConflict: "team_slug,athlete_id,session_date" }
-          );
-        statusEl.textContent = error ? error.message : "Saved";
-        updateSummary();
-      });
+  async function saveRollCall() {
+    const teamSlug = document.getElementById("attendance-team").value;
+    const date = document.getElementById("attendance-date").value;
+    const btn = document.getElementById("save-roll-btn");
+    const status = document.getElementById("roll-status");
+    const hoursRaw = document.getElementById("coach-hours").value.trim();
+
+    if (hoursRaw) {
+      const hours = parseFloat(hoursRaw);
+      if (isNaN(hours) || hours <= 0 || hours > 24) {
+        status.className = "form-msg error";
+        status.textContent = "Hours must be a number between 0.25 and 24. Leave it blank if you're not logging hours.";
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    // Write a row for every athlete, not just the absent ones, so the saved
+    // record says exactly who was marked present rather than leaving it to
+    // be inferred from missing rows.
+    const rows = currentMembers.map(function (a) {
+      return {
+        team_slug: teamSlug,
+        athlete_id: a.id,
+        session_date: date,
+        present: !absentIds.has(a.id),
+        recorded_by: currentUserId,
+      };
     });
+
+    const { error } = await supabaseClient
+      .from("attendance")
+      .upsert(rows, { onConflict: "team_slug,athlete_id,session_date" });
+
+    let hoursError = null;
+    if (!error) {
+      if (hoursRaw) {
+        const res = await supabaseClient.from("coach_hours").upsert(
+          { coach_id: currentUserId, team_slug: teamSlug, session_date: date, hours: parseFloat(hoursRaw) },
+          { onConflict: "coach_id,team_slug,session_date" }
+        );
+        hoursError = res.error;
+      } else {
+        // Cleared the box on purpose: drop any hours previously logged.
+        await supabaseClient.from("coach_hours").delete()
+          .eq("coach_id", currentUserId).eq("team_slug", teamSlug).eq("session_date", date);
+      }
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Update Roll Call";
+
+    if (error || hoursError) {
+      status.className = "form-msg error";
+      status.textContent = "Could not save: " + (error || hoursError).message;
+      return;
+    }
+
+    rollExists = true;
+    status.className = "form-msg success";
+    status.textContent = "Saved" + (hoursRaw ? " \u2014 roll call and " + hoursRaw + " hours." : ".");
   }
 
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+    currentUserId = auth.session.user.id;
     init();
   })();
 </script>

@@ -19,6 +19,19 @@
   .response-pill.no{background:#f1f1f3;color:#5a5a5a;}
   .response-pill.maybe{background:#fff8e6;color:#8a6a00;}
   .response-pill.none{background:#f1f1f3;color:#8a8a8a;}
+  .pay-summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 12px;}
+  .pay-stat{flex:1;min-width:130px;border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;background:#fff;}
+  .pay-stat .v{font-size:21px;font-weight:800;color:var(--blue);line-height:1.2;}
+  .pay-stat .l{font-size:12px;color:var(--muted);margin-top:2px;}
+  .pay-stat.owed .v{color:#a12626;}
+  .pay-controls{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .pay-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .pay-tabs button{padding:6px 14px;border-radius:999px;border:1px solid #d7e6ee;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;}
+  .pay-tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700;}
+  .pay-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid #e3e6f0;border-left-width:4px;border-radius:8px;padding:10px 14px;margin-bottom:8px;background:#fff;font-size:14px;}
+  .pay-row.is-paid{border-left-color:#1c7a3a;}
+  .pay-row.is-unpaid{border-left-color:#d8a01a;background:#fffdf5;}
+  .pay-meta{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
   .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
   .tournament-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
@@ -149,6 +162,21 @@
         <h3 style="margin-top:32px;">RSVP &amp; Roster</h3>
         <p class="muted" style="font-size:13px;">Families RSVP from their dashboard. Check a "Yes" athlete onto the roster once you've decided who's going &mdash; that automatically creates their payment link.</p>
         <div id="roster-list"></div>
+      </div>
+
+      <div id="payments-section" style="display:none;">
+        <h3 style="margin-top:32px;">Who Has Paid</h3>
+        <p class="muted" style="font-size:13px;">Every athlete with a payment link for this tournament. Updates the moment Stripe confirms a payment.</p>
+        <div id="pay-summary" class="pay-summary"></div>
+        <div class="pay-controls">
+          <div class="pay-tabs">
+            <button type="button" data-payfilter="all" class="active">All</button>
+            <button type="button" data-payfilter="unpaid">Not paid</button>
+            <button type="button" data-payfilter="paid">Paid</button>
+          </div>
+          <button type="button" id="pay-export" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;">Export CSV</button>
+        </div>
+        <div id="payments-list"></div>
       </div>
 
       <h3 style="margin-top:32px;">Invite a Player</h3>
@@ -327,7 +355,7 @@
     document.getElementById("detail-heading").textContent = "Price Tiers — " + (t ? t.name : "");
     document.getElementById("tournament-detail").classList.add("open");
     document.getElementById("new-invite-link").style.display = "none";
-    await Promise.all([loadTiers(), loadAthletesForInvite(), loadInvites(), loadRoster()]);
+    await Promise.all([loadTiers(), loadAthletesForInvite(), loadInvites(), loadRoster(), loadPayments()]);
     document.getElementById("tournament-detail").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -413,6 +441,7 @@
         );
         if (error) alert("Could not update roster: " + error.message);
         loadRoster();
+        loadPayments();
       });
     });
     listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
@@ -530,6 +559,202 @@
     });
   }
 
+
+  // ---- Who has paid -------------------------------------------------------
+  // Driven by invites rather than the team roster, so one-off invites for
+  // players from other teams show up here too.
+  var payFilter = "all";
+  var payRows = [];
+  var payIsOwner = false;
+
+  // Same rule the tournament Edge Functions use: age as of the event date,
+  // NOT the Aug-1 season cutoff used for team placement. Keep in step with
+  // create-tournament-checkout / get-tournament-invite.
+  function calcAgeAsOf(birthdate, asOfDate) {
+    if (!birthdate || !asOfDate) return null;
+    const dob = new Date(birthdate + "T00:00:00");
+    const cutoff = new Date(asOfDate + "T00:00:00");
+    let age = cutoff.getFullYear() - dob.getFullYear();
+    const had = cutoff.getMonth() > dob.getMonth() ||
+      (cutoff.getMonth() === dob.getMonth() && cutoff.getDate() >= dob.getDate());
+    if (!had) age--;
+    return age;
+  }
+  function tierFor(tiers, athlete, eventDate) {
+    const age = calcAgeAsOf(athlete.birthdate, eventDate);
+    if (age === null) return null;
+    return tiers.find(function (t) {
+      const ageOk = (t.min_age == null || age >= t.min_age) && (t.max_age == null || age <= t.max_age);
+      const genderOk = !t.gender || t.gender === athlete.gender;
+      return ageOk && genderOk;
+    }) || null;
+  }
+  function money(cents) {
+    return "$" + (cents / 100).toFixed(2).replace(/\.00$/, "");
+  }
+
+  async function loadPayments() {
+    const t = tournaments.find(function (x) { return x.id === currentTournamentId; });
+    const sectionEl = document.getElementById("payments-section");
+    const listEl = document.getElementById("payments-list");
+    if (!t) { sectionEl.style.display = "none"; return; }
+
+    const { data: invites } = await supabaseClient
+      .from("tournament_invites")
+      .select("id, athlete_id, token, status, paid_at, created_at")
+      .eq("tournament_id", currentTournamentId);
+
+    if (!invites || !invites.length) {
+      sectionEl.style.display = "none";
+      return;
+    }
+    sectionEl.style.display = "block";
+
+    const { data: athletes } = await supabaseClient
+      .from("athletes").select("id, full_name, birthdate, gender, parent_id");
+    const athleteById = {};
+    (athletes || []).forEach(function (a) { athleteById[a.id] = a; });
+
+    const { data: tiers } = await supabaseClient
+      .from("tournament_price_tiers")
+      .select("label, min_age, max_age, gender, amount_cents, sort_order")
+      .eq("tournament_id", currentTournamentId)
+      .order("sort_order", { ascending: true });
+
+    // Who actually paid, and how much. Only owners and accountants can read
+    // purchases, so a coach still gets paid/unpaid -- just not payer details.
+    var purchaseByInvite = {};
+    if (payIsOwner) {
+      const { data: purchases } = await supabaseClient
+        .from("purchases")
+        .select("tournament_invite_id, amount_cents, payer_name, payer_email, created_at, status")
+        .eq("tournament_id", currentTournamentId);
+      (purchases || []).forEach(function (pu) {
+        if (pu.tournament_invite_id) purchaseByInvite[pu.tournament_invite_id] = pu;
+      });
+    }
+
+    payRows = invites.map(function (inv) {
+      const a = athleteById[inv.athlete_id] || { full_name: "Unknown athlete" };
+      const tier = tiers ? tierFor(tiers, a, t.event_date) : null;
+      const purchase = purchaseByInvite[inv.id];
+      const paid = inv.status === "paid";
+      return {
+        invite: inv,
+        name: a.full_name,
+        paid: paid,
+        expected_cents: tier ? tier.amount_cents : null,
+        tier_label: tier ? tier.label : null,
+        // The charged amount is the truth once it exists; the tier is only
+        // an estimate of what they were asked for.
+        paid_cents: purchase ? purchase.amount_cents : (paid && tier ? tier.amount_cents : null),
+        payer_name: purchase ? purchase.payer_name : null,
+        payer_email: purchase ? purchase.payer_email : null,
+        paid_at: inv.paid_at || (purchase ? purchase.created_at : null),
+      };
+    }).sort(function (x, y) {
+      // Unpaid first -- that is the list anyone actually acts on.
+      if (x.paid !== y.paid) return x.paid ? 1 : -1;
+      return x.name.localeCompare(y.name);
+    });
+
+    renderPayments();
+  }
+
+  function renderPayments() {
+    const listEl = document.getElementById("payments-list");
+    const paidRows = payRows.filter(function (r) { return r.paid; });
+    const unpaidRows = payRows.filter(function (r) { return !r.paid; });
+
+    const collected = paidRows.reduce(function (s, r) { return s + (r.paid_cents || 0); }, 0);
+    const outstanding = unpaidRows.reduce(function (s, r) { return s + (r.expected_cents || 0); }, 0);
+    const anyUnknown = payRows.some(function (r) { return r.expected_cents === null; });
+
+    document.getElementById("pay-summary").innerHTML =
+      '<div class="pay-stat"><div class="v">' + paidRows.length + " / " + payRows.length + '</div><div class="l">paid</div></div>' +
+      '<div class="pay-stat"><div class="v">' + money(collected) + '</div><div class="l">collected</div></div>' +
+      '<div class="pay-stat' + (outstanding ? " owed" : "") + '"><div class="v">' + money(outstanding) + '</div><div class="l">still owed' +
+        (anyUnknown ? " (some prices unknown)" : "") + "</div></div>";
+
+    const rows = payFilter === "paid" ? paidRows : payFilter === "unpaid" ? unpaidRows : payRows;
+    if (!rows.length) {
+      listEl.innerHTML = '<p class="muted">' +
+        (payFilter === "unpaid" ? "Everyone on this list has paid." :
+         payFilter === "paid" ? "Nobody has paid yet." : "No invites yet.") + "</p>";
+      return;
+    }
+
+    listEl.innerHTML = rows.map(function (r) {
+      const when = r.paid_at
+        ? new Date(r.paid_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        : null;
+      const meta = r.paid
+        ? (when ? "Paid " + when : "Paid") +
+          (r.payer_name ? " by " + escapeHtml(r.payer_name) : "") +
+          (r.payer_email ? ' &middot; <a href="mailto:' + escapeHtml(r.payer_email) + '">' + escapeHtml(r.payer_email) + "</a>" : "")
+        : (r.tier_label ? escapeHtml(r.tier_label) : "No matching price tier") +
+          (r.expected_cents === null ? " \u2014 check this athlete's birthdate and the price tiers" : "");
+
+      return '<div class="pay-row ' + (r.paid ? "is-paid" : "is-unpaid") + '">' +
+        "<div><strong>" + escapeHtml(r.name) + "</strong> " +
+          '<span class="status-pill ' + (r.paid ? "paid" : "pending") + '">' + (r.paid ? "paid" : "not paid") + "</span>" +
+          '<div class="pay-meta">' + meta + "</div></div>" +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          "<strong>" + (r.paid ? money(r.paid_cents || 0) : (r.expected_cents === null ? "\u2014" : money(r.expected_cents))) + "</strong>" +
+          (r.paid ? "" : '<button type="button" class="btn btn-outline-dark" data-copy-link="' +
+            escapeHtml(buildInviteUrl(r.invite.token)) + '" style="padding:4px 10px;font-size:12px;">Copy Link</button>') +
+        "</div></div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        navigator.clipboard.writeText(btn.dataset.copyLink);
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
+      });
+    });
+  }
+
+  document.querySelectorAll("[data-payfilter]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("[data-payfilter]").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      payFilter = btn.dataset.payfilter;
+      renderPayments();
+    });
+  });
+
+  document.getElementById("pay-export").addEventListener("click", function () {
+    if (!payRows.length) return;
+    function csvField(value) {
+      let str = String(value == null ? "" : value);
+      if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
+      return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+    }
+    const t = tournaments.find(function (x) { return x.id === currentTournamentId; });
+    const header = ["Athlete", "Status", "Amount", "Paid On", "Payer", "Payer Email", "Price Tier"];
+    const lines = [header.map(csvField).join(",")];
+    payRows.forEach(function (r) {
+      lines.push([
+        r.name,
+        r.paid ? "Paid" : "Not paid",
+        ((r.paid ? r.paid_cents : r.expected_cents) || 0) / 100,
+        r.paid_at ? new Date(r.paid_at).toISOString().slice(0, 10) : "",
+        r.payer_name || "",
+        r.payer_email || "",
+        r.tier_label || "",
+      ].map(csvField).join(","));
+    });
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "eca-tournament-payments-" +
+      (t ? t.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() + "-" : "") +
+      new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
   function buildInviteUrl(token) {
     return window.location.origin + window.location.pathname.replace("admin-tournaments.html", "tournament-invite.html") + "?token=" + token;
   }
@@ -570,6 +795,10 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+    // Only owners/accountants can read purchases, so the payer name and the
+    // exact amount charged are shown to them and quietly omitted for coaches,
+    // who still get the paid/not-paid list they need to chase people.
+    payIsOwner = auth.role === "owner";
     await loadTeams();
     loadTournaments();
   })();

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach Hours | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Coach Hours</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .hours-total{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;border:1px solid #e3edf3;border-radius:10px;margin-bottom:10px;background:#fff;}
+  .hours-total strong{font-size:16px;}
+  .hours-total .big{font-size:22px;font-weight:800;color:var(--blue);}
+  .hours-detail{font-size:13px;color:var(--muted);margin:2px 0 0;}
+  .hours-row{display:flex;justify-content:space-between;padding:7px 16px;font-size:13.5px;border-bottom:1px solid #f0f4f7;}
+  .hours-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+    <div id="scope-note" class="notice" style="margin-bottom:20px;"></div>
+
+    <div class="hours-filters">
+      <div class="field" style="margin:0;">
+        <label for="from-date">From</label>
+        <input type="date" id="from-date">
+      </div>
+      <div class="field" style="margin:0;">
+        <label for="to-date">To</label>
+        <input type="date" id="to-date">
+      </div>
+      <button type="button" id="export-btn" class="btn btn-outline-dark">Export CSV</button>
+    </div>
+
+    <div id="list-msg" class="form-msg"></div>
+    <div id="hours-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : str;
+    return div.innerHTML;
+  }
+  function csvField(value) {
+    let str = String(value == null ? "" : value);
+    if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  }
+  function fmtDate(d) {
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  var isOwner = false;
+  var loadedRows = [];
+  var nameById = {};
+  var teamLabels = {};
+
+  function monthStart() {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  }
+
+  async function load() {
+    const listEl = document.getElementById("hours-list");
+    const msgEl = document.getElementById("list-msg");
+    msgEl.className = "form-msg";
+
+    const from = document.getElementById("from-date").value;
+    const to = document.getElementById("to-date").value;
+
+    let q = supabaseClient
+      .from("coach_hours")
+      .select("id, coach_id, team_slug, session_date, hours")
+      .order("session_date", { ascending: false });
+    if (from) q = q.gte("session_date", from);
+    if (to) q = q.lte("session_date", to);
+
+    const { data, error } = await q;
+    if (error) {
+      msgEl.className = "form-msg error";
+      msgEl.textContent = "Could not load hours: " + error.message;
+      listEl.innerHTML = "";
+      return;
+    }
+
+    loadedRows = data || [];
+    if (!loadedRows.length) {
+      listEl.innerHTML = '<p class="muted">No hours logged in this date range. Coaches log hours on the Attendance page when they take roll.</p>';
+      return;
+    }
+
+    // Group by coach so the owner reads one total per person, which is what
+    // actually gets paid.
+    const byCoach = {};
+    loadedRows.forEach(function (r) {
+      (byCoach[r.coach_id] = byCoach[r.coach_id] || []).push(r);
+    });
+
+    listEl.innerHTML = Object.keys(byCoach).map(function (coachId) {
+      const rows = byCoach[coachId];
+      const total = rows.reduce(function (s, r) { return s + parseFloat(r.hours); }, 0);
+      const sessions = rows.length;
+      return '<div style="margin-bottom:18px;">' +
+        '<div class="hours-total">' +
+          "<div><strong>" + escapeHtml(nameById[coachId] || "Coach") + "</strong>" +
+            '<p class="hours-detail">' + sessions + (sessions === 1 ? " session" : " sessions") + "</p></div>" +
+          '<div class="big">' + total.toFixed(2) + " hrs</div>" +
+        "</div>" +
+        '<details><summary class="muted" style="cursor:pointer;font-size:13px;padding-left:16px;">Show each session</summary>' +
+        rows.map(function (r) {
+          return '<div class="hours-row"><span>' + fmtDate(r.session_date) + " &middot; " +
+            escapeHtml(teamLabels[r.team_slug] || r.team_slug) + "</span><span>" +
+            parseFloat(r.hours).toFixed(2) + " hrs</span></div>";
+        }).join("") +
+        "</details></div>";
+    }).join("");
+  }
+
+  document.getElementById("export-btn").addEventListener("click", function () {
+    if (!loadedRows.length) return;
+    const lines = [["Coach", "Date", "Team", "Hours"].join(",")];
+    loadedRows.forEach(function (r) {
+      lines.push([
+        nameById[r.coach_id] || "Coach",
+        r.session_date,
+        teamLabels[r.team_slug] || r.team_slug,
+        parseFloat(r.hours).toFixed(2),
+      ].map(csvField).join(","));
+    });
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "eca-coach-hours-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  ["from-date", "to-date"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", load);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    isOwner = auth.role === "owner";
+
+    document.getElementById("scope-note").innerHTML = isOwner
+      ? "Every coach's logged hours. Coaches enter these on the <a href=\"admin-attendance.html\">Attendance</a> page when they take roll."
+      : "Your own logged hours. You enter these on the <a href=\"admin-attendance.html\">Attendance</a> page when you take roll \u2014 only you and the club owner can see them.";
+
+    document.getElementById("from-date").value = monthStart();
+
+    const [{ data: profiles }, { data: teams }] = await Promise.all([
+      isOwner
+        ? supabaseClient.from("profiles").select("id, full_name, email")
+        : Promise.resolve({ data: [{ id: auth.session.user.id, full_name: "You", email: "" }] }),
+      supabaseClient.from("schedules").select("team_slug, team_label"),
+    ]);
+    (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
+    (teams || []).forEach(function (t) { teamLabels[t.team_slug] = t.team_label; });
+
+    load();
+  })();
+</script>
+</body>
+</html>

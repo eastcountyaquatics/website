@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Health | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>System Health</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .hc{border:1px solid #e3edf3;border-left-width:5px;border-radius:10px;padding:14px 16px;margin-bottom:10px;background:#fff;}
+  .hc.ok{border-left-color:#1c7a3a;}
+  .hc.warn{border-left-color:#d8a01a;background:#fffdf5;}
+  .hc.bad{border-left-color:#a12626;background:#fdecec;}
+  .hc.info{border-left-color:#c9d6e2;}
+  .hc h4{margin:0 0 3px;font-size:15px;display:flex;align-items:center;gap:8px;}
+  .hc p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.5;}
+  .hc .fix{font-size:13px;margin-top:7px;}
+  .hc-icon{font-size:15px;}
+  .hc-group{margin:26px 0 10px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+  .hc-score{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .hc-score div{flex:1;min-width:110px;border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;background:#fff;text-align:center;}
+  .hc-score .n{font-size:23px;font-weight:800;line-height:1.1;}
+  .hc-score .l{font-size:12px;color:var(--muted);}
+  .n.good{color:#1c7a3a;} .n.warn{color:#d8a01a;} .n.bad{color:#a12626;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:780px;">
+    <p class="muted" style="margin-bottom:18px;">Everything that has to be true before families can register, and everything worth watching once they can. Re-checked each time you open this page.</p>
+    <div id="score" class="hc-score"></div>
+    <div id="checks"><p class="muted">Running checks&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : str;
+    return div.innerHTML;
+  }
+  function daysAgo(iso) {
+    return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  }
+  function ago(iso) {
+    const d = daysAgo(iso);
+    if (d === 0) return "today";
+    if (d === 1) return "yesterday";
+    return d + " days ago";
+  }
+  async function count(table, build) {
+    let q = supabaseClient.from(table).select("id", { count: "exact", head: true });
+    if (build) q = build(q);
+    const { count: c, error } = await q;
+    return error ? null : (c || 0);
+  }
+
+  const checks = [];
+  // level: bad = blocks real use, warn = will bite you, ok = fine
+  function add(group, level, title, detail, fix) {
+    checks.push({ group: group, level: level, title: title, detail: detail, fix: fix });
+  }
+
+  async function runChecks() {
+    // ---------- Taking money ----------
+    const optionCount = await count("registration_options");
+    if (!optionCount) {
+      add("Taking money", "bad", "No registration options exist",
+        "Families have nothing to sign up for \u2014 the dashboard shows an empty list.",
+        '<a href="admin-registrations.html">Create a registration option</a>');
+    } else {
+      const openCount = await count("registration_options", function (q) { return q.eq("is_open", true); });
+      add("Taking money", openCount ? "ok" : "warn",
+        optionCount + " registration option" + (optionCount === 1 ? "" : "s") + ", " + openCount + " open",
+        openCount ? "Families can register for the open ones." : "All of them are closed, so nobody can register right now.");
+    }
+
+    // Stripe keys can't be read from the browser. The honest proxy is
+    // whether money has ever actually moved.
+    const paidCount = await count("purchases", function (q) { return q.eq("status", "paid"); });
+    const webhookTotal = await count("webhook_events");
+    if (webhookTotal === null) {
+      add("Taking money", "info", "Payment log not readable",
+        "Only owners and accountants can see webhook history.");
+    } else if (webhookTotal === 0) {
+      add("Taking money", "bad", "Stripe has never contacted this site",
+        "No webhook has ever arrived. Until one does, a family could pay and never be recorded as registered. Add the Stripe keys, register the webhook URL, and run one test payment.",
+        "Supabase \u2192 Edge Functions \u2192 stripe-webhook, then Stripe \u2192 Developers \u2192 Webhooks");
+    } else {
+      const { data: latest } = await supabaseClient
+        .from("webhook_events").select("received_at, event_type")
+        .order("received_at", { ascending: false }).limit(1).maybeSingle();
+      const quietDays = latest ? daysAgo(latest.received_at) : 999;
+      add("Taking money", quietDays > 14 ? "warn" : "ok",
+        "Last Stripe event " + (latest ? ago(latest.received_at) : "never"),
+        webhookTotal + " event" + (webhookTotal === 1 ? "" : "s") + " received in total" +
+        (quietDays > 14 ? ". If you expected payments in the last two weeks, check that the webhook is still registered in Stripe." : "."));
+
+      const errorCount = await count("webhook_events", function (q) { return q.eq("status", "error"); });
+      if (errorCount) {
+        const { data: errs } = await supabaseClient
+          .from("webhook_events").select("event_type, error_message, received_at")
+          .eq("status", "error").order("received_at", { ascending: false }).limit(3);
+        add("Taking money", "bad", errorCount + " payment event" + (errorCount === 1 ? "" : "s") + " failed to process",
+          "Stripe took the money but this site could not record it. Each of these needs checking by hand against Stripe:<br>" +
+          (errs || []).map(function (e) {
+            return "&bull; " + escapeHtml(e.event_type) + " \u2014 " + escapeHtml(e.error_message || "no detail") + " (" + ago(e.received_at) + ")";
+          }).join("<br>"));
+      } else {
+        add("Taking money", "ok", "No failed payment events", "Every event Stripe sent was processed.");
+      }
+    }
+    add("Taking money", paidCount ? "ok" : "warn",
+      paidCount + " completed payment" + (paidCount === 1 ? "" : "s") + " on record",
+      paidCount ? "Money is flowing through the system." : "Nothing has been paid for yet. Run one real transaction yourself before opening registration to families.");
+
+    // ---------- Tournaments ----------
+    const tourCount = await count("tournaments");
+    if (tourCount) {
+      const { data: tiersRows } = await supabaseClient
+        .from("tournament_price_tiers").select("tournament_id");
+      const withTiers = new Set((tiersRows || []).map(function (t) { return t.tournament_id; }));
+      const { data: tours } = await supabaseClient.from("tournaments").select("id, name");
+      const missing = (tours || []).filter(function (t) { return !withTiers.has(t.id); });
+      add("Tournaments", missing.length ? "bad" : "ok",
+        missing.length ? missing.length + " tournament" + (missing.length === 1 ? " has" : "s have") + " no pricing"
+                       : "All tournaments have pricing",
+        missing.length ? "Invite links for these fail with \"no pricing has been set up\": " +
+          missing.map(function (t) { return escapeHtml(t.name); }).join(", ")
+          : "Every tournament has at least one price tier.");
+
+      const unpaid = await count("tournament_invites", function (q) { return q.neq("status", "paid"); });
+      if (unpaid) {
+        add("Tournaments", "info", unpaid + " unpaid tournament invite" + (unpaid === 1 ? "" : "s"),
+          "Chase these from each tournament's \"Who Has Paid\" panel.",
+          '<a href="admin-tournaments.html">Open Tournaments</a>');
+      }
+
+      // Reconciliation: a paid invite with no purchase row means the webhook
+      // fired but the money was never recorded -- or the reverse.
+      const { data: paidInvites } = await supabaseClient
+        .from("tournament_invites").select("id").eq("status", "paid");
+      if (paidInvites && paidInvites.length) {
+        const { data: tourPurchases } = await supabaseClient
+          .from("purchases").select("tournament_invite_id").not("tournament_invite_id", "is", null);
+        const recorded = new Set((tourPurchases || []).map(function (p) { return p.tournament_invite_id; }));
+        const orphans = paidInvites.filter(function (i) { return !recorded.has(i.id); });
+        add("Tournaments", orphans.length ? "bad" : "ok",
+          orphans.length ? orphans.length + " invite" + (orphans.length === 1 ? " is" : "s are") + " marked paid with no payment record"
+                         : "Every paid invite has a matching payment",
+          orphans.length ? "Someone was marked paid but no money is recorded against them. Check these against Stripe before treating them as paid."
+                         : "Invites and payments agree.");
+      }
+    }
+
+    // ---------- Masters ----------
+    const mastersTiers = await count("masters_price_tiers");
+    add("Masters", mastersTiers ? "ok" : "bad",
+      mastersTiers ? mastersTiers + " Masters price tier" + (mastersTiers === 1 ? "" : "s") + " set"
+                   : "Masters pricing is not set up",
+      mastersTiers ? "The Masters page and dashboard read these prices."
+                   : "The Subscribe buttons cannot work without tiers, and masters.html falls back to its static price.",
+      mastersTiers ? null : '<a href="admin-masters.html">Set Masters pricing</a>');
+
+    // ---------- Access ----------
+    const { data: owners } = await supabaseClient.from("profiles").select("id").eq("role", "owner");
+    const ownerCount = owners ? owners.length : 0;
+    add("Access", ownerCount > 1 ? "ok" : "bad",
+      ownerCount === 1 ? "Only one owner account exists" : ownerCount + " owner accounts",
+      ownerCount > 1
+        ? "If one owner loses access, another can still get in."
+        : "If you lose access to this account, nobody can reach the admin panel and there is no way back in from the site. Add a second owner \u2014 you can pre-assign the role to an email before they sign up.",
+      ownerCount > 1 ? null : '<a href="admin-users.html">Add a second owner</a>');
+
+    const { data: unlinkedCoaches } = await supabaseClient
+      .from("coaches").select("id, full_name").is("profile_id", null);
+    if (unlinkedCoaches && unlinkedCoaches.length) {
+      add("Access", "warn", unlinkedCoaches.length + " coach profile" +
+        (unlinkedCoaches.length === 1 ? " is" : "s are") + " not linked to an account",
+        "Contact-form messages addressed to them arrive in the owner's inbox instead of theirs.",
+        '<a href="admin-coaches.html">Link coach accounts</a>');
+    } else {
+      add("Access", "ok", "All coaches linked to accounts", "Contact messages route straight to them.");
+    }
+
+    // ---------- Messages ----------
+    const unread = await count("contact_messages", function (q) {
+      return q.is("read_at", null).eq("archived", false);
+    });
+    if (unread) {
+      const { data: oldest } = await supabaseClient
+        .from("contact_messages").select("created_at").is("read_at", null).eq("archived", false)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      const age = oldest ? daysAgo(oldest.created_at) : 0;
+      add("Messages", age > 3 ? "warn" : "info",
+        unread + " unread message" + (unread === 1 ? "" : "s"),
+        oldest ? "Oldest is from " + ago(oldest.created_at) + ". Nothing emails you when one arrives \u2014 they only show here and on the Messages page."
+               : "",
+        '<a href="admin-messages.html">Read messages</a>');
+    } else {
+      add("Messages", "ok", "No unread messages", "The contact form inbox is clear.");
+    }
+
+    // ---------- Content ----------
+    const noPhoto = await count("coaches", function (q) { return q.is("photo_url", null); });
+    if (noPhoto) {
+      add("Content", "info", noPhoto + " coach" + (noPhoto === 1 ? "" : "es") + " without a photo",
+        "They show as an empty circle on the Coaches page.",
+        '<a href="admin-coaches.html">Add photos</a>');
+    }
+    const publishedSchedules = await count("schedules", function (q) { return q.eq("is_published", true); });
+    const allSchedules = await count("schedules");
+    add("Content", publishedSchedules ? "ok" : "warn",
+      publishedSchedules + " of " + allSchedules + " team schedules published",
+      publishedSchedules ? "Families can see these on the site." : "No schedules are visible to families.",
+      publishedSchedules === allSchedules ? null : '<a href="admin-schedules.html">Manage schedules</a>');
+
+    render();
+  }
+
+  function render() {
+    const order = { bad: 0, warn: 1, info: 2, ok: 3 };
+    const counts = { bad: 0, warn: 0, ok: 0 };
+    checks.forEach(function (c) {
+      if (c.level === "bad") counts.bad++;
+      else if (c.level === "warn") counts.warn++;
+      else counts.ok++;
+    });
+
+    document.getElementById("score").innerHTML =
+      '<div><div class="n ' + (counts.bad ? "bad" : "good") + '">' + counts.bad + '</div><div class="l">need fixing</div></div>' +
+      '<div><div class="n ' + (counts.warn ? "warn" : "good") + '">' + counts.warn + '</div><div class="l">worth a look</div></div>' +
+      '<div><div class="n good">' + counts.ok + '</div><div class="l">fine</div></div>';
+
+    const groups = [];
+    checks.forEach(function (c) { if (groups.indexOf(c.group) === -1) groups.push(c.group); });
+
+    document.getElementById("checks").innerHTML = groups.map(function (g) {
+      const items = checks.filter(function (c) { return c.group === g; })
+        .sort(function (a, b) { return order[a.level] - order[b.level]; });
+      return '<div class="hc-group">' + escapeHtml(g) + "</div>" +
+        items.map(function (c) {
+          const icon = c.level === "bad" ? "\u2715" : c.level === "warn" ? "!" : c.level === "ok" ? "\u2713" : "\u00b7";
+          return '<div class="hc ' + c.level + '">' +
+            "<h4><span class=\"hc-icon\">" + icon + "</span>" + escapeHtml(c.title) + "</h4>" +
+            (c.detail ? "<p>" + c.detail + "</p>" : "") +
+            (c.fix ? '<p class="fix">' + c.fix + "</p>" : "") +
+            "</div>";
+        }).join("");
+    }).join("");
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    try {
+      await runChecks();
+    } catch (err) {
+      document.getElementById("checks").innerHTML =
+        '<p class="muted">Could not finish the checks: ' + escapeHtml(err.message) + "</p>";
+    }
+  })();
+</script>
+</body>
+</html>

@@ -51,6 +51,64 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
+  // Log every signature-verified event before doing anything with it, so
+  // the admin panel can tell "Stripe stopped calling us" apart from "no
+  // payments happened". A silent webhook is the failure that takes a
+  // family's money and never registers them.
+  await recordWebhookEvent(supabase, event, "processed");
+
+  try {
+    const response = await dispatchEvent(supabase, event);
+    // The handlers signal a failed write by RETURNING 500 (so Stripe
+    // retries), not by throwing -- a failed purchases insert is the most
+    // likely real failure and would otherwise sit in the log marked
+    // "processed". Re-record it from the status code.
+    if (response.status >= 400) {
+      await recordWebhookEvent(supabase, event, "error", "Handler returned HTTP " + response.status);
+    }
+    return response;
+  } catch (err) {
+    // Record the failure so it shows on the health page, then return 500 so
+    // Stripe retries. A thrown error here is as likely to be a transient
+    // blip reaching Supabase as a real bug, and swallowing it with a 200
+    // would lose the payment record permanently -- the retry is the only
+    // thing that recovers that. Stripe stops retrying after ~3 days; the
+    // logged row is what keeps it from disappearing quietly.
+    console.error("Webhook handler failed:", err);
+    await recordWebhookEvent(supabase, event, "error", String(err && (err as Error).message || err));
+    return new Response("handler failed", { status: 500 });
+  }
+});
+
+async function recordWebhookEvent(
+  supabase: ReturnType<typeof createClient>,
+  event: Stripe.Event,
+  status: "processed" | "ignored" | "error",
+  errorMessage?: string
+) {
+  // Never let bookkeeping break payment handling: if this insert fails the
+  // payment must still be processed.
+  try {
+    const obj = event.data.object as Record<string, unknown>;
+    await supabase.from("webhook_events").upsert(
+      {
+        stripe_event_id: event.id,
+        event_type: event.type,
+        status,
+        error_message: errorMessage ?? null,
+        reference: (obj?.id as string) ?? null,
+      },
+      { onConflict: "stripe_event_id" }
+    );
+  } catch (err) {
+    console.error("Could not record webhook event:", err);
+  }
+}
+
+async function dispatchEvent(
+  supabase: ReturnType<typeof createClient>,
+  event: Stripe.Event
+): Promise<Response> {
   // Stripe sends subscription lifecycle events (pause/resume happen via
   // our own manage-masters-subscription function and update the DB
   // directly, but a failed payment or an external cancellation only ever
@@ -71,6 +129,7 @@ Deno.serve(async (req) => {
 
   if (event.type !== "checkout.session.completed") {
     // Not an event we care about; acknowledge so Stripe stops retrying.
+    await recordWebhookEvent(supabase, event, "ignored");
     return new Response("ignored", { status: 200 });
   }
 
@@ -165,7 +224,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response("ok", { status: 200 });
-});
+}
 
 async function handleTournamentPayment(
   supabase: ReturnType<typeof createClient>,

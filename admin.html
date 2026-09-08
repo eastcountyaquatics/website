@@ -105,6 +105,12 @@
           <p class="muted">Set monthly pricing by age bracket and manage member subscriptions.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="health-card" style="display:none;">
+        <a href="admin-health.html" style="display:block;color:inherit;">
+          <h3>System Health <span id="health-flag" style="display:none;background:#a12626;color:#fff;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:middle;"></span></h3>
+          <p class="muted">What has to be true before families can register, and what to watch after.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="hours-card" style="display:none;">
         <a href="admin-hours.html" style="display:block;color:inherit;">
           <h3>Coach Hours</h3>
@@ -171,6 +177,22 @@
       document.getElementById("pages-card").style.display = "block";
       document.getElementById("content-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";
+      document.getElementById("health-card").style.display = "block";
+      flagFailedPayments();
+    }
+
+    async function flagFailedPayments() {
+      // A payment Stripe took but this site failed to record is the one
+      // thing that should shout from the admin home rather than waiting to
+      // be discovered on the health page.
+      const { count } = await supabaseClient
+        .from("webhook_events")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "error");
+      if (!count) return;
+      const flag = document.getElementById("health-flag");
+      flag.textContent = count + " payment issue" + (count === 1 ? "" : "s");
+      flag.style.display = "inline-block";
     }
 
     async function showUnreadMessages() {

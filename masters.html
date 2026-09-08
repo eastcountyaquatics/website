@@ -86,7 +86,9 @@
     <div class="grid grid-2">
       <div class="card" style="border-top-color:var(--gold);">
         <h3 data-cms="masters-0010">Monthly Membership</h3>
-        <p style="font-size:32px;font-weight:800;color:var(--blue);margin-bottom:4px;" data-cms="masters-0011">$45<span style="font-size:15px;font-weight:600;color:var(--muted);"> / month</span></p>
+        <div id="masters-price-live">
+          <p style="font-size:32px;font-weight:800;color:var(--blue);margin-bottom:4px;" data-cms="masters-0011">$45<span style="font-size:15px;font-weight:600;color:var(--muted);"> / month</span></p>
+        </div>
         <p class="muted" data-cms="masters-0012">Auto-pay each month. Games &amp; tournaments are an additional cost.</p>
         <a href="dashboard.html" class="btn btn-primary">Register Now</a>
       </div>
@@ -211,5 +213,46 @@
 <script src="js/main.js"></script>
 <script src="js/nav-pages.js"></script>
 <script src="js/content-blocks.js"></script>
+<script>
+  // The membership price lives in masters_price_tiers, which is what the
+  // Subscribe buttons actually charge. Hard-coding "$45" here meant the
+  // marketing page could quietly disagree with the card being billed --
+  // and it already did, because billing is two-tier by age and this said
+  // one flat price. Read the real tiers; fall back to the static markup
+  // above if none are set yet.
+  (async function loadMastersPricing() {
+    const wrap = document.getElementById("masters-price-live");
+    if (!wrap) return;
+    const { data, error } = await supabaseClient
+      .from("masters_price_tiers")
+      .select("tier, label, amount_cents")
+      .order("amount_cents", { ascending: true });
+    if (error || !data || !data.length) return;
+
+    function money(cents) {
+      return "$" + (cents / 100).toFixed(2).replace(/\.00$/, "");
+    }
+    function tierName(t) {
+      if (t.label) return t.label;
+      return t.tier === "25_under" ? "25 & under" : t.tier === "26_plus" ? "26 and over" : t.tier;
+    }
+
+    // One tier reads as a single price; two or more list per age band, which
+    // is what the club actually bills.
+    if (data.length === 1) {
+      wrap.innerHTML =
+        '<p style="font-size:32px;font-weight:800;color:var(--blue);margin-bottom:4px;">' +
+        money(data[0].amount_cents) +
+        '<span style="font-size:15px;font-weight:600;color:var(--muted);"> / month</span></p>';
+      return;
+    }
+    wrap.innerHTML = data.map(function (t) {
+      return '<p style="margin:0 0 6px;display:flex;align-items:baseline;gap:8px;">' +
+        '<span style="font-size:26px;font-weight:800;color:var(--blue);">' + money(t.amount_cents) + "</span>" +
+        '<span style="font-size:14px;font-weight:600;color:var(--muted);">/ month &middot; ' +
+        tierName(t).replace(/[<>]/g, "") + "</span></p>";
+    }).join("");
+  })();
+</script>
 </body>
 </html>

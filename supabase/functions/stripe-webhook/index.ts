@@ -80,6 +80,15 @@ Deno.serve(async (req) => {
   }
 });
 
+// A unique-violation here is not a failure: the database is enforcing the
+// idempotency the handlers ask for, which means this exact payment is
+// already recorded. Stripe delivers at-least-once and its retries can
+// overlap, so this is the expected outcome of a duplicate delivery, not an
+// error to surface or retry.
+function isDuplicate(error: { code?: string } | null): boolean {
+  return !!error && error.code === "23505";
+}
+
 async function recordWebhookEvent(
   supabase: ReturnType<typeof createClient>,
   event: Stripe.Event,
@@ -190,6 +199,9 @@ async function dispatchEvent(
   // session would otherwise insert a second, duplicate set of purchase rows.
   // stripe_checkout_session_id is what ties a delivery back to "have we
   // already recorded this"; same guard as the tournament/Masters branches.
+  // This check is not atomic on its own -- two overlapping retries can both
+  // pass it -- so the purchases_session_dedupe unique index is what actually
+  // makes a duplicate impossible. This just avoids the round trip.
   const { data: alreadyRecorded } = await supabase
     .from("purchases")
     .select("id")
@@ -217,6 +229,9 @@ async function dispatchEvent(
   }));
 
   const { error } = await supabase.from("purchases").insert(rows);
+  if (isDuplicate(error)) {
+    return new Response("already processed", { status: 200 });
+  }
   if (error) {
     console.error("Failed to insert purchases for session", session.id, error);
     // Return 500 so Stripe retries the webhook.
@@ -245,7 +260,8 @@ async function handleTournamentPayment(
   // Stripe delivers webhooks at-least-once, so the same event can arrive
   // more than once. The invite's own status is the idempotency guard: once
   // marked paid, a repeat delivery is a no-op instead of a duplicate charge
-  // record.
+  // record. The purchases_session_dedupe unique index backs this up for the
+  // case where two retries overlap before either has flipped the status.
   if (invite.status === "paid") {
     return new Response("already processed", { status: 200 });
   }
@@ -284,6 +300,9 @@ async function handleTournamentPayment(
     payer_name: payerName,
     payer_email: payerEmail,
   });
+  if (isDuplicate(purchaseError)) {
+    return new Response("already processed", { status: 200 });
+  }
   if (purchaseError) {
     console.error("Failed to insert tournament purchase for session", session.id, purchaseError);
     return new Response("db insert failed", { status: 500 });
@@ -358,7 +377,9 @@ async function handleMastersInvoicePaid(
 
   const paymentIntentId = typeof invoice.payment_intent === "string" ? invoice.payment_intent : null;
 
-  // Idempotency: Stripe delivers webhooks at-least-once.
+  // Idempotency: Stripe delivers webhooks at-least-once. The
+  // purchases_invoice_dedupe unique index is the real guarantee; this check
+  // just avoids attempting an insert we know will collide.
   if (paymentIntentId) {
     const { data: existing } = await supabase
       .from("purchases")
@@ -377,6 +398,9 @@ async function handleMastersInvoicePaid(
     status: "paid",
     stripe_payment_intent_id: paymentIntentId,
   });
+  if (isDuplicate(error)) {
+    return new Response("already processed", { status: 200 });
+  }
   if (error) {
     console.error("Failed to insert masters purchase for invoice", invoice.id, error);
     return new Response("db insert failed", { status: 500 });

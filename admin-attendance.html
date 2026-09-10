@@ -20,6 +20,8 @@
   .attendance-row input{width:20px;height:20px;flex-shrink:0;}
   .attendance-row .status{font-size:12px;color:var(--muted,#6b7280);min-width:70px;text-align:right;}
   .attendance-summary{font-size:14px;font-weight:700;margin-bottom:14px;}
+  .coach-hours-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f7f9fc;border:1px solid #e3edf3;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13.5px;}
+  .coach-hours-row button{border:none;background:none;color:#a12626;cursor:pointer;font-size:13px;font-weight:700;padding:2px 4px;}
 </style>
 <style>
   .attendance-row.absent{background:#fdecec;border-color:#f5c2c2;}
@@ -75,9 +77,20 @@
     </div>
 
     <div class="field" id="hours-field" style="display:none;">
-      <label for="coach-hours">Hours you coached this session</label>
-      <input type="number" id="coach-hours" min="0.25" max="24" step="0.25" inputmode="decimal" placeholder="e.g. 1.5" style="max-width:180px;">
-      <p class="field-hint">Saved with the roll call below. Only you and the club owner see your hours.</p>
+      <label>Coach Hours for This Session</label>
+      <p class="field-hint" style="margin-top:0;">Log hours for any coach who was here &mdash; not just yourself. Saved with the roll call below.</p>
+      <div id="coach-hours-list"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
+        <div class="field" style="margin:0;flex:1;min-width:180px;">
+          <label for="hours-coach-select" style="font-weight:400;font-size:13px;">Coach</label>
+          <select id="hours-coach-select"><option value="">Choose a coach&hellip;</option></select>
+        </div>
+        <div class="field" style="margin:0;width:120px;">
+          <label for="hours-amount" style="font-weight:400;font-size:13px;">Hours present</label>
+          <input type="number" id="hours-amount" min="0.25" max="24" step="0.25" inputmode="decimal" placeholder="1.5">
+        </div>
+        <button type="button" id="add-coach-hours-btn" class="btn btn-outline-dark">+ Add</button>
+      </div>
     </div>
 
     <div id="attendance-summary" class="attendance-summary"></div>
@@ -153,17 +166,33 @@
   let rollExists = false;
   let currentMembers = [];
 
+  let coachRoster = []; // { profile_id, full_name } -- only coaches with a linked account
+  // Pending coach-hours entries for the session currently open. Keyed by
+  // coach_id so re-adding the same coach edits their number instead of
+  // creating a second entry.
+  let coachHoursEntries = {};
+
   async function init() {
-    const [{ data: teamRows }, { data: athleteRows }] = await Promise.all([
+    const [{ data: teamRows }, { data: athleteRows }, { data: coachRows }] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
       supabaseClient.from("athletes").select("id, full_name, birthdate, gender, team_slug"),
+      supabaseClient.from("coaches").select("full_name, profile_id").not("profile_id", "is", null).order("full_name", { ascending: true }),
     ]);
     teams = teamRows || [];
     allAthletes = athleteRows || [];
+    coachRoster = coachRows || [];
 
     const teamSelect = document.getElementById("attendance-team");
     teamSelect.innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+
+    const coachSelect = document.getElementById("hours-coach-select");
+    coachSelect.innerHTML = '<option value="">Choose a coach&hellip;</option>' +
+      coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    if (coachRoster.length === 0) {
+      coachSelect.innerHTML = '<option value="">No coaches linked to accounts yet</option>';
+      coachSelect.disabled = true;
+    }
 
     const dateInput = document.getElementById("attendance-date");
     dateInput.value = new Date().toISOString().slice(0, 10);
@@ -171,6 +200,54 @@
     teamSelect.addEventListener("change", loadRollCall);
     dateInput.addEventListener("change", loadRollCall);
     document.getElementById("save-roll-btn").addEventListener("click", saveRollCall);
+    document.getElementById("add-coach-hours-btn").addEventListener("click", addCoachHoursEntry);
+  }
+
+  function coachName(profileId) {
+    const c = coachRoster.find(function (x) { return x.profile_id === profileId; });
+    return c ? c.full_name : "Coach";
+  }
+
+  function renderCoachHoursEntries() {
+    const listEl = document.getElementById("coach-hours-list");
+    const ids = Object.keys(coachHoursEntries);
+    if (ids.length === 0) {
+      listEl.innerHTML = "";
+      return;
+    }
+    listEl.innerHTML = ids.map(function (id) {
+      return '<div class="coach-hours-row"><span>' + escapeHtml(coachName(id)) + " &mdash; " +
+        parseFloat(coachHoursEntries[id]).toFixed(2) + ' hrs</span>' +
+        '<button type="button" data-remove-hours="' + id + '">Remove</button></div>';
+    }).join("");
+    listEl.querySelectorAll("[data-remove-hours]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        delete coachHoursEntries[btn.dataset.removeHours];
+        renderCoachHoursEntries();
+        markUnsaved();
+      });
+    });
+  }
+
+  function addCoachHoursEntry() {
+    const status = document.getElementById("roll-status");
+    const coachId = document.getElementById("hours-coach-select").value;
+    const amountRaw = document.getElementById("hours-amount").value.trim();
+    if (!coachId) {
+      status.className = "form-msg error";
+      status.textContent = "Choose which coach you're logging hours for.";
+      return;
+    }
+    const amount = parseFloat(amountRaw);
+    if (!amountRaw || isNaN(amount) || amount <= 0 || amount > 24) {
+      status.className = "form-msg error";
+      status.textContent = "Enter hours between 0.25 and 24.";
+      return;
+    }
+    coachHoursEntries[coachId] = amount;
+    document.getElementById("hours-amount").value = "";
+    renderCoachHoursEntries();
+    markUnsaved();
   }
 
   function updateSummary() {
@@ -245,7 +322,7 @@
 
     listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
 
-    const [{ data: existing }, { data: hoursRow }] = await Promise.all([
+    const [{ data: existing }, { data: hoursRows }] = await Promise.all([
       supabaseClient
         .from("attendance")
         .select("athlete_id, present, updated_at")
@@ -253,11 +330,9 @@
         .eq("session_date", date),
       supabaseClient
         .from("coach_hours")
-        .select("hours")
+        .select("coach_id, hours")
         .eq("team_slug", teamSlug)
-        .eq("session_date", date)
-        .eq("coach_id", currentUserId)
-        .maybeSingle(),
+        .eq("session_date", date),
     ]);
 
     // No saved rows means roll was never taken for this date -- which is not
@@ -267,8 +342,11 @@
     absentIds = new Set();
     (existing || []).forEach(function (r) { if (!r.present) absentIds.add(r.athlete_id); });
 
+    coachHoursEntries = {};
+    (hoursRows || []).forEach(function (r) { coachHoursEntries[r.coach_id] = parseFloat(r.hours); });
+    renderCoachHoursEntries();
+
     document.getElementById("hours-field").style.display = "block";
-    document.getElementById("coach-hours").value = hoursRow ? hoursRow.hours : "";
     document.getElementById("roll-save-bar").style.display = "block";
 
     if (rollExists) {
@@ -294,16 +372,6 @@
     const date = document.getElementById("attendance-date").value;
     const btn = document.getElementById("save-roll-btn");
     const status = document.getElementById("roll-status");
-    const hoursRaw = document.getElementById("coach-hours").value.trim();
-
-    if (hoursRaw) {
-      const hours = parseFloat(hoursRaw);
-      if (isNaN(hours) || hours <= 0 || hours > 24) {
-        status.className = "form-msg error";
-        status.textContent = "Hours must be a number between 0.25 and 24. Leave it blank if you're not logging hours.";
-        return;
-      }
-    }
 
     btn.disabled = true;
     btn.textContent = "Saving...";
@@ -327,16 +395,22 @@
 
     let hoursError = null;
     if (!error) {
-      if (hoursRaw) {
-        const res = await supabaseClient.from("coach_hours").upsert(
-          { coach_id: currentUserId, team_slug: teamSlug, session_date: date, hours: parseFloat(hoursRaw) },
-          { onConflict: "coach_id,team_slug,session_date" }
-        );
-        hoursError = res.error;
+      // Replace this session's coach-hours entries wholesale: delete what
+      // was there for this team+date, then write exactly what's staged now.
+      // Simpler and safer than diffing adds/removes against what loaded.
+      const del = await supabaseClient.from("coach_hours").delete()
+        .eq("team_slug", teamSlug).eq("session_date", date);
+      if (del.error) {
+        hoursError = del.error;
       } else {
-        // Cleared the box on purpose: drop any hours previously logged.
-        await supabaseClient.from("coach_hours").delete()
-          .eq("coach_id", currentUserId).eq("team_slug", teamSlug).eq("session_date", date);
+        const hoursCoachIds = Object.keys(coachHoursEntries);
+        if (hoursCoachIds.length) {
+          const hoursRows = hoursCoachIds.map(function (coachId) {
+            return { coach_id: coachId, team_slug: teamSlug, session_date: date, hours: coachHoursEntries[coachId] };
+          });
+          const res = await supabaseClient.from("coach_hours").insert(hoursRows);
+          hoursError = res.error;
+        }
       }
     }
 
@@ -350,8 +424,11 @@
     }
 
     rollExists = true;
+    const hoursCount = Object.keys(coachHoursEntries).length;
     status.className = "form-msg success";
-    status.textContent = "Saved" + (hoursRaw ? " \u2014 roll call and " + hoursRaw + " hours." : ".");
+    status.textContent = "Saved" + (hoursCount
+      ? " \u2014 roll call and hours for " + hoursCount + " coach" + (hoursCount === 1 ? "" : "es") + "."
+      : ".");
   }
 
   (async function () {

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sponsorships | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Sponsorships</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:780px;">
+    <p class="muted" style="margin-bottom:18px;">Submissions from the public <a href="sponsor.html">sponsor form</a>.</p>
+    <div id="sp-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : str;
+    return div.innerHTML;
+  }
+  function money(cents) {
+    return "$" + (cents / 100).toFixed(2);
+  }
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  async function load() {
+    const listEl = document.getElementById("sp-list");
+    const { data, error } = await supabaseClient
+      .from("sponsorships")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || !data.length) {
+      listEl.innerHTML = '<p class="muted">No sponsorship submissions yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = data.map(function (s) {
+      return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
+        "<div><h4>" + escapeHtml(s.company_name) +
+        '<span class="status-pill ' + (s.status === "paid" ? "paid" : "pending") + '" style="margin-left:8px;">' + s.status + "</span></h4>" +
+        '<div class="muted" style="font-size:13px;">' + fmtDate(s.created_at) +
+        (s.tier ? " &middot; " + escapeHtml(s.tier) : "") + " &middot; " + escapeHtml(s.contact_email) +
+        (s.contact_phone ? " &middot; " + escapeHtml(s.contact_phone) : "") + "</div></div>" +
+        '<div style="font-size:20px;font-weight:800;color:var(--blue);">' + money(s.amount_cents) + "</div>" +
+        "</div>" +
+        (s.contact_name ? '<p class="muted" style="font-size:13px;margin-top:6px;">Contact: ' + escapeHtml(s.contact_name) + "</p>" : "") +
+        (s.website_url ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.website_url) + '" target="_blank" rel="noopener">' + escapeHtml(s.website_url) + "</a></p>" : "") +
+        (s.logo_url ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.logo_url) + '" target="_blank" rel="noopener">Logo image</a></p>' : "") +
+        (s.blurb ? '<p style="font-size:13.5px;margin-top:8px;white-space:pre-wrap;">' + escapeHtml(s.blurb) + "</p>" : "") +
+        "</div>";
+    }).join("");
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner", "accountant"]);
+    if (!auth) return;
+    load();
+  })();
+</script>
+</body>
+</html>

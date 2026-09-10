@@ -101,6 +101,18 @@
           <input type="date" id="t-rsvp-deadline">
         </div>
         <div class="field">
+          <label for="t-location">Location (optional)</label>
+          <input type="text" id="t-location" placeholder="e.g. Riverside Aquatics Complex, Riverside, CA">
+        </div>
+        <div class="field">
+          <label for="t-hotel-name">Hotel (optional)</label>
+          <input type="text" id="t-hotel-name" placeholder="e.g. Hampton Inn Riverside">
+        </div>
+        <div class="field">
+          <label for="t-hotel-url">Hotel Booking Link (optional)</label>
+          <input type="url" id="t-hotel-url" placeholder="https://...">
+        </div>
+        <div class="field">
           <label for="t-description">Description (optional)</label>
           <textarea id="t-description" rows="2"></textarea>
         </div>
@@ -298,6 +310,9 @@
     document.getElementById("t-event-date").value = t.event_date;
     document.getElementById("t-team-slug").value = t.team_slug || "";
     document.getElementById("t-rsvp-deadline").value = t.rsvp_deadline || "";
+    document.getElementById("t-location").value = t.location || "";
+    document.getElementById("t-hotel-name").value = t.hotel_name || "";
+    document.getElementById("t-hotel-url").value = t.hotel_url || "";
     document.getElementById("t-description").value = t.description || "";
     document.getElementById("t-requirements").value = t.requirements || "";
     document.getElementById("t-shirt-enabled").checked = !!t.shirt_size_enabled;
@@ -326,6 +341,9 @@
       event_date: document.getElementById("t-event-date").value,
       team_slug: document.getElementById("t-team-slug").value || null,
       rsvp_deadline: document.getElementById("t-rsvp-deadline").value || null,
+      location: document.getElementById("t-location").value.trim() || null,
+      hotel_name: document.getElementById("t-hotel-name").value.trim() || null,
+      hotel_url: document.getElementById("t-hotel-url").value.trim() || null,
       description: document.getElementById("t-description").value.trim() || null,
       requirements: document.getElementById("t-requirements").value.trim() || null,
       shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,

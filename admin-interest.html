@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Interest | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Team Interest</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .interest-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:#f1f1f3;margin:8px 0;}
+  .interest-bar .yes{background:#1c7a3a;}
+  .interest-bar .no{background:#a12626;}
+  .interest-tally{display:flex;gap:16px;font-size:13px;color:var(--muted);flex-wrap:wrap;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+
+    <div class="admin-form">
+      <h3 id="form-title">Post to a Team</h3>
+      <div id="form-msg" class="form-msg"></div>
+      <form id="ann-form">
+        <input type="hidden" id="ann-id">
+        <div class="field">
+          <label for="ann-team">Team</label>
+          <select id="ann-team" required><option value="">Choose a team&hellip;</option></select>
+        </div>
+        <div class="field">
+          <label for="ann-title">Title</label>
+          <input type="text" id="ann-title" placeholder="e.g. Extra scrimmage this Saturday?" required>
+        </div>
+        <div class="field">
+          <label for="ann-body">Details (optional)</label>
+          <textarea id="ann-body" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label for="ann-deadline">Respond By (optional)</label>
+          <input type="date" id="ann-deadline">
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Post</button>
+          <button type="button" id="cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h3 style="margin-top:32px;">Posted</h3>
+    <div id="ann-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : str;
+    return div.innerHTML;
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  var teams = [];
+  var athleteCountByTeam = {};
+
+  async function loadTeams() {
+    const [{ data: teamRows }, { data: athleteRows }] = await Promise.all([
+      supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
+      supabaseClient.from("athletes").select("team_slug"),
+    ]);
+    teams = teamRows || [];
+    athleteCountByTeam = {};
+    (athleteRows || []).forEach(function (a) {
+      if (a.team_slug) athleteCountByTeam[a.team_slug] = (athleteCountByTeam[a.team_slug] || 0) + 1;
+    });
+    document.getElementById("ann-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+  }
+  function teamLabel(slug) {
+    const t = teams.find(function (x) { return x.team_slug === slug; });
+    return t ? t.team_label : slug;
+  }
+
+  async function loadAnnouncements() {
+    const listEl = document.getElementById("ann-list");
+    const { data, error } = await supabaseClient
+      .from("team_announcements")
+      .select("id, team_slug, title, body, deadline, archived, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || !data.length) {
+      listEl.innerHTML = '<p class="muted">Nothing posted yet.</p>';
+      return;
+    }
+
+    const { data: responses } = await supabaseClient
+      .from("team_announcement_responses")
+      .select("announcement_id, response");
+    const tallyByAnn = {};
+    (responses || []).forEach(function (r) {
+      const t = (tallyByAnn[r.announcement_id] = tallyByAnn[r.announcement_id] || { interested: 0, not_interested: 0 });
+      t[r.response]++;
+    });
+
+    listEl.innerHTML = data.map(function (a) {
+      const tally = tallyByAnn[a.id] || { interested: 0, not_interested: 0 };
+      const totalOnTeam = athleteCountByTeam[a.team_slug] || 0;
+      const responded = tally.interested + tally.not_interested;
+      const yesPct = responded ? Math.round((tally.interested / responded) * 100) : 0;
+      return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;">' +
+        "<div><h4>" + escapeHtml(a.title) + (a.archived ? ' <span class="muted" style="font-weight:400;">(archived)</span>' : "") + "</h4>" +
+        '<div class="muted" style="font-size:13px;">' + escapeHtml(teamLabel(a.team_slug)) +
+        (a.deadline ? " &middot; respond by " + formatDate(a.deadline) : "") + "</div></div>" +
+        '<div class="admin-list-actions">' +
+        '<button data-archive="' + a.id + '">' + (a.archived ? "Unarchive" : "Archive") + "</button>" +
+        '<button data-delete="' + a.id + '" class="danger">Delete</button>' +
+        "</div></div>" +
+        '<div class="interest-bar"><div class="yes" style="width:' + yesPct + '%;"></div><div class="no" style="width:' + (100 - yesPct) + '%;"></div></div>' +
+        '<div class="interest-tally"><span>' + tally.interested + ' interested</span><span>' + tally.not_interested + ' not interested</span>' +
+        '<span>' + (totalOnTeam - responded > 0 ? totalOnTeam - responded : 0) + ' of ' + totalOnTeam + ' athletes haven\'t responded</span></div>' +
+        "</div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-archive]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const a = data.find(function (x) { return x.id === btn.dataset.archive; });
+        await supabaseClient.from("team_announcements").update({ archived: !a.archived }).eq("id", a.id);
+        loadAnnouncements();
+      });
+    });
+    listEl.querySelectorAll("[data-delete]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Delete this post and all responses to it?")) return;
+        await supabaseClient.from("team_announcements").delete().eq("id", btn.dataset.delete);
+        loadAnnouncements();
+      });
+    });
+  }
+
+  function resetForm() {
+    document.getElementById("ann-form").reset();
+    document.getElementById("ann-id").value = "";
+    document.getElementById("form-title").textContent = "Post to a Team";
+    document.getElementById("submit-btn").textContent = "Post";
+    document.getElementById("cancel-btn").style.display = "none";
+  }
+  document.getElementById("cancel-btn").addEventListener("click", resetForm);
+
+  document.getElementById("ann-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("form-msg");
+    msg.className = "form-msg";
+
+    const payload = {
+      team_slug: document.getElementById("ann-team").value,
+      title: document.getElementById("ann-title").value.trim(),
+      body: document.getElementById("ann-body").value.trim() || null,
+      deadline: document.getElementById("ann-deadline").value || null,
+    };
+
+    const { error } = await supabaseClient.from("team_announcements").insert(payload);
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Posted. Families on that team will see it on their dashboard.";
+    resetForm();
+    loadAnnouncements();
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    await loadTeams();
+    loadAnnouncements();
+  })();
+</script>
+</body>
+</html>

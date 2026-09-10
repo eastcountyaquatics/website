@@ -219,6 +219,18 @@
   </div>
 </section>
 
+<section class="section-tight">
+  <div class="container">
+    <div class="dash-grid" style="grid-template-columns:1fr;">
+      <div class="dash-card">
+        <h3>Team Updates</h3>
+        <p class="muted" style="margin-bottom:14px;">Coaches post things here for your team to weigh in on &mdash; mark your athlete interested or not.</p>
+        <div id="interest-section"><p class="muted">Loading&hellip;</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div id="consent-overlay" class="consent-overlay" style="display:none;">
   <div class="consent-modal">
     <h3>Before You Pay</h3>
@@ -537,6 +549,72 @@
   }
 
   var MASTERS_TIER_LABELS = { "25_under": "25 & Under", "26_plus": "26+" };
+
+  async function loadInterestSection() {
+    const wrap = document.getElementById("interest-section");
+    const teamSlugs = [...new Set((myAthletes || []).map(function (a) { return a.team_slug; }).filter(Boolean))];
+    if (teamSlugs.length === 0) {
+      wrap.innerHTML = '<p class="muted">Nothing posted yet.</p>';
+      return;
+    }
+
+    const { data: announcements } = await supabaseClient
+      .from("team_announcements")
+      .select("id, team_slug, title, body, deadline, created_at")
+      .in("team_slug", teamSlugs)
+      .eq("archived", false)
+      .order("created_at", { ascending: false });
+
+    if (!announcements || announcements.length === 0) {
+      wrap.innerHTML = '<p class="muted">Nothing posted for your team right now.</p>';
+      return;
+    }
+
+    const athleteIds = myAthletes.map(function (a) { return a.id; });
+    const { data: responseRows } = await supabaseClient
+      .from("team_announcement_responses")
+      .select("announcement_id, athlete_id, response")
+      .in("athlete_id", athleteIds);
+    const responseByKey = {};
+    (responseRows || []).forEach(function (r) { responseByKey[r.announcement_id + ":" + r.athlete_id] = r.response; });
+
+    const cards = [];
+    announcements.forEach(function (ann) {
+      myAthletes.filter(function (a) { return a.team_slug === ann.team_slug; }).forEach(function (a) {
+        cards.push({ ann: ann, a: a, response: responseByKey[ann.id + ":" + a.id] });
+      });
+    });
+
+    wrap.innerHTML = cards.map(function (c) {
+      const overdue = c.ann.deadline && c.ann.deadline < new Date().toISOString().slice(0, 10);
+      return '<div class="card" style="margin-bottom:12px;">' +
+        "<h4>" + escapeHtml(c.ann.title) + "</h4>" +
+        (c.ann.body ? '<p class="muted" style="font-size:14px;">' + escapeHtml(c.ann.body) + "</p>" : "") +
+        (c.ann.deadline ? '<p class="muted" style="font-size:12.5px;">' + (overdue ? "Was due " : "Respond by ") + formatDate(c.ann.deadline) + "</p>" : "") +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px;">' +
+        "<strong>" + escapeHtml(c.a.full_name) + "</strong>" +
+        '<div style="display:flex;gap:6px;">' +
+        '<button type="button" class="btn ' + (c.response === "interested" ? "btn-primary" : "btn-outline-dark") + '" data-interest="' + c.ann.id + '" data-athlete="' + c.a.id + '" data-response="interested" style="padding:6px 14px;font-size:13px;">Interested</button>' +
+        '<button type="button" class="btn ' + (c.response === "not_interested" ? "btn-primary" : "btn-outline-dark") + '" data-interest="' + c.ann.id + '" data-athlete="' + c.a.id + '" data-response="not_interested" style="padding:6px 14px;font-size:13px;">Not Interested</button>' +
+        "</div></div></div>";
+    }).join("");
+
+    wrap.querySelectorAll("[data-interest]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        btn.disabled = true;
+        const { error } = await supabaseClient.from("team_announcement_responses").upsert(
+          { announcement_id: btn.dataset.interest, athlete_id: btn.dataset.athlete, response: btn.dataset.response },
+          { onConflict: "announcement_id,athlete_id" }
+        );
+        btn.disabled = false;
+        if (error) {
+          alert("Could not save your response: " + error.message);
+          return;
+        }
+        loadInterestSection();
+      });
+    });
+  }
 
   async function loadMastersSection() {
     var wrap = document.getElementById("masters-section");
@@ -918,6 +996,7 @@
     await loadAthletes();
     loadTournamentsSection();
     loadMastersSection();
+    loadInterestSection();
 
     const { data: profile } = await supabaseClient
       .from("profiles")
@@ -954,6 +1033,12 @@
       }
     });
 
+    // Two policies feed this: rows tied to this login (user_id) plus rows
+    // tied to one of this parent's athletes (tournament payments, which are
+    // always made without logging in, so user_id is null on those -- only
+    // the athlete link identifies them as belonging to this family). A
+    // single select naturally returns the union of whatever RLS allows, so
+    // this one query already gets both; no need to fetch twice and merge.
     const { data: purchases, error: purchasesError } = await supabaseClient
       .from("purchases")
       .select("id, description, amount_cents, currency, status, created_at")

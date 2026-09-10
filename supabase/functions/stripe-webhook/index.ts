@@ -151,6 +151,14 @@ async function dispatchEvent(
     return await handleTournamentPayment(supabase, session);
   }
 
+  if (session.metadata?.sponsorship_id) {
+    return await handleSponsorshipPayment(supabase, session);
+  }
+
+  if (session.metadata?.hosted_event_invite_token) {
+    return await handleHostedEventPayment(supabase, session);
+  }
+
   if (session.mode === "subscription" && session.metadata?.masters_tier) {
     return await handleMastersCheckout(supabase, session);
   }
@@ -238,6 +246,15 @@ async function dispatchEvent(
     return new Response("db insert failed", { status: 500 });
   }
 
+  if (session.customer_email) {
+    const names = registrations.map((r) => `${r.registration_label} — ${r.athlete_name}`).join("; ");
+    await sendReceiptEmail(
+      session.customer_email,
+      "Thank you for registering with East County Aquatics!",
+      `Thank you for registering: ${names}. A payment receipt for this transaction was sent separately by Stripe.`
+    );
+  }
+
   return new Response("ok", { status: 200 });
 }
 
@@ -318,7 +335,149 @@ async function handleTournamentPayment(
     // because this status flip failed.
   }
 
+  if (payerEmail) {
+    await sendReceiptEmail(
+      payerEmail,
+      `You're registered for ${tournament?.name ?? "the tournament"}!`,
+      `Thank you! ${athlete?.full_name ?? "Your athlete"} is signed up for ${tournament?.name ?? "the tournament"}. ` +
+        `A payment receipt for this transaction was sent separately by Stripe.`
+    );
+  }
+
   return new Response("ok", { status: 200 });
+}
+
+async function handleSponsorshipPayment(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const sponsorshipId = session.metadata!.sponsorship_id!;
+
+  // The row already exists (created by the public form before checkout);
+  // this just flips it to paid. The guard trigger on sponsorships lets this
+  // through because the service role runs with auth.uid() = null.
+  const { data: updated, error } = await supabase
+    .from("sponsorships")
+    .update({
+      status: "paid",
+      paid_at: new Date().toISOString(),
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string" ? session.payment_intent : null,
+    })
+    .eq("id", sponsorshipId)
+    .eq("status", "pending") // idempotency: a repeat delivery finds 0 rows and no-ops
+    .select("company_name, contact_email")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to mark sponsorship paid for session", session.id, error);
+    return new Response("db update failed", { status: 500 });
+  }
+  if (updated) {
+    await sendReceiptEmail(
+      updated.contact_email,
+      "Thank you for sponsoring East County Aquatics!",
+      `Thank you for sponsoring San Diego East County Aquatics on behalf of ${updated.company_name}. ` +
+        `We truly appreciate your support -- we'll be in touch about featuring your business.`
+    );
+  }
+
+  return new Response("ok", { status: 200 });
+}
+
+async function handleHostedEventPayment(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+) {
+  const token = session.metadata!.hosted_event_invite_token!;
+
+  const { data: invite, error: inviteError } = await supabase
+    .from("hosted_event_invites")
+    .select("id, event_id, team_name, contact_email, status")
+    .eq("token", token)
+    .maybeSingle();
+  if (inviteError || !invite) {
+    console.error("Hosted-event webhook: invite not found for token", token);
+    return new Response("invite not found", { status: 200 });
+  }
+  if (invite.status === "paid") {
+    return new Response("already processed", { status: 200 });
+  }
+
+  const { data: hostedEvent } = await supabase
+    .from("hosted_events")
+    .select("name")
+    .eq("id", invite.event_id)
+    .maybeSingle();
+
+  // Recorded in purchases too, alongside every other kind of revenue, so it
+  // shows up in Sign-Ups and the QuickBooks export like everything else.
+  const { error: purchaseError } = await supabase.from("purchases").insert({
+    hosted_event_invite_id: invite.id,
+    description: `${hostedEvent?.name ?? "Hosted Event"} — ${invite.team_name}`,
+    amount_cents: session.amount_total ?? 0,
+    currency: (session.currency ?? "usd").toLowerCase(),
+    status: "paid",
+    stripe_checkout_session_id: session.id,
+    stripe_payment_intent_id:
+      typeof session.payment_intent === "string" ? session.payment_intent : null,
+    payer_name: invite.team_name,
+    payer_email: invite.contact_email,
+  });
+  if (isDuplicate(purchaseError)) {
+    return new Response("already processed", { status: 200 });
+  }
+  if (purchaseError) {
+    console.error("Failed to insert hosted-event purchase for session", session.id, purchaseError);
+    return new Response("db insert failed", { status: 500 });
+  }
+
+  const { error: updateError } = await supabase
+    .from("hosted_event_invites")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", invite.id);
+  if (updateError) {
+    console.error("Failed to mark hosted-event invite paid for session", session.id, updateError);
+  }
+
+  await sendReceiptEmail(
+    invite.contact_email,
+    `You're registered for ${hostedEvent?.name ?? "the event"}!`,
+    `Thank you! ${invite.team_name} is confirmed for ${hostedEvent?.name ?? "the event"}. ` +
+      `A payment receipt for this transaction was sent separately by Stripe.`
+  );
+
+  return new Response("ok", { status: 200 });
+}
+
+// Best-effort thank-you email, sent via Resend (https://resend.com). Never
+// allowed to fail the payment it's attached to -- every call site awaits
+// this but ignores its outcome. With no RESEND_API_KEY set (the default,
+// until the club signs up and adds one) this is a silent no-op, same as
+// the system had no email at all.
+//
+// onboarding@resend.dev requires no domain verification and works
+// immediately once a key exists; swap RECEIPT_EMAIL_FROM for a verified
+// club domain later for better deliverability and branding.
+async function sendReceiptEmail(to: string, subject: string, text: string): Promise<void> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey || !to) return;
+  const from = Deno.env.get("RECEIPT_EMAIL_FROM") || "San Diego East County Aquatics <onboarding@resend.dev>";
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to: [to], subject, text }),
+    });
+    if (!res.ok) {
+      console.error("Resend email failed:", res.status, await res.text());
+    }
+  } catch (err) {
+    console.error("Resend email threw:", err);
+  }
 }
 
 async function handleMastersCheckout(
@@ -345,6 +504,15 @@ async function handleMastersCheckout(
   if (error) {
     console.error("Failed to record masters subscription for session", session.id, error);
     return new Response("db insert failed", { status: 500 });
+  }
+
+  if (session.customer_email) {
+    const tierLabel = tier === "25_under" ? "25 & Under" : "26+";
+    await sendReceiptEmail(
+      session.customer_email,
+      "Welcome to ECA Masters!",
+      `Thank you for subscribing to Masters (${tierLabel}). A payment receipt for this transaction was sent separately by Stripe.`
+    );
   }
 
   return new Response("ok", { status: 200 });

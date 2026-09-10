@@ -57,10 +57,9 @@
       <form id="reg-form">
         <input type="hidden" id="reg-id">
         <div class="field">
-          <label for="team_slug">Team (optional)</label>
-          <select id="team_slug">
-            <option value="">Not tied to a specific team</option>
-          </select>
+          <label>Teams (optional)</label>
+          <p class="field-hint" style="margin-top:0;">Check every team this option applies to &mdash; e.g. one "8U-12U Coed Bundle" option can cover three teams at once. Leave all unchecked for "not tied to a specific team."</p>
+          <div id="team-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px 16px;max-height:180px;overflow-y:auto;border:1px solid #e3edf3;border-radius:8px;padding:10px 12px;"></div>
         </div>
         <div class="field">
           <label for="season">Season</label>
@@ -98,6 +97,37 @@
       </form>
     </div>
 
+    <div class="admin-form" style="margin-top:24px;">
+      <h3 style="cursor:pointer;" id="quick-tournament-toggle">+ Add a Tournament <span class="muted" style="font-weight:400;font-size:13px;">(quick add, without leaving this page)</span></h3>
+      <div id="quick-tournament-body" style="display:none;margin-top:14px;">
+        <div id="qt-msg" class="form-msg"></div>
+        <form id="quick-tournament-form">
+          <div class="field">
+            <label for="qt-name">Tournament Name</label>
+            <input type="text" id="qt-name" required>
+          </div>
+          <div class="field">
+            <label for="qt-date">Date</label>
+            <input type="date" id="qt-date" required>
+          </div>
+          <div class="field">
+            <label for="qt-description">Description (optional)</label>
+            <textarea id="qt-description" rows="2"></textarea>
+          </div>
+          <div class="field">
+            <label for="qt-hotel-name">Hotel (optional)</label>
+            <input type="text" id="qt-hotel-name" placeholder="e.g. Hampton Inn Riverside">
+          </div>
+          <div class="field">
+            <label for="qt-hotel-url">Hotel Booking Link (optional)</label>
+            <input type="url" id="qt-hotel-url" placeholder="https://...">
+          </div>
+          <button type="submit" class="btn btn-primary">Add Tournament</button>
+        </form>
+        <p class="muted" style="font-size:12px;margin-top:10px;">Price tiers, team RSVP and invite links are managed on the <a href="admin-tournaments.html">Tournaments</a> page &mdash; this just gets it on the list quickly.</p>
+      </div>
+    </div>
+
     <div id="reg-list" style="margin-top:32px;"><p class="muted">Loading&hellip;</p></div>
   </div>
 </section>
@@ -126,28 +156,39 @@
   }
 
   let teams = [];
+  // "masters" is not a real schedules row -- added as a plain selectable tag
+  // so a registration option can be flagged for the Masters program too.
+  const EXTRA_TEAM_TAGS = [{ team_slug: "masters", team_label: "Masters" }];
+
   function teamLabel(slug) {
-    const t = teams.find(function (x) { return x.team_slug === slug; });
-    return t ? t.team_label : "";
+    const t = teams.concat(EXTRA_TEAM_TAGS).find(function (x) { return x.team_slug === slug; });
+    return t ? t.team_label : slug;
+  }
+  function selectedTeamSlugs() {
+    return Array.prototype.slice.call(document.querySelectorAll('#team-checkboxes input:checked'))
+      .map(function (cb) { return cb.value; });
   }
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
     teams = data || [];
-    const select = document.getElementById("team_slug");
-    select.innerHTML = '<option value="">Not tied to a specific team</option>' +
-      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+    const wrap = document.getElementById("team-checkboxes");
+    wrap.innerHTML = teams.concat(EXTRA_TEAM_TAGS).map(function (t) {
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:400;white-space:nowrap;">' +
+        '<input type="checkbox" value="' + escapeHtml(t.team_slug) + '" style="width:auto;"> ' + escapeHtml(t.team_label) + "</label>";
+    }).join("");
+    wrap.querySelectorAll('input').forEach(function (cb) { cb.addEventListener("change", suggestLabel); });
   }
 
   function suggestLabel() {
     const labelField = document.getElementById("label");
     if (labelField.dataset.touched) return;
-    const team = teamLabel(document.getElementById("team_slug").value);
+    const teamNames = selectedTeamSlugs().map(teamLabel);
+    const team = teamNames.length === 1 ? teamNames[0] : teamNames.length > 1 ? teamNames.join(" + ") : "";
     const season = document.getElementById("season").value.trim();
     const suggestion = [team, season].filter(Boolean).join(" – ");
     if (suggestion) labelField.value = suggestion;
   }
-  document.getElementById("team_slug").addEventListener("change", suggestLabel);
   document.getElementById("season").addEventListener("input", suggestLabel);
   document.getElementById("label").addEventListener("input", function (e) {
     e.target.dataset.touched = "1";
@@ -175,7 +216,8 @@
           '<div class="admin-list-item">' +
           "<div>" +
           "<h4>" + escapeHtml(o.label) + (o.is_open ? "" : ' <span class="muted" style="font-weight:400;">(closed)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.season ? " &middot; " + escapeHtml(o.season) : "") + (o.team_slug ? " &middot; " + escapeHtml(teamLabel(o.team_slug)) : "") + "</div>" +
+          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.season ? " &middot; " + escapeHtml(o.season) : "") +
+          ((o.team_slugs && o.team_slugs.length) ? " &middot; " + escapeHtml(o.team_slugs.map(teamLabel).join(", ")) : "") + "</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
           '<button data-edit="' + o.id + '">Edit</button>' +
@@ -208,7 +250,9 @@
   function startEdit(o) {
     document.getElementById("form-title").textContent = "Edit Registration Option";
     document.getElementById("reg-id").value = o.id;
-    document.getElementById("team_slug").value = o.team_slug || "";
+    document.querySelectorAll('#team-checkboxes input').forEach(function (cb) {
+      cb.checked = (o.team_slugs || []).indexOf(cb.value) !== -1;
+    });
     document.getElementById("label").value = o.label || "";
     document.getElementById("label").dataset.touched = "1";
     document.getElementById("description").value = o.description || "";
@@ -247,7 +291,7 @@
     }
 
     const payload = {
-      team_slug: document.getElementById("team_slug").value || null,
+      team_slugs: selectedTeamSlugs(),
       label: document.getElementById("label").value.trim(),
       description: document.getElementById("description").value.trim() || null,
       amount_cents: Math.round(dollars * 100),
@@ -272,6 +316,38 @@
     msg.textContent = id ? "Registration option updated." : "Registration option added.";
     resetForm();
     loadOptions();
+  });
+
+  document.getElementById("quick-tournament-toggle").addEventListener("click", function () {
+    const body = document.getElementById("quick-tournament-body");
+    body.style.display = body.style.display === "none" ? "block" : "none";
+  });
+
+  document.getElementById("quick-tournament-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("qt-msg");
+    msg.className = "form-msg";
+
+    const payload = {
+      name: document.getElementById("qt-name").value.trim(),
+      event_date: document.getElementById("qt-date").value,
+      description: document.getElementById("qt-description").value.trim() || null,
+      hotel_name: document.getElementById("qt-hotel-name").value.trim() || null,
+      hotel_url: document.getElementById("qt-hotel-url").value.trim() || null,
+    };
+
+    const { error } = await supabaseClient.from("tournaments").insert(payload);
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    // Static, trusted markup (not user input) -- innerHTML is fine here.
+    msg.innerHTML = 'Tournament added. Set up price tiers and invites on the ' +
+      '<a href="admin-tournaments.html" style="color:inherit;font-weight:700;">Tournaments page</a>.';
+    document.getElementById("quick-tournament-form").reset();
   });
 
   (async function () {

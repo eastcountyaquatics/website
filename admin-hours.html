@@ -106,6 +106,10 @@
   var loadedRows = [];
   var nameById = {};
   var teamLabels = {};
+  var rateByCoachId = {}; // owner: everyone's; coach: just their own (RLS)
+  function money(cents) {
+    return "$" + (cents / 100).toFixed(2);
+  }
 
   function monthStart() {
     const d = new Date();
@@ -152,12 +156,20 @@
       const rows = byCoach[coachId];
       const total = rows.reduce(function (s, r) { return s + parseFloat(r.hours); }, 0);
       const sessions = rows.length;
+      const rateCents = rateByCoachId[coachId];
+      const payRow = rateCents != null
+        ? '<div class="hours-total" style="background:#f7f9fc;margin-top:-6px;">' +
+            '<div class="muted" style="font-size:13px;">' + total.toFixed(2) + " hrs \u00d7 " + money(rateCents) + "/hr</div>" +
+            '<div style="font-weight:800;color:var(--blue);">' + money(Math.round(total * rateCents)) + "</div>" +
+          "</div>"
+        : "";
       return '<div style="margin-bottom:18px;">' +
         '<div class="hours-total">' +
           "<div><strong>" + escapeHtml(nameById[coachId] || "Coach") + "</strong>" +
             '<p class="hours-detail">' + sessions + (sessions === 1 ? " session" : " sessions") + "</p></div>" +
           '<div class="big">' + total.toFixed(2) + " hrs</div>" +
         "</div>" +
+        payRow +
         '<details><summary class="muted" style="cursor:pointer;font-size:13px;padding-left:16px;">Show each session</summary>' +
         rows.map(function (r) {
           return '<div class="hours-row"><span>' + fmtDate(r.session_date) + " &middot; " +
@@ -202,14 +214,16 @@
 
     document.getElementById("from-date").value = monthStart();
 
-    const [{ data: profiles }, { data: teams }] = await Promise.all([
+    const [{ data: profiles }, { data: teams }, { data: rates }] = await Promise.all([
       isOwner
         ? supabaseClient.from("profiles").select("id, full_name, email")
         : Promise.resolve({ data: [{ id: auth.session.user.id, full_name: "You", email: "" }] }),
       supabaseClient.from("schedules").select("team_slug, team_label"),
+      supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
     ]);
     (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
     (teams || []).forEach(function (t) { teamLabels[t.team_slug] = t.team_label; });
+    (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
 
     load();
   })();

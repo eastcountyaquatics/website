@@ -80,6 +80,7 @@
             <button type="button" data-block="H2">Heading</button>
             <button type="button" data-block="H3">Subheading</button>
             <button type="button" data-block="P">Normal</button>
+            <button type="button" id="add-section-btn" style="font-weight:700;">+ Add Section</button>
             <button type="button" data-cmd="insertUnorderedList">&bull; List</button>
             <button type="button" data-cmd="insertOrderedList">1. List</button>
             <button type="button" id="link-btn">Link</button>
@@ -156,6 +157,26 @@
       document.execCommand("formatBlock", false, btn.dataset.block);
     });
   });
+  // Drops a ready-made heading + placeholder paragraph at the end of the
+  // page and puts the cursor in the placeholder text, selected, so typing
+  // immediately replaces it -- the closest thing to a real "add section"
+  // button this contenteditable-based editor can offer.
+  document.getElementById("add-section-btn").addEventListener("click", function () {
+    editor.focus();
+    const heading = document.createElement("h2");
+    heading.textContent = "New Section";
+    const para = document.createElement("p");
+    para.textContent = "Write this section's text here.";
+    editor.appendChild(heading);
+    editor.appendChild(para);
+    const range = document.createRange();
+    range.selectNodeContents(para);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    para.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
   document.getElementById("link-btn").addEventListener("click", function () {
     const url = prompt("Link address (https://... or another page like teams.html)");
     if (!url) return;

@@ -93,6 +93,24 @@
           <p class="muted">Set age/gender pricing and send invite-only payment links.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="interest-card" style="display:none;">
+        <a href="admin-interest.html" style="display:block;color:inherit;">
+          <h3>Team Interest</h3>
+          <p class="muted">Post a question to a team and see who's interested.</p>
+        </a>
+      </div>
+      <div class="admin-nav-card" id="sponsors-card" style="display:none;">
+        <a href="admin-sponsors.html" style="display:block;color:inherit;">
+          <h3>Sponsorships</h3>
+          <p class="muted">Sponsor inquiries and payments from the public form.</p>
+        </a>
+      </div>
+      <div class="admin-nav-card" id="hosted-events-card" style="display:none;">
+        <a href="admin-hosted-events.html" style="display:block;color:inherit;">
+          <h3>Hosted Events</h3>
+          <p class="muted">Invite outside teams to a scrimmage or tournament you're hosting and collect their fee.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="coupons-card" style="display:none;">
         <a href="admin-coupons.html" style="display:block;color:inherit;">
           <h3>Coupon Codes</h3>
@@ -163,12 +181,15 @@
       document.getElementById("athletes-card").style.display = "block";
       document.getElementById("attendance-card").style.display = "block";
       document.getElementById("tournaments-card").style.display = "block";
+      document.getElementById("interest-card").style.display = "block";
+      document.getElementById("hosted-events-card").style.display = "block";
       document.getElementById("messages-card").style.display = "block";
       document.getElementById("hours-card").style.display = "block";
       showUnreadMessages();
     }
     if (auth.role === "owner" || auth.role === "accountant") {
       document.getElementById("signups-card").style.display = "block";
+      document.getElementById("sponsors-card").style.display = "block";
     }
     if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";

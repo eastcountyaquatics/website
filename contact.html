@@ -81,7 +81,7 @@
       </div>
       <div class="card" style="border-top-color:var(--gold);">
         <h3 data-cms="contact-0010">Contact Form</h3>
-        <p class="muted" data-cms="contact-0011">Pick who you'd like to reach and your message goes straight to them. Leave your name and email blank to post anonymously &mdash; we just won't be able to write back.</p>
+        <p class="muted" data-cms="contact-0011">General questions open your email app addressed to the club. Pick a specific coach instead and it's sent to them directly through the site &mdash; leave your name and email blank to post anonymously, we just won't be able to write back.</p>
 
         <div id="contact-msg" class="form-msg"></div>
 
@@ -267,6 +267,33 @@
     if (email && email.indexOf("@") === -1) {
       msg.className = "form-msg error";
       msg.textContent = "That email address doesn't look right. Fix it, or leave it blank to post anonymously.";
+      return;
+    }
+
+    const recipientCoachId = document.getElementById("contact-to").value;
+
+    // General questions (no specific coach picked) go straight to email
+    // instead of the in-site inbox -- most contact-form traffic is general,
+    // and opening the visitor's own mail client is instant and familiar
+    // rather than landing somewhere that has to be checked separately.
+    // A message addressed to a specific coach still routes through the
+    // site, since that is what gets it into the right coach's inbox.
+    if (!recipientCoachId) {
+      const topic = document.getElementById("contact-topic").value;
+      const subject = "ECA Contact Form" + (topic ? ": " + topic : "");
+      const lines = [];
+      if (document.getElementById("contact-name").value.trim()) {
+        lines.push("From: " + document.getElementById("contact-name").value.trim());
+      }
+      if (email) lines.push("Reply to: " + email);
+      lines.push("");
+      lines.push(body);
+      const mailto = "mailto:eastcountyaquatics@gmail.com" +
+        "?subject=" + encodeURIComponent(subject) +
+        "&body=" + encodeURIComponent(lines.join("\n"));
+      window.location.href = mailto;
+      msg.className = "form-msg success";
+      msg.textContent = "Opening your email app, addressed to eastcountyaquatics@gmail.com. If nothing opens, email us directly at that address.";
       return;
     }
 

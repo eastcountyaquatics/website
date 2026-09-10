@@ -75,6 +75,11 @@
           </select>
           <p class="field-hint">Linking an account sends this coach's contact-form messages straight to their own inbox. Until then the owner receives them.</p>
         </div>
+        <div class="field" id="rate-field" style="display:none;">
+          <label for="hourly_rate">Hourly Rate ($)</label>
+          <input type="number" id="hourly_rate" step="0.01" min="0" placeholder="e.g. 25.00" style="max-width:160px;">
+          <p class="field-hint">Only you and this coach can see their rate. Requires an account linked above (rate is stored against that account).</p>
+        </div>
         <div class="field">
           <label for="bio">Bio (optional)</label>
           <textarea id="bio" rows="3"></textarea>
@@ -120,6 +125,8 @@
 <script src="js/main.js"></script>
 <script>
   let canEdit = false;
+  let isOwnerView = false;
+  var rateByProfileId = {}; // profile_id -> hourly_rate_cents, owner-only
 
   function escapeHtml(str) {
     const div = document.createElement("div");
@@ -213,6 +220,10 @@
     document.getElementById("photo_url").value = coach.photo_url || "";
     document.getElementById("sort_order").value = coach.sort_order || 0;
     document.getElementById("profile_id").value = coach.profile_id || "";
+    if (isOwnerView) {
+      const rateCents = coach.profile_id ? rateByProfileId[coach.profile_id] : null;
+      document.getElementById("hourly_rate").value = rateCents != null ? (rateCents / 100).toFixed(2) : "";
+    }
     document.getElementById("submit-btn").textContent = "Save Changes";
     document.getElementById("cancel-edit-btn").style.display = "inline-block";
     updatePhotoPreview();
@@ -221,6 +232,7 @@
 
   function resetForm() {
     document.getElementById("coach-form").reset();
+    document.getElementById("hourly_rate").value = "";
     document.getElementById("coach-id").value = "";
     document.getElementById("form-title").textContent = "Add a Coach";
     document.getElementById("submit-btn").textContent = "Add Coach";
@@ -246,6 +258,15 @@
       opt.textContent = (p.full_name || "(no name)") + " \u2014 " + p.email;
       select.appendChild(opt);
     });
+  }
+
+  // Pay rates live in their own owner-only table (never the public coaches
+  // roster) -- only fetched at all when the viewer is the owner.
+  async function loadPayRates() {
+    document.getElementById("rate-field").style.display = "block";
+    const { data } = await supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents");
+    rateByProfileId = {};
+    (data || []).forEach(function (r) { rateByProfileId[r.coach_id] = r.hourly_rate_cents; });
   }
 
   document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
@@ -280,6 +301,35 @@
       return;
     }
 
+    // Pay rate is a separate owner-only table, keyed by the linked account --
+    // save it only when there is an account to attach it to.
+    if (isOwnerView) {
+      // payload.profile_id is always set at this point -- the picker is only
+      // ever enabled (and thus only ever included in the payload) for the
+      // owner, and isOwnerView is exactly that condition.
+      const linkedProfileId = payload.profile_id;
+      const rateRaw = document.getElementById("hourly_rate").value.trim();
+      if (linkedProfileId && rateRaw) {
+        const dollars = parseFloat(rateRaw);
+        if (!isNaN(dollars) && dollars >= 0) {
+          const rateResult = await supabaseClient.from("coach_pay_rates").upsert(
+            { coach_id: linkedProfileId, hourly_rate_cents: Math.round(dollars * 100) },
+            { onConflict: "coach_id" }
+          );
+          if (rateResult.error) {
+            msg.className = "form-msg error";
+            msg.textContent = "Coach saved, but the pay rate could not be saved: " + rateResult.error.message;
+            resetForm();
+            loadCoaches();
+            return;
+          }
+        }
+      } else if (linkedProfileId && !rateRaw) {
+        // Field cleared on purpose: drop any previously saved rate.
+        await supabaseClient.from("coach_pay_rates").delete().eq("coach_id", linkedProfileId);
+      }
+    }
+
     msg.className = "form-msg success";
     msg.textContent = id ? "Coach updated." : "Coach added.";
     resetForm();
@@ -289,7 +339,9 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
-    await loadAccountOptions(auth.role === "owner");
+    isOwnerView = auth.role === "owner";
+    await loadAccountOptions(isOwnerView);
+    if (isOwnerView) await loadPayRates();
     canEdit = auth.role === "owner" || auth.role === "coach";
     if (!canEdit) {
       document.getElementById("coach-form-wrap").style.display = "none";

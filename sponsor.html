@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Become a Sponsor | San Diego East County Aquatics</title>
+<meta name="description" content="Get in touch with San Diego East County Aquatics water polo club.">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://eastcountyaquatics.github.io/website/contact.html">
+<meta property="og:title" content="Become a Sponsor | San Diego East County Aquatics">
+<meta property="og:description" content="Get in touch with San Diego East County Aquatics water polo club.">
+<meta property="og:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Become a Sponsor | San Diego East County Aquatics">
+<meta name="twitter:description" content="Get in touch with San Diego East County Aquatics water polo club.">
+<meta name="twitter:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .contact-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+  #contact-form textarea{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;}
+  #contact-form textarea:focus{outline:2px solid var(--aqua);outline-offset:1px;border-color:var(--blue);}
+  #contact-form select{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb">Contact</span>
+    <h1 data-cms="contact-0001">Get in Touch</h1>
+    <p data-cms="contact-0002">Questions about joining a team, programs, or sponsoring the club? We'd love to hear from you.</p>
+  </div>
+  <div class="waves">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <span class="breadcrumb">Sponsors &amp; Donors</span>
+    <h1>Become a Sponsor</h1>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:640px;">
+    <p class="muted" style="margin-bottom:20px;">Sponsorship supports pool time, equipment, and travel for tournaments while putting your business in front of East County families. Tell us about your business and what you'd like us to feature, then pay securely by card below.</p>
+
+    <div id="sponsor-msg" class="form-msg"></div>
+    <div class="card" style="border-top-color:var(--gold);">
+      <form id="sponsor-form">
+        <div class="field">
+          <label for="sp-company">Company / Individual Name</label>
+          <input type="text" id="sp-company" required>
+        </div>
+        <div class="field">
+          <label for="sp-contact-name">Contact Name</label>
+          <input type="text" id="sp-contact-name">
+        </div>
+        <div class="field">
+          <label for="sp-email">Contact Email</label>
+          <input type="email" id="sp-email" required>
+        </div>
+        <div class="field">
+          <label for="sp-phone">Contact Phone (optional)</label>
+          <input type="tel" id="sp-phone">
+        </div>
+        <div class="field">
+          <label for="sp-tier">Sponsorship Level (optional)</label>
+          <input type="text" id="sp-tier" placeholder="e.g. Gold, Silver, Bronze, or describe your own">
+        </div>
+        <div class="field">
+          <label for="sp-amount">Amount (USD)</label>
+          <input type="number" id="sp-amount" step="0.01" min="1" placeholder="500.00" required>
+        </div>
+        <div class="field">
+          <label for="sp-website">Your Website (optional)</label>
+          <input type="url" id="sp-website" placeholder="https://...">
+        </div>
+        <div class="field">
+          <label for="sp-logo">Logo Image URL (optional)</label>
+          <input type="url" id="sp-logo" placeholder="https://...">
+          <p class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
+        </div>
+        <div class="field">
+          <label for="sp-blurb">What would you like us to say about your business? (optional)</label>
+          <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured."></textarea>
+        </div>
+        <button type="submit" id="sponsor-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
+      </form>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit. Prefer to pay another way, or have questions first? <a href="contact.html">Contact us</a>.</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  (function () {
+    const status = new URLSearchParams(window.location.search).get("status");
+    if (status === "success") {
+      document.querySelector(".card").outerHTML =
+        '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
+        "<strong>Thank you for your sponsorship!</strong> A receipt was sent to your email. We'll be in touch about featuring your business.</div>";
+    } else if (status === "cancelled") {
+      document.getElementById("sponsor-msg").className = "form-msg error";
+      document.getElementById("sponsor-msg").textContent = "Checkout was cancelled — no payment was made. You can try again below.";
+    }
+  })();
+
+  document.getElementById("sponsor-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("sponsor-msg");
+    const btn = document.getElementById("sponsor-submit");
+    msg.className = "form-msg";
+
+    const dollars = parseFloat(document.getElementById("sp-amount").value);
+    if (isNaN(dollars) || dollars < 1) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter an amount of at least $1.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    // Inserted directly (RLS lets anyone submit a pending sponsorship), then
+    // the checkout function looks it up by id to build the Stripe session --
+    // this keeps the amount and company info authoritative in the database
+    // rather than trusting whatever the browser sends at checkout time.
+    const { data: row, error } = await supabaseClient
+      .from("sponsorships")
+      .insert({
+        company_name: document.getElementById("sp-company").value.trim(),
+        contact_name: document.getElementById("sp-contact-name").value.trim() || null,
+        contact_email: document.getElementById("sp-email").value.trim(),
+        contact_phone: document.getElementById("sp-phone").value.trim() || null,
+        tier: document.getElementById("sp-tier").value.trim() || null,
+        amount_cents: Math.round(dollars * 100),
+        website_url: document.getElementById("sp-website").value.trim() || null,
+        logo_url: document.getElementById("sp-logo").value.trim() || null,
+        blurb: document.getElementById("sp-blurb").value.trim() || null,
+      })
+      .select("id")
+      .single();
+
+    if (error || !row) {
+      btn.disabled = false;
+      btn.textContent = "Continue to Payment";
+      msg.className = "form-msg error";
+      msg.textContent = "Could not submit: " + (error ? error.message : "unknown error");
+      return;
+    }
+
+    const { data, error: fnError } = await supabaseClient.functions.invoke("create-sponsorship-checkout", {
+      body: { sponsorship_id: row.id },
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Continue to Payment";
+
+    if (fnError || !data || !data.url) {
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(fnError, data, "Your sponsorship was saved, but we could not start checkout. Please contact us to arrange payment.");
+      return;
+    }
+
+    window.location.href = data.url;
+  });
+</script>
+</body>
+</html>

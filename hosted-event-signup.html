@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tournament Invite | San Diego East County Aquatics</title>
+<title>Event Invite | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
@@ -42,8 +42,8 @@
 
 <section class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Tournament Invite</span>
-    <h1 id="page-title">Tournament Invite</h1>
+    <span class="breadcrumb">Event Invite</span>
+    <h1 id="page-title">Event Invite</h1>
   </div>
 </section>
 
@@ -93,33 +93,30 @@
 
   async function init() {
     if (!token) {
-      renderError("This link is missing its invite code. Please use the exact link the club sent you.");
+      renderError("This link is missing its invite code. Please use the exact link you were sent.");
       return;
     }
 
-    const { data, error } = await supabaseClient.functions.invoke("get-tournament-invite", { body: { token: token } });
+    const { data, error } = await supabaseClient.functions.invoke("get-hosted-event-invite", { body: { token: token } });
     if (error || !data || data.error) {
       renderError(await functionErrorMessage(error, data, "This invite link could not be loaded. Please contact the club."));
       return;
     }
 
-    document.getElementById("page-title").textContent = data.tournament.name;
-    document.title = data.tournament.name + " Invite | San Diego East County Aquatics";
+    document.getElementById("page-title").textContent = data.event.name;
+    document.title = data.event.name + " Invite | San Diego East County Aquatics";
 
     if (checkoutStatus === "success" || data.status === "paid") {
       cardEl.innerHTML =
         "<h3>You're registered!</h3>" +
-        "<p class=\"muted\">" + escapeHtml(data.athlete.full_name) + " is signed up for " + escapeHtml(data.tournament.name) + ". A receipt was sent to your email.</p>";
+        "<p class=\"muted\">" + escapeHtml(data.team_name) + " is signed up for " + escapeHtml(data.event.name) + ". A receipt was sent to your email.</p>";
       return;
     }
-    // Payment cutoff passed, event over, or tournament not published yet:
-    // show why rather than a Pay button that checkout will refuse.
     if (data.closed_reason) {
       cardEl.innerHTML =
-        "<h3>" + escapeHtml(data.athlete.full_name) + "</h3>" +
-        '<p class="muted"><strong>Date:</strong> ' + formatDate(data.tournament.event_date) + "</p>" +
-        '<div class="form-msg error" style="display:block;">' + escapeHtml(data.closed_reason) + "</div>" +
-        '<p class="muted" style="margin-top:16px;">Questions? <a href="contact.html">Get in touch with the club.</a></p>';
+        "<h3>" + escapeHtml(data.team_name) + "</h3>" +
+        '<p class="muted"><strong>Date:</strong> ' + formatDate(data.event.event_date) + "</p>" +
+        '<div class="form-msg error" style="display:block;">' + escapeHtml(data.closed_reason) + "</div>";
       return;
     }
 
@@ -132,38 +129,26 @@
 
     const infoWrap = document.createElement("div");
     infoWrap.innerHTML =
-      "<h3>" + escapeHtml(data.athlete.full_name) + "</h3>" +
-      (data.tournament.description ? '<p class="muted">' + escapeHtml(data.tournament.description) + "</p>" : "") +
-      '<p class="muted"><strong>Date:</strong> ' + formatDate(data.tournament.event_date) + "</p>" +
-      (data.tournament.rsvp_deadline
-        ? '<p class="muted"><strong>Pay by:</strong> ' + formatDate(data.tournament.rsvp_deadline) +
-          " — only athletes paid by this date are on the official roster.</p>"
+      "<h3>" + escapeHtml(data.team_name) + "</h3>" +
+      (data.event.description ? '<p class="muted">' + escapeHtml(data.event.description) + "</p>" : "") +
+      '<p class="muted"><strong>Date:</strong> ' + formatDate(data.event.event_date) + "</p>" +
+      (data.event.level ? '<p class="muted"><strong>Level:</strong> ' + escapeHtml(data.event.level) + "</p>" : "") +
+      (data.event.location ? '<p class="muted"><strong>Location:</strong> ' + escapeHtml(data.event.location) + "</p>" : "") +
+      (data.event.hotel_name
+        ? '<p class="muted"><strong>Hotel:</strong> ' + (data.event.hotel_url
+            ? '<a href="' + escapeHtml(data.event.hotel_url) + '" target="_blank" rel="noopener">' + escapeHtml(data.event.hotel_name) + "</a>"
+            : escapeHtml(data.event.hotel_name)) + "</p>"
         : "") +
-      (data.tournament.location ? '<p class="muted"><strong>Location:</strong> ' + escapeHtml(data.tournament.location) + "</p>" : "") +
-      (data.tournament.hotel_name
-        ? '<p class="muted"><strong>Hotel:</strong> ' + (data.tournament.hotel_url
-            ? '<a href="' + escapeHtml(data.tournament.hotel_url) + '" target="_blank" rel="noopener">' + escapeHtml(data.tournament.hotel_name) + "</a>"
-            : escapeHtml(data.tournament.hotel_name)) + "</p>"
-        : "") +
-      (data.tournament.requirements ? '<p class="muted"><strong>Requirements:</strong> ' + escapeHtml(data.tournament.requirements) + "</p>" : "") +
-      '<div class="invite-price">' + formatAmount(data.tier.amount_cents) + "</div>" +
-      '<p class="muted" style="margin-bottom:20px;">' + escapeHtml(data.tier.label) + "</p>";
+      '<div class="invite-price">' + formatAmount(data.event.fee_cents) + "</div>" +
+      '<p class="muted" style="margin-bottom:20px;">Team registration fee</p>';
     cardEl.appendChild(infoWrap);
 
     const form = document.createElement("form");
     form.id = "invite-form";
     form.innerHTML =
-      '<div class="field"><label for="payer_name">Your Name</label><input type="text" id="payer_name" required></div>' +
-      '<div class="field"><label for="payer_email">Your Email</label><input type="email" id="payer_email" required></div>' +
-      (data.tournament.shirt_size_enabled
-        ? '<div class="field"><label for="shirt_size">Shirt Size</label>' +
-          '<select id="shirt_size"><option value="">Select one...</option>' +
-          "<option>Youth Small</option><option>Youth Medium</option><option>Youth Large</option>" +
-          "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
-          "</select></div>"
-        : "") +
+      '<div class="field"><label for="contact_email">Contact Email</label><input type="email" id="contact_email" required></div>' +
       '<div id="invite-msg" class="form-msg"></div>' +
-      '<button type="submit" class="btn btn-primary" style="width:100%;">Pay ' + formatAmount(data.tier.amount_cents) + "</button>";
+      '<button type="submit" class="btn btn-primary" style="width:100%;">Pay ' + formatAmount(data.event.fee_cents) + "</button>";
     cardEl.appendChild(form);
 
     form.addEventListener("submit", async function (e) {
@@ -176,17 +161,14 @@
 
       const payload = {
         token: token,
-        payer_name: document.getElementById("payer_name").value.trim(),
-        payer_email: document.getElementById("payer_email").value.trim(),
+        contact_email: document.getElementById("contact_email").value.trim(),
       };
-      const shirtSizeEl = document.getElementById("shirt_size");
-      if (shirtSizeEl) payload.shirt_size = shirtSizeEl.value;
 
-      const { data: checkoutData, error: checkoutError } = await supabaseClient.functions.invoke("create-tournament-checkout", { body: payload });
+      const { data: checkoutData, error: checkoutError } = await supabaseClient.functions.invoke("create-hosted-event-checkout", { body: payload });
 
       if (checkoutError || !checkoutData || !checkoutData.url) {
         submitBtn.disabled = false;
-        submitBtn.textContent = "Pay " + formatAmount(data.tier.amount_cents);
+        submitBtn.textContent = "Pay " + formatAmount(data.event.fee_cents);
         msg.className = "form-msg error";
         msg.textContent = await functionErrorMessage(checkoutError, checkoutData, "Could not start checkout. Please try again.");
         return;

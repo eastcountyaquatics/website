@@ -44,6 +44,9 @@ Deno.serve(async (req) => {
         description: result.tournament.description,
         event_date: result.tournament.event_date,
         rsvp_deadline: result.tournament.rsvp_deadline,
+        location: result.tournament.location,
+        hotel_name: result.tournament.hotel_name,
+        hotel_url: result.tournament.hotel_url,
         requirements: result.tournament.requirements,
         shirt_size_enabled: result.tournament.shirt_size_enabled,
       },
@@ -71,7 +74,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline")
+    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, location, hotel_name, hotel_url")
     .eq("id", invite.tournament_id)
     .maybeSingle();
   if (tournamentError || !tournament) return { error: "This tournament could not be found.", status: 404 } as const;

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hosted Events | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Hosted Events</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
+  .event-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
+  .event-detail.open{display:block;}
+  .invite-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;flex-wrap:wrap;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+
+    <div class="notice" style="margin-bottom:24px;">
+      For tournaments or scrimmages this club is hosting where you collect a fee from visiting teams. Invite a team, send them the signup link, and they pay their own fee &mdash; no login needed on their end.
+    </div>
+
+    <div class="admin-form">
+      <h3 id="event-form-title">Add a Hosted Event</h3>
+      <div id="event-form-msg" class="form-msg"></div>
+      <form id="event-form">
+        <input type="hidden" id="ev-id">
+        <div class="field">
+          <label for="ev-name">Event Name</label>
+          <input type="text" id="ev-name" placeholder="e.g. ECA Fall Invitational" required>
+        </div>
+        <div class="field">
+          <label for="ev-date">Event Date</label>
+          <input type="date" id="ev-date" required>
+        </div>
+        <div class="field">
+          <label for="ev-level">Level (optional)</label>
+          <input type="text" id="ev-level" placeholder="e.g. 10U-14U, all levels">
+        </div>
+        <div class="field">
+          <label for="ev-description">Description (optional)</label>
+          <textarea id="ev-description" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label for="ev-location">Location (optional)</label>
+          <input type="text" id="ev-location">
+        </div>
+        <div class="field">
+          <label for="ev-hotel-name">Hotel (optional)</label>
+          <input type="text" id="ev-hotel-name">
+        </div>
+        <div class="field">
+          <label for="ev-hotel-url">Hotel Booking Link (optional)</label>
+          <input type="url" id="ev-hotel-url">
+        </div>
+        <div class="field">
+          <label for="ev-fee">Fee per Team (USD)</label>
+          <input type="number" id="ev-fee" step="0.01" min="0.01" required>
+        </div>
+        <div class="field">
+          <label for="ev-max-teams">Max Teams (optional)</label>
+          <input type="number" id="ev-max-teams" min="1">
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button type="submit" id="event-submit-btn" class="btn btn-primary">Add Event</button>
+          <button type="button" id="event-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <h3 style="margin-top:32px;">All Hosted Events</h3>
+    <div id="event-list"><p class="muted">Loading&hellip;</p></div>
+
+    <div class="event-detail" id="event-detail">
+      <h3 id="detail-heading">Invite a Team</h3>
+      <div id="invite-form-msg" class="form-msg"></div>
+      <form id="invite-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="margin:0;flex:1;min-width:160px;">
+          <label for="inv-team-name">Team Name</label>
+          <input type="text" id="inv-team-name" required>
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:180px;">
+          <label for="inv-email">Contact Email</label>
+          <input type="email" id="inv-email" required>
+        </div>
+        <div class="field" style="margin:0;width:150px;">
+          <label for="inv-phone">Contact Phone</label>
+          <input type="tel" id="inv-phone">
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Signup Link</button>
+      </form>
+      <div id="new-invite-link" style="display:none;" class="invite-link-box">
+        <input type="text" id="new-invite-url" readonly>
+        <button type="button" id="copy-invite-btn" class="btn btn-outline-dark">Copy</button>
+      </div>
+
+      <h4 style="margin-top:24px;">Invited Teams <span id="team-count" class="muted" style="font-weight:400;"></span></h4>
+      <div id="invite-list"><p class="muted">No teams invited yet.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str || "";
+    return div.innerHTML;
+  }
+  function formatAmount(cents) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+  }
+  function formatDate(iso) {
+    if (!iso) return "";
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  let events = [];
+  let currentEventId = null;
+
+  function buildInviteUrl(token) {
+    return window.location.origin + window.location.pathname.replace("admin-hosted-events.html", "hosted-event-signup.html") + "?token=" + token;
+  }
+
+  async function loadEvents() {
+    const { data, error } = await supabaseClient
+      .from("hosted_events")
+      .select("*")
+      .order("event_date", { ascending: true });
+
+    const listEl = document.getElementById("event-list");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load events: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    events = data || [];
+    if (events.length === 0) {
+      listEl.innerHTML = '<p class="muted">No hosted events yet. Add one above.</p>';
+      return;
+    }
+
+    listEl.innerHTML = events.map(function (ev) {
+      return '<div class="admin-list-item" style="cursor:pointer;" data-select="' + ev.id + '">' +
+        "<div><h4>" + escapeHtml(ev.name) + "</h4>" +
+        '<div class="muted" style="font-size:13px;">' + formatDate(ev.event_date) + " &middot; " + formatAmount(ev.fee_cents) + "/team" +
+        (ev.max_teams ? " &middot; up to " + ev.max_teams + " teams" : "") + "</div></div>" +
+        '<div class="admin-list-actions"><button data-edit="' + ev.id + '">Edit</button></div>' +
+        "</div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-select]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target.closest("button")) return;
+        selectEvent(row.dataset.select);
+      });
+    });
+    listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const ev = events.find(function (x) { return x.id === btn.dataset.edit; });
+        if (ev) startEditEvent(ev);
+      });
+    });
+  }
+
+  function startEditEvent(ev) {
+    document.getElementById("event-form-title").textContent = "Edit Hosted Event";
+    document.getElementById("ev-id").value = ev.id;
+    document.getElementById("ev-name").value = ev.name;
+    document.getElementById("ev-date").value = ev.event_date;
+    document.getElementById("ev-level").value = ev.level || "";
+    document.getElementById("ev-description").value = ev.description || "";
+    document.getElementById("ev-location").value = ev.location || "";
+    document.getElementById("ev-hotel-name").value = ev.hotel_name || "";
+    document.getElementById("ev-hotel-url").value = ev.hotel_url || "";
+    document.getElementById("ev-fee").value = (ev.fee_cents / 100).toFixed(2);
+    document.getElementById("ev-max-teams").value = ev.max_teams || "";
+    document.getElementById("event-submit-btn").textContent = "Save Changes";
+    document.getElementById("event-cancel-btn").style.display = "inline-block";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetEventForm() {
+    document.getElementById("event-form").reset();
+    document.getElementById("ev-id").value = "";
+    document.getElementById("event-form-title").textContent = "Add a Hosted Event";
+    document.getElementById("event-submit-btn").textContent = "Add Event";
+    document.getElementById("event-cancel-btn").style.display = "none";
+  }
+  document.getElementById("event-cancel-btn").addEventListener("click", resetEventForm);
+
+  document.getElementById("event-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("event-form-msg");
+    msg.className = "form-msg";
+
+    const dollars = parseFloat(document.getElementById("ev-fee").value);
+    if (isNaN(dollars) || dollars <= 0) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter a fee greater than $0.";
+      return;
+    }
+
+    const payload = {
+      name: document.getElementById("ev-name").value.trim(),
+      event_date: document.getElementById("ev-date").value,
+      level: document.getElementById("ev-level").value.trim() || null,
+      description: document.getElementById("ev-description").value.trim() || null,
+      location: document.getElementById("ev-location").value.trim() || null,
+      hotel_name: document.getElementById("ev-hotel-name").value.trim() || null,
+      hotel_url: document.getElementById("ev-hotel-url").value.trim() || null,
+      fee_cents: Math.round(dollars * 100),
+      max_teams: document.getElementById("ev-max-teams").value ? parseInt(document.getElementById("ev-max-teams").value, 10) : null,
+    };
+
+    const id = document.getElementById("ev-id").value;
+    const result = id
+      ? await supabaseClient.from("hosted_events").update(payload).eq("id", id)
+      : await supabaseClient.from("hosted_events").insert(payload);
+
+    if (result.error) {
+      msg.className = "form-msg error";
+      msg.textContent = result.error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = id ? "Event updated." : "Event added.";
+    resetEventForm();
+    loadEvents();
+  });
+
+  function selectEvent(id) {
+    currentEventId = id;
+    const ev = events.find(function (x) { return x.id === id; });
+    document.getElementById("detail-heading").textContent = "Invite a Team \u2014 " + (ev ? ev.name : "");
+    document.getElementById("event-detail").classList.add("open");
+    document.getElementById("new-invite-link").style.display = "none";
+    loadInvites();
+    document.getElementById("event-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function loadInvites() {
+    const ev = events.find(function (x) { return x.id === currentEventId; });
+    const { data } = await supabaseClient
+      .from("hosted_event_invites")
+      .select("id, team_name, contact_email, contact_phone, token, status, created_at")
+      .eq("event_id", currentEventId)
+      .order("created_at", { ascending: false });
+
+    const listEl = document.getElementById("invite-list");
+    const countEl = document.getElementById("team-count");
+    const paidCount = (data || []).filter(function (i) { return i.status === "paid"; }).length;
+    countEl.textContent = data && data.length
+      ? "(" + paidCount + " paid of " + data.length + " invited" + (ev && ev.max_teams ? ", cap " + ev.max_teams : "") + ")"
+      : "";
+
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<p class="muted">No teams invited yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = data.map(function (i) {
+      const url = buildInviteUrl(i.token);
+      return '<div class="invite-row">' +
+        "<div><strong>" + escapeHtml(i.team_name) + "</strong> &middot; " +
+        '<span class="status-pill ' + (i.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(i.status) + "</span>" +
+        '<div class="muted" style="font-size:12.5px;">' + escapeHtml(i.contact_email) + (i.contact_phone ? " &middot; " + escapeHtml(i.contact_phone) : "") + "</div></div>" +
+        '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(url) + '" style="padding:6px 12px;font-size:13px;">Copy Link</button>' +
+        "</div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        navigator.clipboard.writeText(btn.dataset.copyLink);
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
+      });
+    });
+  }
+
+  document.getElementById("invite-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("invite-form-msg");
+    msg.className = "form-msg";
+
+    const { data, error } = await supabaseClient
+      .from("hosted_event_invites")
+      .insert({
+        event_id: currentEventId,
+        team_name: document.getElementById("inv-team-name").value.trim(),
+        contact_email: document.getElementById("inv-email").value.trim(),
+        contact_phone: document.getElementById("inv-phone").value.trim() || null,
+      })
+      .select("token")
+      .single();
+
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+
+    const url = buildInviteUrl(data.token);
+    document.getElementById("new-invite-url").value = url;
+    document.getElementById("new-invite-link").style.display = "flex";
+    document.getElementById("invite-form").reset();
+    loadInvites();
+  });
+
+  document.getElementById("copy-invite-btn").addEventListener("click", function () {
+    const input = document.getElementById("new-invite-url");
+    navigator.clipboard.writeText(input.value);
+    this.textContent = "Copied!";
+    setTimeout(() => { this.textContent = "Copy"; }, 1500);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    loadEvents();
+  })();
+</script>
+</body>
+</html>

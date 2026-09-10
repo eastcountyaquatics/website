@@ -46,7 +46,7 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
-    <p class="muted"><strong>Owners</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Accountants</strong> get Sign-Ups and the QuickBooks export only.</p>
+    <p class="muted"><strong>Owners</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster.</p>
 
     <div class="admin-form" style="margin-top:24px;">
       <h3>Assign Access</h3>
@@ -63,7 +63,6 @@
           <select id="assign_role" required>
             <option value="owner">Owner</option>
             <option value="coach" selected>Coach</option>
-            <option value="accountant">Accountant</option>
           </select>
         </div>
         <button type="submit" class="btn btn-primary">Assign Access</button>
@@ -209,7 +208,7 @@
 
     listEl.innerHTML = data
       .map(function (u) {
-        const roles = ["", "owner", "coach", "accountant"];
+        const roles = ["", "owner", "coach"];
         const options = roles
           .map(function (r) {
             const label = r === "" ? "No admin access" : r.charAt(0).toUpperCase() + r.slice(1);

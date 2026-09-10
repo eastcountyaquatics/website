@@ -125,7 +125,11 @@
       return;
     }
 
-    window.location.href = "dashboard.html";
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const role = session ? await getUserRole(session.user.id) : null;
+    window.location.href = role ? "admin.html" : "dashboard.html";
   });
 </script>
 </body>

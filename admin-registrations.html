@@ -62,12 +62,27 @@
           <div id="team-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px 16px;max-height:180px;overflow-y:auto;border:1px solid #e3edf3;border-radius:8px;padding:10px 12px;"></div>
         </div>
         <div class="field">
-          <label for="season">Season</label>
-          <input type="text" id="season" placeholder="e.g. Fall 2026">
+          <label for="season_type">Season</label>
+          <select id="season_type">
+            <option value="">Select one...</option>
+            <option value="Spring">Spring</option>
+            <option value="Summer">Summer</option>
+            <option value="Fall">Fall</option>
+            <option value="Winter">Winter</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field" id="season-other-field" style="display:none;">
+          <label for="season_other">Season Name</label>
+          <input type="text" id="season_other" placeholder="e.g. Holiday Clinic">
+        </div>
+        <div class="field">
+          <label for="season_year">Year</label>
+          <input type="number" id="season_year" placeholder="2026" min="2000" max="2100">
         </div>
         <div class="field">
           <label for="label">Label</label>
-          <input type="text" id="label" placeholder="e.g. 10U Coed &ndash; Fall 2026" required>
+          <input type="text" id="label" placeholder="e.g. 10U Coed - Fall, 2026" required>
           <p class="muted" style="font-size:12px;margin-top:4px;">Fills in automatically from Team + Season &mdash; edit it if you want different wording.</p>
         </div>
         <div class="field">
@@ -177,16 +192,69 @@
     wrap.querySelectorAll('input').forEach(function (cb) { cb.addEventListener("change", suggestLabel); });
   }
 
+  const SEASON_DEFAULTS_KEY = "eca_reg_season_default";
+  const KNOWN_SEASONS = ["Spring", "Summer", "Fall", "Winter"];
+
+  function currentSeasonWord() {
+    const type = document.getElementById("season_type").value;
+    return type === "Other" ? document.getElementById("season_other").value.trim() : type;
+  }
+
+  function toggleSeasonOther() {
+    const isOther = document.getElementById("season_type").value === "Other";
+    document.getElementById("season-other-field").style.display = isOther ? "block" : "none";
+  }
+
+  // "Fall 2026" -> { type: "Fall", other: "", year: "2026" }. A season word
+  // outside Spring/Summer/Fall/Winter (a one-off like "Holiday Clinic") maps
+  // to Other with the manual text preserved, so editing an option created
+  // before this dropdown existed still round-trips correctly.
+  function parseSeason(text) {
+    text = (text || "").trim();
+    if (!text) return { type: "", other: "", year: "" };
+    const m = text.match(/^(.*?)\s+(\d{4})$/);
+    const word = m ? m[1].trim() : text;
+    const year = m ? m[2] : "";
+    if (KNOWN_SEASONS.indexOf(word) !== -1) return { type: word, other: "", year: year };
+    return { type: word ? "Other" : "", other: word, year: year };
+  }
+
+  function applySeasonFields(parsed) {
+    document.getElementById("season_type").value = parsed.type || "";
+    document.getElementById("season_other").value = parsed.other || "";
+    document.getElementById("season_year").value = parsed.year || "";
+    toggleSeasonOther();
+  }
+
+  // Remembers the last season/year used so adding several teams for the
+  // same season in a row doesn't mean re-picking it every time.
+  function applySeasonDefaults() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(SEASON_DEFAULTS_KEY) || "null"); } catch (e) {}
+    applySeasonFields(saved || {});
+  }
+
+  function saveSeasonDefaults() {
+    const parsed = { type: document.getElementById("season_type").value, other: document.getElementById("season_other").value.trim(), year: document.getElementById("season_year").value.trim() };
+    if (!parsed.type && !parsed.year) return;
+    try { localStorage.setItem(SEASON_DEFAULTS_KEY, JSON.stringify(parsed)); } catch (e) {}
+  }
+
   function suggestLabel() {
     const labelField = document.getElementById("label");
     if (labelField.dataset.touched) return;
     const teamNames = selectedTeamSlugs().map(teamLabel);
     const team = teamNames.length === 1 ? teamNames[0] : teamNames.length > 1 ? teamNames.join(" + ") : "";
-    const season = document.getElementById("season").value.trim();
-    const suggestion = [team, season].filter(Boolean).join(" – ");
+    const seasonPart = [currentSeasonWord(), document.getElementById("season_year").value.trim()].filter(Boolean).join(", ");
+    const suggestion = [team, seasonPart].filter(Boolean).join(" - ");
     if (suggestion) labelField.value = suggestion;
   }
-  document.getElementById("season").addEventListener("input", suggestLabel);
+  document.getElementById("season_type").addEventListener("change", function () {
+    toggleSeasonOther();
+    suggestLabel();
+  });
+  document.getElementById("season_other").addEventListener("input", suggestLabel);
+  document.getElementById("season_year").addEventListener("input", suggestLabel);
   document.getElementById("label").addEventListener("input", function (e) {
     e.target.dataset.touched = "1";
   });
@@ -254,7 +322,7 @@
     document.getElementById("label").dataset.touched = "1";
     document.getElementById("description").value = o.description || "";
     document.getElementById("amount_dollars").value = ((o.amount_cents || 0) / 100).toFixed(2);
-    document.getElementById("season").value = o.season || "";
+    applySeasonFields(parseSeason(o.season));
     document.getElementById("sort_order").value = o.sort_order || 0;
     document.getElementById("is_open").checked = !!o.is_open;
     document.getElementById("submit-btn").textContent = "Save Changes";
@@ -270,6 +338,7 @@
     document.getElementById("form-title").textContent = "Add a Registration Option";
     document.getElementById("submit-btn").textContent = "Add Registration Option";
     document.getElementById("cancel-edit-btn").style.display = "none";
+    applySeasonDefaults();
   }
 
   document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
@@ -287,6 +356,8 @@
     }
 
     const id = document.getElementById("reg-id").value;
+    const seasonYear = document.getElementById("season_year").value.trim();
+    const season = [currentSeasonWord(), seasonYear].filter(Boolean).join(" ") || null;
     const payload = {
       action: "set",
       id: id || undefined,
@@ -294,7 +365,7 @@
       label: document.getElementById("label").value.trim(),
       description: document.getElementById("description").value.trim() || null,
       amount_dollars: dollars,
-      season: document.getElementById("season").value.trim() || null,
+      season: season,
       sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
       is_open: document.getElementById("is_open").checked,
     };
@@ -317,6 +388,7 @@
 
     msg.className = "form-msg success";
     msg.textContent = id ? "Registration option updated." : "Registration option added.";
+    saveSeasonDefaults();
     resetForm();
     loadOptions();
   });
@@ -357,6 +429,7 @@
     const auth = await requireRole(["owner"]);
     if (!auth) return;
     await loadTeams();
+    applySeasonDefaults();
     loadOptions();
   })();
 </script>

@@ -65,8 +65,21 @@
 <section class="section-tight">
   <div class="container" style="max-width:1100px;">
     <div class="notice" style="margin-bottom:24px;">
-      Toggle a team <strong>Published</strong> when its schedule is ready for families to see. Unpublished schedules are only visible here in admin. The box on the right shows exactly what families will see as you type.
+      Toggle a team <strong>Published</strong> when its schedule is ready for families to see. Unpublished schedules are only visible here in admin. The box on the right shows exactly what families will see as you type. Adding a team here makes it available for Roster, Attendance, and registration options &mdash; it still needs its own public team page built separately before families can see a dedicated page for it.
     </div>
+
+    <div class="admin-form" style="margin-bottom:24px;">
+      <h3>Add a New Team</h3>
+      <div id="add-team-msg" class="form-msg"></div>
+      <form id="add-team-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="flex:1;min-width:200px;margin-bottom:0;">
+          <label for="new_team_label">Team Name</label>
+          <input type="text" id="new_team_label" placeholder="e.g. 10U Girls" required>
+        </div>
+        <button type="submit" class="btn btn-primary">+ Add New Team</button>
+      </form>
+    </div>
+
     <div id="sched-list"><p class="muted">Loading&hellip;</p></div>
   </div>
 </section>
@@ -284,6 +297,50 @@
       });
     });
   }
+
+  function slugify(label) {
+    return label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  document.getElementById("add-team-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("add-team-msg");
+    msg.className = "form-msg";
+
+    const input = document.getElementById("new_team_label");
+    const label = input.value.trim();
+    const slug = slugify(label);
+    if (!label || !slug) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter a team name.";
+      return;
+    }
+
+    const { count } = await supabaseClient.from("schedules").select("id", { count: "exact", head: true });
+
+    const { error } = await supabaseClient.from("schedules").insert({
+      team_slug: slug,
+      team_label: label,
+      sort_order: (count || 0) + 1,
+    });
+
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = /duplicate key/i.test(error.message)
+        ? "A team with that name (or a very similar one) already exists."
+        : error.message;
+      return;
+    }
+
+    msg.className = "form-msg success";
+    msg.textContent = '"' + label + '" added. It won’t show on the public site until it has its own team page and you link to it.';
+    input.value = "";
+    loadSchedules();
+  });
 
   (async function () {
     const auth = await requireRole(["owner", "coach"]);

@@ -282,7 +282,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "accountant"]);
+    const auth = await requireRole(["owner"]);
     if (!auth) return;
     loadSignups();
   })();

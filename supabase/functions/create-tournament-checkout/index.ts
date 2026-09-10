@@ -114,7 +114,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: athlete, error: athleteError } = await supabase
     .from("athletes")
-    .select("id, full_name, birthdate, gender")
+    .select("id, full_name, birthdate, sex")
     .eq("id", invite.athlete_id)
     .maybeSingle();
   if (athleteError || !athlete) return { error: "This athlete could not be found.", status: 404 } as const;
@@ -135,7 +135,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
   const age = calcAgeAsOf(athlete.birthdate, tournament.event_date);
   const tier = tiers.find((t) => {
     const ageOk = (t.min_age == null || age >= t.min_age) && (t.max_age == null || age <= t.max_age);
-    const genderOk = !t.gender || t.gender === athlete.gender;
+    const genderOk = !t.gender || t.gender === athlete.sex;
     return ageOk && genderOk;
   });
   if (!tier) {

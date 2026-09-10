@@ -131,7 +131,7 @@
     const webhookTotal = await count("webhook_events");
     if (webhookTotal === null) {
       add("Taking money", "info", "Payment log not readable",
-        "Only owners and accountants can see webhook history.");
+        "Only owners can see webhook history.");
     } else if (webhookTotal === 0) {
       add("Taking money", "bad", "Stripe has never contacted this site",
         "No webhook has ever arrived. Until one does, a family could pay and never be recorded as registered. Add the Stripe keys, register the webhook URL, and run one test payment.",

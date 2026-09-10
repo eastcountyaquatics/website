@@ -141,19 +141,19 @@
     if (!hadBirthdayByCutoff) age--;
     return age;
   }
-  function deriveTeam(age, gender) {
+  function deriveTeam(age, sex) {
     if (age === null) return null;
     if (age <= 8) return "8u-coed";
     if (age <= 10) return "10u-coed";
     const bracket = age <= 12 ? "12u" : age <= 14 ? "14u" : age <= 16 ? "16u" : age <= 18 ? "18u" : null;
     if (!bracket) return null;
-    const g = (gender || "").toLowerCase();
-    if (g === "male") return bracket + "-boys";
-    if (g === "female") return bracket + "-girls";
+    const s = (sex || "").toLowerCase();
+    if (s === "male") return bracket + "-boys";
+    if (s === "female") return bracket + "-girls";
     return null;
   }
   function athleteTeamSlug(a) {
-    return a.team_slug || deriveTeam(calcAge(a.birthdate), a.gender);
+    return a.team_slug || deriveTeam(calcAge(a.birthdate), a.sex);
   }
 
   let teams = [];
@@ -175,7 +175,7 @@
   async function init() {
     const [{ data: teamRows }, { data: athleteRows }, { data: coachRows }] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
-      supabaseClient.from("athletes").select("id, full_name, birthdate, gender, team_slug"),
+      supabaseClient.from("athletes").select("id, full_name, birthdate, sex, team_slug"),
       supabaseClient.from("coaches").select("full_name, profile_id").not("profile_id", "is", null).order("full_name", { ascending: true }),
     ]);
     teams = teamRows || [];

@@ -173,8 +173,8 @@
   }
 
   // Age groups follow the club's team pages: 8U and 10U are coed, 12U and
-  // up split by gender. Derived from domestic-eligibility age + gender so
-  // nobody has to assign each athlete by hand.
+  // up split by sex. Derived from domestic-eligibility age + sex so nobody
+  // has to assign each athlete by hand.
   const TEAM_ORDER = [
     "8U Coed", "10U Coed",
     "12U Boys", "12U Girls",
@@ -183,16 +183,16 @@
     "18U Boys", "18U Girls",
   ];
 
-  function deriveTeam(age, gender) {
+  function deriveTeam(age, sex) {
     if (age === null) return "Needs birthdate";
     if (age <= 8) return "8U Coed";
     if (age <= 10) return "10U Coed";
     const bracket = age <= 12 ? "12U" : age <= 14 ? "14U" : age <= 16 ? "16U" : age <= 18 ? "18U" : null;
     if (!bracket) return "Aged out (19+)";
-    const g = (gender || "").toLowerCase();
-    if (g === "male") return bracket + " Boys";
-    if (g === "female") return bracket + " Girls";
-    return bracket + " — needs gender";
+    const s = (sex || "").toLowerCase();
+    if (s === "male") return bracket + " Boys";
+    if (s === "female") return bracket + " Girls";
+    return bracket + " — needs sex";
   }
 
   let allAthletes = [];
@@ -203,7 +203,7 @@
       const t = teams.find(function (x) { return x.team_slug === a.team_slug; });
       if (t) return t.team_label;
     }
-    return deriveTeam(calcAge(a.birthdate), a.gender);
+    return deriveTeam(calcAge(a.birthdate), a.sex);
   }
 
   function teamSortIndex(name) {
@@ -266,10 +266,8 @@
           "<dt>Parent / Guardian</dt><dd>" + escapeHtml(a.parent_name || "(no name on file)") + (a.parent_email ? " &middot; <a href=\"mailto:" + escapeHtml(a.parent_email) + "\">" + escapeHtml(a.parent_email) + "</a>" : "") + (a.parent_phone ? " &middot; <a href=\"tel:" + escapeHtml(a.parent_phone) + "\">" + escapeHtml(a.parent_phone) + "</a>" : "") + "</dd>" +
           (a.birthdate ? "<dt>Birthdate</dt><dd>" + formatDate(a.birthdate) + (age !== null ? " (age " + age + ")" : "") + "</dd>" : "") +
           (a.sex ? "<dt>Sex</dt><dd>" + escapeHtml(a.sex) + "</dd>" : "") +
-          (a.gender ? "<dt>Gender</dt><dd>" + escapeHtml(a.gender) + "</dd>" : "") +
           (a.school ? "<dt>School</dt><dd>" + escapeHtml(a.school) + "</dd>" : "") +
           (a.uswp_number ? "<dt>USWP Number</dt><dd>" + escapeHtml(a.uswp_number) + "</dd>" : "") +
-          (a.shirt_size ? "<dt>Shirt Size</dt><dd>" + escapeHtml(a.shirt_size) + "</dd>" : "") +
           emergencyContactRow("Emergency Contact 1", a.emergency_contact_name, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2) +
           emergencyContactRow("Emergency Contact 2", a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2) +
           (a.notes ? "<dt>Medical / Allergy Notes</dt><dd>" + escapeHtml(a.notes) + '<br><span class="muted" style="font-size:12px;">Entered by the parent</span></dd>' : "") +
@@ -281,7 +279,7 @@
           "<dt>Registrations</dt>" + regList +
           "<dt>Team</dt><dd>" +
           '<select data-team-for="' + a.id + '">' +
-          '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; gender (" + escapeHtml(deriveTeam(age, a.gender)) + ")</option>" +
+          '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; sex (" + escapeHtml(deriveTeam(age, a.sex)) + ")</option>" +
           teams
             .map(function (t) {
               return '<option value="' + escapeHtml(t.team_slug) + '"' +
@@ -361,7 +359,7 @@
   async function loadRoster() {
     const { data: athletes, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, notes, coach_notes, parent_id, sex, gender, school, uswp_number, team_slug, shirt_size, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2")
+      .select("id, full_name, birthdate, notes, coach_notes, parent_id, sex, school, uswp_number, team_slug, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2")
       .order("full_name", { ascending: true });
 
     const listEl = document.getElementById("roster-list");
@@ -401,11 +399,9 @@
         notes: a.notes,
         coach_notes: a.coach_notes,
         sex: a.sex,
-        gender: a.gender,
         school: a.school,
         uswp_number: a.uswp_number,
         team_slug: a.team_slug,
-        shirt_size: a.shirt_size,
         emergency_contact_name: a.emergency_contact_name,
         emergency_contact_email: a.emergency_contact_email,
         emergency_contact_phone1: a.emergency_contact_phone1,
@@ -453,9 +449,7 @@
     { key: "age", label: "Age", get: function (a) { const g = calcAge(a.birthdate); return g === null ? "" : g; }, defaultOn: true },
     { key: "birthdate", label: "Birthdate", get: function (a) { return a.birthdate || ""; }, defaultOn: false },
     { key: "sex", label: "Sex", get: function (a) { return a.sex || ""; }, defaultOn: false },
-    { key: "gender", label: "Gender", get: function (a) { return a.gender || ""; }, defaultOn: false },
     { key: "school", label: "School", get: function (a) { return a.school || ""; }, defaultOn: false },
-    { key: "shirt_size", label: "Shirt Size", get: function (a) { return a.shirt_size || ""; }, defaultOn: false },
     { key: "parent_name", label: "Parent Name", get: function (a) { return a.parent_name || ""; }, defaultOn: true },
     { key: "parent_email", label: "Parent Email", get: function (a) { return a.parent_email || ""; }, defaultOn: true },
     { key: "parent_phone", label: "Parent Phone", get: function (a) { return a.parent_phone || ""; }, defaultOn: false },

@@ -48,7 +48,7 @@
   <div class="container" style="max-width:760px;">
 
     <div class="notice" style="margin-bottom:24px;">
-      Create the matching Product + Price in your <a href="https://dashboard.stripe.com/products" target="_blank" rel="noopener" style="color:#7a5b00;font-weight:700;">Stripe dashboard</a> first, then paste its Price ID (starts with <code>price_</code>) below. The dollar amount here is for display only &mdash; Stripe charges whatever the Price ID says, so keep them in sync.
+      The amount below is what Stripe actually charges &mdash; a matching Stripe Price is created automatically, so there's nothing to set up in the Stripe dashboard.
     </div>
 
     <div class="admin-form" id="reg-form-wrap">
@@ -77,10 +77,6 @@
         <div class="field">
           <label for="amount_dollars">Amount (USD)</label>
           <input type="number" id="amount_dollars" step="0.01" min="0" placeholder="185.00" required>
-        </div>
-        <div class="field">
-          <label for="stripe_price_id">Stripe Price ID</label>
-          <input type="text" id="stripe_price_id" placeholder="price_1AbCdEfGhIjKlMnOp" required>
         </div>
         <div class="field">
           <label for="sort_order">Display Order (lower shows first)</label>
@@ -143,6 +139,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -257,7 +254,6 @@
     document.getElementById("label").dataset.touched = "1";
     document.getElementById("description").value = o.description || "";
     document.getElementById("amount_dollars").value = ((o.amount_cents || 0) / 100).toFixed(2);
-    document.getElementById("stripe_price_id").value = o.stripe_price_id || "";
     document.getElementById("season").value = o.season || "";
     document.getElementById("sort_order").value = o.sort_order || 0;
     document.getElementById("is_open").checked = !!o.is_open;
@@ -290,25 +286,32 @@
       return;
     }
 
+    const id = document.getElementById("reg-id").value;
     const payload = {
+      action: "set",
+      id: id || undefined,
       team_slugs: selectedTeamSlugs(),
       label: document.getElementById("label").value.trim(),
       description: document.getElementById("description").value.trim() || null,
-      amount_cents: Math.round(dollars * 100),
-      stripe_price_id: document.getElementById("stripe_price_id").value.trim(),
+      amount_dollars: dollars,
       season: document.getElementById("season").value.trim() || null,
       sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
       is_open: document.getElementById("is_open").checked,
     };
 
-    const id = document.getElementById("reg-id").value;
-    const result = id
-      ? await supabaseClient.from("registration_options").update(payload).eq("id", id)
-      : await supabaseClient.from("registration_options").insert(payload);
+    const submitBtn = document.getElementById("submit-btn");
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.textContent = id ? "Saving..." : "Adding...";
 
-    if (result.error) {
+    const { data, error } = await supabaseClient.functions.invoke("manage-registration-options", { body: payload });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalLabel;
+
+    if (error || !data || data.error) {
       msg.className = "form-msg error";
-      msg.textContent = result.error.message;
+      msg.textContent = await functionErrorMessage(error, data, "Could not save registration option.");
       return;
     }
 

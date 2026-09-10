@@ -51,6 +51,19 @@
       Your account can view this list but doesn't have permission to add, edit, or delete coaches. Ask an owner if you need changes made.
     </div>
 
+    <div id="claim-section" class="admin-form" style="display:none;margin-bottom:24px;">
+      <h3 id="claim-title">Which coach are you?</h3>
+      <p class="field-hint" id="claim-hint">
+        Link your account to your bio below. This lets the roll-call screen credit your hours to you, lets you see your own pay rate, and sends your contact-form messages straight to your inbox.
+      </p>
+      <div id="claim-msg" class="form-msg"></div>
+      <div id="claim-linked" style="display:none;">
+        <p>You're linked as <strong id="claim-linked-name"></strong>.</p>
+        <button type="button" id="claim-unlink-btn" class="btn btn-outline-dark">Not you? Unlink</button>
+      </div>
+      <div id="claim-unclaimed-list"></div>
+    </div>
+
     <div class="admin-form" id="coach-form-wrap">
       <h3 id="form-title">Add a Coach</h3>
       <div id="form-msg" class="form-msg"></div>
@@ -126,6 +139,7 @@
 <script>
   let canEdit = false;
   let isOwnerView = false;
+  let myUserId = null;
   var rateByProfileId = {}; // profile_id -> hourly_rate_cents, owner-only
 
   function escapeHtml(str) {
@@ -150,6 +164,79 @@
   }
   document.getElementById("photo_url").addEventListener("input", updatePhotoPreview);
 
+  // A coach's own account may not be pointed at any bio row yet -- the owner
+  // links most coaches, but a coach who already has the 'coach' role (see
+  // admin-users.html) can claim their own unclaimed row here directly. The
+  // database enforces this is safe (see guard_coach_profile_link): a coach
+  // can only move a row from unclaimed -> themselves, or their own -> unclaimed,
+  // never onto or off of someone else's account.
+  function renderClaimSection(coaches) {
+    const section = document.getElementById("claim-section");
+    const linkedBox = document.getElementById("claim-linked");
+    const listBox = document.getElementById("claim-unclaimed-list");
+    const msg = document.getElementById("claim-msg");
+    msg.textContent = "";
+    msg.className = "form-msg";
+
+    const mine = coaches.find(function (c) { return c.profile_id === myUserId; });
+    const unclaimed = coaches.filter(function (c) { return !c.profile_id; });
+
+    if (mine) {
+      section.style.display = "block";
+      linkedBox.style.display = "block";
+      listBox.innerHTML = "";
+      document.getElementById("claim-linked-name").textContent = mine.full_name;
+      document.getElementById("claim-unlink-btn").onclick = async function () {
+        const { error } = await supabaseClient
+          .from("coaches")
+          .update({ profile_id: null })
+          .eq("id", mine.id)
+          .eq("profile_id", myUserId);
+        if (error) {
+          msg.className = "form-msg error";
+          msg.textContent = error.message;
+          return;
+        }
+        loadCoaches();
+      };
+      return;
+    }
+
+    linkedBox.style.display = "none";
+    if (unclaimed.length === 0) {
+      section.style.display = "none";
+      return;
+    }
+
+    section.style.display = "block";
+    listBox.innerHTML = unclaimed
+      .map(function (c) {
+        return (
+          '<div class="admin-list-item"><div>' + escapeHtml(c.full_name) +
+          (c.role_title ? ' <span class="muted" style="font-size:13px;">(' + escapeHtml(c.role_title) + ")</span>" : "") +
+          '</div><div class="admin-list-actions"><button data-claim="' + c.id + '">This is me</button></div></div>'
+        );
+      })
+      .join("");
+    listBox.querySelectorAll("[data-claim]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const { error } = await supabaseClient
+          .from("coaches")
+          .update({ profile_id: myUserId })
+          .eq("id", btn.dataset.claim)
+          .is("profile_id", null);
+        if (error) {
+          msg.className = "form-msg error";
+          msg.textContent = error.message;
+          return;
+        }
+        msg.className = "form-msg success";
+        msg.textContent = "Linked! Loading...";
+        loadCoaches();
+      });
+    });
+  }
+
   async function loadCoaches() {
     const { data, error } = await supabaseClient
       .from("coaches")
@@ -162,6 +249,7 @@
       listEl.innerHTML = '<p class="muted">Could not load coaches: ' + escapeHtml(error.message) + "</p>";
       return;
     }
+    if (!isOwnerView) renderClaimSection(data || []);
     if (!data || data.length === 0) {
       listEl.innerHTML = '<p class="muted">No coaches yet.</p>';
       return;
@@ -340,6 +428,7 @@
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
     isOwnerView = auth.role === "owner";
+    myUserId = auth.session.user.id;
     await loadAccountOptions(isOwnerView);
     if (isOwnerView) await loadPayRates();
     canEdit = auth.role === "owner" || auth.role === "coach";

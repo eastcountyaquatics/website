@@ -105,6 +105,11 @@
           <input type="text" id="t-location" placeholder="e.g. Riverside Aquatics Complex, Riverside, CA">
         </div>
         <div class="field">
+          <label for="t-cost-note">Estimated Cost (optional)</label>
+          <input type="text" id="t-cost-note" placeholder="e.g. $250 (doesn't include travel and lodging)">
+          <p class="muted" style="font-size:12px;margin-top:4px;">Shown to families before they RSVP, so they know roughly what to expect &mdash; the real charge is whatever the price tiers below add up to.</p>
+        </div>
+        <div class="field">
           <label for="t-hotel-name">Hotel (optional)</label>
           <input type="text" id="t-hotel-name" placeholder="e.g. Hampton Inn Riverside">
         </div>
@@ -280,7 +285,7 @@
           '<div class="admin-list-item" style="cursor:pointer;" data-select="' + t.id + '">' +
           "<div>" +
           "<h4>" + escapeHtml(t.name) + (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatDate(t.event_date) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + "</div>" +
+          '<div class="muted" style="font-size:13px;">' + formatDate(t.event_date) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + "</div>" +
           "</div>" +
           '<div class="admin-list-actions"><button data-edit="' + t.id + '">Edit</button></div>' +
           "</div>"
@@ -311,6 +316,7 @@
     document.getElementById("t-team-slug").value = t.team_slug || "";
     document.getElementById("t-rsvp-deadline").value = t.rsvp_deadline || "";
     document.getElementById("t-location").value = t.location || "";
+    document.getElementById("t-cost-note").value = t.estimated_cost_note || "";
     document.getElementById("t-hotel-name").value = t.hotel_name || "";
     document.getElementById("t-hotel-url").value = t.hotel_url || "";
     document.getElementById("t-description").value = t.description || "";
@@ -342,6 +348,7 @@
       team_slug: document.getElementById("t-team-slug").value || null,
       rsvp_deadline: document.getElementById("t-rsvp-deadline").value || null,
       location: document.getElementById("t-location").value.trim() || null,
+      estimated_cost_note: document.getElementById("t-cost-note").value.trim() || null,
       hotel_name: document.getElementById("t-hotel-name").value.trim() || null,
       hotel_url: document.getElementById("t-hotel-url").value.trim() || null,
       description: document.getElementById("t-description").value.trim() || null,
@@ -609,7 +616,7 @@
     if (age === null) return null;
     return tiers.find(function (t) {
       const ageOk = (t.min_age == null || age >= t.min_age) && (t.max_age == null || age <= t.max_age);
-      const genderOk = !t.gender || t.gender === athlete.gender;
+      const genderOk = !t.gender || t.gender === athlete.sex;
       return ageOk && genderOk;
     }) || null;
   }
@@ -635,7 +642,7 @@
     sectionEl.style.display = "block";
 
     const { data: athletes } = await supabaseClient
-      .from("athletes").select("id, full_name, birthdate, gender, parent_id");
+      .from("athletes").select("id, full_name, birthdate, sex, parent_id");
     const athleteById = {};
     (athletes || []).forEach(function (a) { athleteById[a.id] = a; });
 
@@ -645,8 +652,8 @@
       .eq("tournament_id", currentTournamentId)
       .order("sort_order", { ascending: true });
 
-    // Who actually paid, and how much. Only owners and accountants can read
-    // purchases, so a coach still gets paid/unpaid -- just not payer details.
+    // Who actually paid, and how much. Only owners can read purchases, so
+    // a coach still gets paid/unpaid -- just not payer details.
     var purchaseByInvite = {};
     if (payIsOwner) {
       const { data: purchases } = await supabaseClient
@@ -819,8 +826,8 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
-    // Only owners/accountants can read purchases, so the payer name and the
-    // exact amount charged are shown to them and quietly omitted for coaches,
+    // Only owners can read purchases, so the payer name and the exact
+    // amount charged are shown to them and quietly omitted for coaches,
     // who still get the paid/not-paid list they need to chase people.
     payIsOwner = auth.role === "owner";
     await loadTeams();

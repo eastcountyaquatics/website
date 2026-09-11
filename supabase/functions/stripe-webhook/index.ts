@@ -367,7 +367,7 @@ async function handleSponsorshipPayment(
     })
     .eq("id", sponsorshipId)
     .eq("status", "pending") // idempotency: a repeat delivery finds 0 rows and no-ops
-    .select("company_name, contact_email")
+    .select("company_name, contact_email, amount_cents")
     .maybeSingle();
 
   if (error) {
@@ -380,6 +380,12 @@ async function handleSponsorshipPayment(
       "Thank you for sponsoring East County Aquatics!",
       `Thank you for sponsoring San Diego East County Aquatics on behalf of ${updated.company_name}. ` +
         `We truly appreciate your support -- we'll be in touch about featuring your business.`
+    );
+    await sendReceiptEmail(
+      "eastcountyaquatics@gmail.com",
+      "Sponsorship payment received: " + updated.company_name,
+      `${updated.company_name} just paid their sponsorship of $${(updated.amount_cents / 100).toFixed(2)}. ` +
+        `Contact: ${updated.contact_email}.`
     );
   }
 

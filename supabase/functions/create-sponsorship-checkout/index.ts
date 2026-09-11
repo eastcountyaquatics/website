@@ -7,6 +7,9 @@
 //
 // Deploy: supabase functions deploy create-sponsorship-checkout --no-verify-jwt
 // Secrets required: STRIPE_SECRET_KEY, SITE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Optional: RESEND_API_KEY, RECEIPT_EMAIL_FROM (club notification email --
+// see notifyClub below; a silent no-op with no key set, same as the
+// receipt emails in stripe-webhook)
 
 import Stripe from "npm:stripe@^17";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -33,7 +36,7 @@ Deno.serve(async (req) => {
 
     const { data: sponsorship, error } = await supabase
       .from("sponsorships")
-      .select("id, company_name, contact_email, amount_cents, status")
+      .select("id, company_name, contact_name, contact_email, contact_phone, tier, amount_cents, website_url, logo_url, blurb, status")
       .eq("id", sponsorshipId)
       .maybeSingle();
     if (error || !sponsorship) {
@@ -81,6 +84,25 @@ Deno.serve(async (req) => {
       .update({ stripe_checkout_session_id: session.id })
       .eq("id", sponsorship.id);
 
+    // The club previously had no way to know a sponsorship came in short of
+    // manually checking Admin > Sponsors -- notify as soon as someone
+    // submits, not just once they've paid, so an abandoned checkout is
+    // still visible instead of disappearing silently.
+    await notifyClub(
+      "New sponsorship submitted: " + sponsorship.company_name,
+      "A new sponsorship was just submitted, checkout in progress.\n\n" +
+        `Company: ${sponsorship.company_name}\n` +
+        `Contact: ${sponsorship.contact_name || "(not given)"}\n` +
+        `Email: ${sponsorship.contact_email}\n` +
+        `Phone: ${sponsorship.contact_phone || "(not given)"}\n` +
+        `Level: ${sponsorship.tier || "(not given)"}\n` +
+        `Amount: $${(sponsorship.amount_cents / 100).toFixed(2)}\n` +
+        `Website: ${sponsorship.website_url || "(not given)"}\n` +
+        `Logo: ${sponsorship.logo_url || "(not given)"}\n` +
+        `Message: ${sponsorship.blurb || "(not given)"}\n\n` +
+        "You'll get a separate note once payment actually completes."
+    );
+
     return json({ url: session.url });
   } catch (err) {
     console.error(err);
@@ -93,4 +115,28 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Best-effort notification to the club, same pattern as the receipt emails
+// in stripe-webhook -- never allowed to fail the checkout it's attached to,
+// and a silent no-op until RESEND_API_KEY is set.
+async function notifyClub(subject: string, text: string): Promise<void> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) return;
+  const from = Deno.env.get("RECEIPT_EMAIL_FROM") || "San Diego East County Aquatics <onboarding@resend.dev>";
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to: ["eastcountyaquatics@gmail.com"], subject, text }),
+    });
+    if (!res.ok) {
+      console.error("Resend club notification failed:", res.status, await res.text());
+    }
+  } catch (err) {
+    console.error("Resend club notification threw:", err);
+  }
 }

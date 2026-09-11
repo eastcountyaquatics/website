@@ -84,6 +84,8 @@
         <div id="athlete-list"><p class="muted">Loading&hellip;</p></div>
         <button type="button" id="add-athlete-toggle" class="btn btn-outline-dark" style="margin-top:16px;">+ Add an Athlete</button>
         <form id="athlete-form" style="margin-top:16px;display:none;">
+          <h4 id="athlete-form-title" style="margin-top:0;">Add an Athlete</h4>
+          <input type="hidden" id="athlete_id">
           <div class="field">
             <label for="athlete_name">Full Name</label>
             <input type="text" id="athlete_name" placeholder="Athlete's full name" required>
@@ -152,7 +154,7 @@
             <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about"></textarea>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button type="submit" class="btn btn-primary">Save Athlete</button>
+            <button type="submit" id="athlete-submit-btn" class="btn btn-primary">Save Athlete</button>
             <button type="button" id="add-athlete-cancel" class="btn btn-outline-dark">Cancel</button>
           </div>
         </form>
@@ -687,6 +689,9 @@
     if (!show) {
       document.getElementById("athlete-form").reset();
       document.getElementById("athlete-form-msg").textContent = "";
+      document.getElementById("athlete_id").value = "";
+      document.getElementById("athlete-form-title").textContent = "Add an Athlete";
+      document.getElementById("athlete-submit-btn").textContent = "Save Athlete";
     }
   }
   document.getElementById("add-athlete-toggle").addEventListener("click", function () {
@@ -727,7 +732,7 @@
             escapeHtml(a.full_name) +
             (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") +
             "</h4>" +
-            '<div class="admin-list-actions"><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
+            '<div class="admin-list-actions"><button data-edit-athlete="' + a.id + '">Edit</button><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
             "</div>" +
             '<div class="athlete-detail" style="display:none;padding-top:10px;margin-top:10px;border-top:1px solid #eef1f7;">' +
             detailRow("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "") +
@@ -747,6 +752,12 @@
           if (e.target.closest("button")) return;
           const detail = row.querySelector(".athlete-detail");
           detail.style.display = detail.style.display === "none" ? "block" : "none";
+        });
+      });
+      listEl.querySelectorAll("[data-edit-athlete]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const athlete = myAthletes.find(function (x) { return x.id === btn.dataset.editAthlete; });
+          if (athlete) startEditAthlete(athlete);
         });
       });
       listEl.querySelectorAll("[data-remove-athlete]").forEach(function (btn) {
@@ -774,6 +785,28 @@
     loadRegistrationOptions();
   }
 
+  function startEditAthlete(a) {
+    toggleAthleteForm(true);
+    document.getElementById("athlete-form-title").textContent = "Edit Athlete";
+    document.getElementById("athlete-submit-btn").textContent = "Save Changes";
+    document.getElementById("athlete_id").value = a.id;
+    document.getElementById("athlete_name").value = a.full_name || "";
+    document.getElementById("athlete_birthdate").value = a.birthdate || "";
+    document.getElementById("athlete_sex").value = a.sex || "";
+    document.getElementById("athlete_school").value = a.school || "";
+    document.getElementById("athlete_uswp_number").value = a.uswp_number || "";
+    document.getElementById("athlete_emergency_name").value = a.emergency_contact_name || "";
+    document.getElementById("athlete_emergency_email").value = a.emergency_contact_email || "";
+    document.getElementById("athlete_emergency_phone1").value = a.emergency_contact_phone1 || "";
+    document.getElementById("athlete_emergency_phone2").value = a.emergency_contact_phone2 || "";
+    document.getElementById("athlete_emergency2_name").value = a.emergency_contact2_name || "";
+    document.getElementById("athlete_emergency2_email").value = a.emergency_contact2_email || "";
+    document.getElementById("athlete_emergency2_phone1").value = a.emergency_contact2_phone1 || "";
+    document.getElementById("athlete_emergency2_phone2").value = a.emergency_contact2_phone2 || "";
+    document.getElementById("athlete_notes").value = a.notes || "";
+    document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   document.getElementById("athlete-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const msg = document.getElementById("athlete-form-msg");
@@ -782,9 +815,8 @@
     if (!name) return;
 
     const session = await requireAuth();
-    const { error } = await supabaseClient.from("athletes").insert({
+    const payload = {
       full_name: name,
-      parent_id: session.user.id,
       birthdate: document.getElementById("athlete_birthdate").value || null,
       sex: document.getElementById("athlete_sex").value || null,
       school: document.getElementById("athlete_school").value.trim() || null,
@@ -798,7 +830,12 @@
       emergency_contact2_phone1: document.getElementById("athlete_emergency2_phone1").value.trim() || null,
       emergency_contact2_phone2: document.getElementById("athlete_emergency2_phone2").value.trim() || null,
       notes: document.getElementById("athlete_notes").value.trim() || null,
-    });
+    };
+
+    const editId = document.getElementById("athlete_id").value;
+    const { error } = editId
+      ? await supabaseClient.from("athletes").update(payload).eq("id", editId)
+      : await supabaseClient.from("athletes").insert(Object.assign({ parent_id: session.user.id }, payload));
 
     if (error) {
       msg.className = "form-msg error";

@@ -787,6 +787,7 @@
 
   function startEditAthlete(a) {
     toggleAthleteForm(true);
+    document.getElementById("athlete-form-msg").textContent = "";
     document.getElementById("athlete-form-title").textContent = "Edit Athlete";
     document.getElementById("athlete-submit-btn").textContent = "Save Changes";
     document.getElementById("athlete_id").value = a.id;

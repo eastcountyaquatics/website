@@ -76,36 +76,36 @@
         </div>
         <div class="field">
           <label for="sp-contact-name">Contact Name</label>
-          <input type="text" id="sp-contact-name">
+          <input type="text" id="sp-contact-name" required>
         </div>
         <div class="field">
           <label for="sp-email">Contact Email</label>
           <input type="email" id="sp-email" required>
         </div>
         <div class="field">
-          <label for="sp-phone">Contact Phone (optional)</label>
-          <input type="tel" id="sp-phone">
+          <label for="sp-phone">Contact Phone</label>
+          <input type="tel" id="sp-phone" required>
         </div>
         <div class="field">
-          <label for="sp-tier">Sponsorship Level (optional)</label>
-          <input type="text" id="sp-tier" placeholder="e.g. Gold, Silver, Bronze, or describe your own">
+          <label for="sp-tier">Sponsorship Level</label>
+          <input type="text" id="sp-tier" placeholder="e.g. Gold, Silver, Bronze, or describe your own" required>
         </div>
         <div class="field">
           <label for="sp-amount">Amount (USD)</label>
           <input type="number" id="sp-amount" step="0.01" min="1" placeholder="500.00" required>
         </div>
         <div class="field">
-          <label for="sp-website">Your Website (optional)</label>
-          <input type="url" id="sp-website" placeholder="https://...">
+          <label for="sp-website">Your Website</label>
+          <input type="url" id="sp-website" placeholder="https://..." required>
         </div>
         <div class="field">
-          <label for="sp-logo">Logo Image URL (optional)</label>
-          <input type="url" id="sp-logo" placeholder="https://...">
+          <label for="sp-logo">Logo Image URL</label>
+          <input type="url" id="sp-logo" placeholder="https://..." required>
           <p class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
         </div>
         <div class="field">
-          <label for="sp-blurb">What would you like us to say about your business? (optional)</label>
-          <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured."></textarea>
+          <label for="sp-blurb">What would you like us to say about your business?</label>
+          <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured." required></textarea>
         </div>
         <button type="submit" id="sponsor-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>

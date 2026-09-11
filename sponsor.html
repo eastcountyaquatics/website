@@ -165,6 +165,17 @@
     btn.disabled = true;
     btn.textContent = "Submitting...";
 
+    // The database only accepts http(s) URLs here (an owner reviewing
+    // submissions clicks these links, so anything else is a real risk, not
+    // just a validation nicety). A sponsor typing "www.company.com" without
+    // a scheme is normal, not an attack -- default it to https:// rather
+    // than bouncing them with a confusing database error.
+    function normalizeUrl(raw) {
+      const value = raw.trim();
+      if (!value) return null;
+      return /^https?:\/\//i.test(value) ? value : "https://" + value;
+    }
+
     // Inserted directly (RLS lets anyone submit a pending sponsorship), then
     // the checkout function looks it up by id to build the Stripe session --
     // this keeps the amount and company info authoritative in the database
@@ -178,8 +189,8 @@
         contact_phone: document.getElementById("sp-phone").value.trim() || null,
         tier: document.getElementById("sp-tier").value.trim() || null,
         amount_cents: Math.round(dollars * 100),
-        website_url: document.getElementById("sp-website").value.trim() || null,
-        logo_url: document.getElementById("sp-logo").value.trim() || null,
+        website_url: normalizeUrl(document.getElementById("sp-website").value),
+        logo_url: normalizeUrl(document.getElementById("sp-logo").value),
         blurb: document.getElementById("sp-blurb").value.trim() || null,
       })
       .select("id")

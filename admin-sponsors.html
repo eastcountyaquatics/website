@@ -73,6 +73,13 @@
   function money(cents) {
     return "$" + (cents / 100).toFixed(2);
   }
+  // The database now rejects anything but http(s) on insert, but this is
+  // a rendered link an owner clicks -- worth checking again here too rather
+  // than trusting that every write path (including a future one) enforces
+  // it upstream.
+  function isHttpUrl(value) {
+    return typeof value === "string" && /^https?:\/\//i.test(value);
+  }
   function fmtDate(iso) {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   }
@@ -104,8 +111,8 @@
         '<div style="font-size:20px;font-weight:800;color:var(--blue);">' + money(s.amount_cents) + "</div>" +
         "</div>" +
         (s.contact_name ? '<p class="muted" style="font-size:13px;margin-top:6px;">Contact: ' + escapeHtml(s.contact_name) + "</p>" : "") +
-        (s.website_url ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.website_url) + '" target="_blank" rel="noopener">' + escapeHtml(s.website_url) + "</a></p>" : "") +
-        (s.logo_url ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.logo_url) + '" target="_blank" rel="noopener">Logo image</a></p>' : "") +
+        (isHttpUrl(s.website_url) ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.website_url) + '" target="_blank" rel="noopener">' + escapeHtml(s.website_url) + "</a></p>" : "") +
+        (isHttpUrl(s.logo_url) ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.logo_url) + '" target="_blank" rel="noopener">Logo image</a></p>' : "") +
         (s.blurb ? '<p style="font-size:13.5px;margin-top:8px;white-space:pre-wrap;">' + escapeHtml(s.blurb) + "</p>" : "") +
         "</div>";
     }).join("");

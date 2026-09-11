@@ -1026,9 +1026,9 @@
     const accountDetails = document.getElementById("account-details");
     accountDetails.innerHTML =
       '<li><span class="info-icon">👤</span><div><strong>Name</strong><div class="muted">' +
-      (profile && profile.full_name ? profile.full_name : "Not set") +
+      (profile && profile.full_name ? escapeHtml(profile.full_name) : "Not set") +
       '</div></div></li>' +
-      '<li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted">' + user.email + '</div></div></li>' +
+      '<li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted">' + escapeHtml(user.email) + '</div></div></li>' +
       '<li><span class="info-icon">📱</span><div><strong>Phone</strong><div class="muted">' + (profile && profile.phone ? escapeHtml(profile.phone) : "Not set") + '</div></div></li>' +
       '<li><span class="info-icon">📅</span><div><strong>Member Since</strong><div class="muted">' +
       (profile && profile.created_at ? formatDate(profile.created_at) : formatDate(user.created_at)) +
@@ -1071,7 +1071,7 @@
         return (
           "<tr>" +
           "<td>" + formatDate(p.created_at) + "</td>" +
-          "<td>" + p.description + "</td>" +
+          "<td>" + escapeHtml(p.description) + "</td>" +
           "<td>" + formatAmount(p.amount_cents, p.currency) + "</td>" +
           '<td><span class="status-pill ' + p.status + '">' + p.status + "</span></td>" +
           "</tr>"

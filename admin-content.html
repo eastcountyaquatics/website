@@ -21,6 +21,12 @@
   .rte-toolbar button{padding:4px 10px;font-size:12px;border:1px solid #d7e6ee;background:#f7f9fc;border-radius:5px;cursor:pointer;}
   .rte-toolbar button:hover{background:#eef3f8;}
   .rte-toolbar + textarea{margin-top:4px;}
+  .images-heading{font-size:15px;font-weight:800;margin:22px 0 10px;color:#374151;}
+  .image-card{background:#fff;border:1px solid #e3e6f0;border-radius:var(--radius);padding:14px 18px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;}
+  .image-card.edited{border-left:4px solid var(--gold);}
+  .image-card .thumb{width:84px;height:84px;flex-shrink:0;border-radius:6px;object-fit:cover;background:#eef1f7;border:1px solid #e3e6f0;}
+  .image-card .image-fields{flex:1;min-width:0;}
+  .image-card input[type="text"]{width:100%;padding:7px 9px;border:1px solid #d7e6ee;border-radius:6px;font-size:13px;margin-top:4px;}
   .block-actions{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
   .block-actions button{padding:6px 14px;font-size:13px;}
   .block-msg{font-size:12px;color:#6b7280;}
@@ -107,7 +113,10 @@
     </div>
 
     <div class="editor-layout">
-      <div class="blocks-pane" id="blocks"><p class="muted">Choose a page above to see its text.</p></div>
+      <div class="blocks-pane">
+        <div id="blocks"><p class="muted">Choose a page above to see its text.</p></div>
+        <div id="images"></div>
+      </div>
       <div class="preview-pane-wrap" id="preview-wrap" style="display:none;">
         <div class="preview-label">Live Preview &mdash; the actual page</div>
         <iframe id="preview-frame" title="Live page preview"></iframe>
@@ -143,6 +152,7 @@
   const TAG_OVERRIDE_OPTIONS = { p: "Normal text", h2: "Heading", h3: "Subheading" };
 
   const blocksEl = document.getElementById("blocks");
+  const imagesEl = document.getElementById("images");
   const previewWrap = document.getElementById("preview-wrap");
   const previewFrame = document.getElementById("preview-frame");
 
@@ -188,6 +198,35 @@
 
   function unhighlightPreview(key) {
     const el = previewElement(key);
+    if (el) el.style.outline = "";
+  }
+
+  function previewImageElement(key) {
+    try {
+      return previewFrame.contentDocument.querySelector('[data-cms-img="' + key + '"]');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setPreviewImage(key, url, alt, isBg) {
+    const el = previewImageElement(key);
+    if (!el) return;
+    if (isBg) el.style.backgroundImage = "url('" + url + "')";
+    else el.src = url;
+    el.setAttribute("alt", alt || "");
+  }
+
+  function highlightPreviewImage(key) {
+    const el = previewImageElement(key);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.style.outline = "3px solid var(--gold)";
+    el.style.outlineOffset = "2px";
+  }
+
+  function unhighlightPreviewImage(key) {
+    const el = previewImageElement(key);
     if (el) el.style.outline = "";
   }
 
@@ -270,14 +309,137 @@
     return isPlainText(container) ? container.textContent : null;
   }
 
+  // A background-image element's URL lives in its inline style, not an
+  // attribute DOMParser exposes directly -- pull it back out of the raw
+  // style text (the homepage hero photo is the only one of these today).
+  function bgUrlFromStyle(style) {
+    const m = /background-image\s*:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/i.exec(style || "");
+    return m ? m[1] : "";
+  }
+
+  async function renderImages(path, imageDefaults) {
+    if (!imageDefaults.length) {
+      imagesEl.innerHTML = "";
+      return;
+    }
+
+    const { data: overrides } = await supabaseClient
+      .from("image_blocks")
+      .select("block_key, image_url, alt_text")
+      .eq("page_path", path);
+
+    const byKey = {};
+    (overrides || []).forEach(function (o) { byKey[o.block_key] = o; });
+
+    imagesEl.innerHTML =
+      '<div class="images-heading">Images on This Page</div>' +
+      imageDefaults
+        .map(function (img) {
+          const override = byKey[img.key];
+          const edited = !!override;
+          const url = edited ? override.image_url : img.src;
+          const alt = edited && override.alt_text != null ? override.alt_text : img.alt;
+          return (
+            '<div class="image-card' + (edited ? " edited" : "") + '" data-key="' + escapeHtml(img.key) + '">' +
+            '<img class="thumb" src="' + escapeHtml(url) + '" alt="">' +
+            '<div class="image-fields">' +
+            (edited ? '<div class="block-msg" style="margin-bottom:4px;">edited</div>' : "") +
+            '<label style="font-size:12px;">Replace image</label><br>' +
+            '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-image-file>' +
+            '<div class="block-msg" data-upload-msg></div>' +
+            '<label style="font-size:12px;">Alt text (for screen readers)</label>' +
+            '<input type="text" data-image-alt value="' + escapeHtml(alt) + '">' +
+            '<div class="block-actions">' +
+            '<button type="button" class="btn btn-primary" data-image-save>Save</button>' +
+            (edited ? '<button type="button" class="btn btn-outline-dark" data-image-revert>Revert</button>' : "") +
+            '<span class="block-msg" data-image-msg></span>' +
+            "</div>" +
+            "</div>" +
+            "</div>"
+          );
+        })
+        .join("");
+
+    imagesEl.querySelectorAll(".image-card").forEach(function (card) {
+      const key = card.dataset.key;
+      const def = imageDefaults.find(function (d) { return d.key === key; });
+      const existing = byKey[key];
+      let pendingUrl = existing ? existing.image_url : def.src;
+      const msg = card.querySelector("[data-image-msg]");
+      const uploadMsg = card.querySelector("[data-upload-msg]");
+      const thumb = card.querySelector(".thumb");
+      const altInput = card.querySelector("[data-image-alt]");
+      const fileInput = card.querySelector("[data-image-file]");
+
+      fileInput.addEventListener("change", async function () {
+        const file = fileInput.files[0];
+        if (!file) return;
+        uploadMsg.className = "block-msg";
+        uploadMsg.textContent = "Uploading...";
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        const storagePath = path + "/" + key + "-" + Date.now() + "." + ext;
+        const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file, { upsert: true });
+        if (error) {
+          uploadMsg.className = "block-msg error";
+          uploadMsg.textContent = error.message;
+          return;
+        }
+        const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
+        pendingUrl = data.publicUrl;
+        thumb.src = pendingUrl;
+        uploadMsg.className = "block-msg success";
+        uploadMsg.textContent = "Uploaded — click Save to publish it.";
+        setPreviewImage(key, pendingUrl, altInput.value, def.isBg);
+      });
+
+      altInput.addEventListener("input", function () { setPreviewImage(key, pendingUrl, altInput.value, def.isBg); });
+      altInput.addEventListener("focus", function () { highlightPreviewImage(key); });
+      altInput.addEventListener("blur", function () { unhighlightPreviewImage(key); });
+
+      card.querySelector("[data-image-save]").addEventListener("click", async function () {
+        msg.textContent = "Saving...";
+        const { error } = await supabaseClient
+          .from("image_blocks")
+          .upsert(
+            { page_path: path, block_key: key, image_url: pendingUrl, alt_text: altInput.value.trim() || null },
+            { onConflict: "page_path,block_key" }
+          );
+        msg.textContent = error ? error.message : "Saved.";
+        if (!error) card.classList.add("edited");
+      });
+
+      const revertBtn = card.querySelector("[data-image-revert]");
+      if (revertBtn) {
+        revertBtn.addEventListener("click", async function () {
+          msg.textContent = "Reverting...";
+          const { error } = await supabaseClient.from("image_blocks").delete().eq("page_path", path).eq("block_key", key);
+          if (error) {
+            msg.textContent = error.message;
+            return;
+          }
+          pendingUrl = def.src;
+          thumb.src = def.src;
+          altInput.value = def.alt;
+          setPreviewImage(key, def.src, def.alt, def.isBg);
+          card.classList.remove("edited");
+          revertBtn.remove();
+          msg.textContent = "Back to the original image.";
+        });
+      }
+    });
+  }
+
   async function loadPage(path) {
     blocksEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
+    imagesEl.innerHTML = "";
     previewWrap.style.display = "block";
     previewFrame.src = path;
 
-    // Read the page's own HTML to discover its editable blocks and their
-    // original wording, so nothing has to be pre-registered in the database.
+    // Read the page's own HTML to discover its editable blocks (and
+    // images) and their originals, so nothing has to be pre-registered in
+    // the database.
     let defaults = [];
+    let imageDefaults = [];
     try {
       const res = await fetch(path, { cache: "no-store" });
       const html = await res.text();
@@ -289,10 +451,21 @@
           original: el.innerHTML.trim(),
         };
       });
+      imageDefaults = Array.prototype.slice.call(doc.querySelectorAll("[data-cms-img]")).map(function (el) {
+        const isBg = el.hasAttribute("data-cms-bg");
+        return {
+          key: el.getAttribute("data-cms-img"),
+          isBg: isBg,
+          src: isBg ? bgUrlFromStyle(el.getAttribute("style")) : el.getAttribute("src"),
+          alt: el.getAttribute("alt") || "",
+        };
+      });
     } catch (e) {
       blocksEl.innerHTML = '<p class="muted">Could not read that page.</p>';
       return;
     }
+
+    renderImages(path, imageDefaults);
 
     if (!defaults.length) {
       blocksEl.innerHTML = '<p class="muted">This page has no editable text blocks yet.</p>';

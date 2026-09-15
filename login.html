@@ -40,43 +40,27 @@
 
 <div class="auth-wrap">
   <div class="auth-card">
-    <div id="access-gate">
-      <h1>Sign-ins are on hold</h1>
-      <p class="auth-sub">We're not ready for the public yet. Staff and testers can continue with an access code.</p>
-      <div id="gate-msg" class="form-msg"></div>
-      <button type="button" id="gate-toggle-btn" class="btn btn-outline-dark">I have an access code</button>
-      <div id="gate-code-box" hidden style="margin-top:14px;">
-        <div class="field">
-          <label for="gate-code-input">Access Code</label>
-          <input type="password" id="gate-code-input" autocomplete="off">
-        </div>
-        <button type="button" id="gate-unlock-btn" class="btn btn-primary auth-submit">Continue</button>
+    <h1>Welcome Back</h1>
+    <p class="auth-sub">Sign in to view your ECA dashboard.</p>
+
+    <div id="form-msg" class="form-msg"></div>
+
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required>
       </div>
-    </div>
-
-    <div id="auth-real-content" hidden>
-      <h1>Welcome Back</h1>
-      <p class="auth-sub">Sign in to view your ECA dashboard.</p>
-
-      <div id="form-msg" class="form-msg"></div>
-
-      <form id="login-form">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" autocomplete="email" required>
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" autocomplete="current-password" required>
-        </div>
-        <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Sign In</button>
-      </form>
-
-      <div class="auth-switch">
-        <a href="forgot-password.html">Forgot your password?</a>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
       </div>
-      <div class="auth-switch">Don't have an account? <a href="signup.html">Create one</a></div>
+      <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Sign In</button>
+    </form>
+
+    <div class="auth-switch">
+      <a href="forgot-password.html">Forgot your password?</a>
     </div>
+    <div class="auth-switch">Don't have an account? <a href="signup.html">Create one</a></div>
   </div>
 </div>
 
@@ -92,9 +76,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/main.js"></script>
-<script src="js/access-gate.js"></script>
-<script>
+<script src="js/main.js"></script><script>
   document.getElementById("login-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const msg = document.getElementById("form-msg");

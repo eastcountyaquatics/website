@@ -40,49 +40,33 @@
 
 <div class="auth-wrap">
   <div class="auth-card">
-    <div id="access-gate">
-      <h1>New sign-ups are on hold</h1>
-      <p class="auth-sub">We're not ready for the public yet. Staff and testers can continue with an access code.</p>
-      <div id="gate-msg" class="form-msg"></div>
-      <button type="button" id="gate-toggle-btn" class="btn btn-outline-dark">I have an access code</button>
-      <div id="gate-code-box" hidden style="margin-top:14px;">
-        <div class="field">
-          <label for="gate-code-input">Access Code</label>
-          <input type="password" id="gate-code-input" autocomplete="off">
-        </div>
-        <button type="button" id="gate-unlock-btn" class="btn btn-primary auth-submit">Continue</button>
+    <h1>Create Your Account</h1>
+    <p class="auth-sub">Sign up to manage your ECA registration and see your purchases.</p>
+
+    <div id="form-msg" class="form-msg"></div>
+
+    <form id="signup-form">
+      <div class="field">
+        <label for="full_name">Full Name</label>
+        <input type="text" id="full_name" name="full_name" autocomplete="name" required>
       </div>
-    </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
+        <p class="field-hint">At least 8 characters.</p>
+      </div>
+      <div class="field">
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="8" required>
+      </div>
+      <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Create Account</button>
+    </form>
 
-    <div id="auth-real-content" hidden>
-      <h1>Create Your Account</h1>
-      <p class="auth-sub">Sign up to manage your ECA registration and see your purchases.</p>
-
-      <div id="form-msg" class="form-msg"></div>
-
-      <form id="signup-form">
-        <div class="field">
-          <label for="full_name">Full Name</label>
-          <input type="text" id="full_name" name="full_name" autocomplete="name" required>
-        </div>
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" autocomplete="email" required>
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
-          <p class="field-hint">At least 8 characters.</p>
-        </div>
-        <div class="field">
-          <label for="confirm_password">Confirm Password</label>
-          <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="8" required>
-        </div>
-        <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Create Account</button>
-      </form>
-
-      <div class="auth-switch">Already have an account? <a href="login.html">Sign in</a></div>
-    </div>
+    <div class="auth-switch">Already have an account? <a href="login.html">Sign in</a></div>
   </div>
 </div>
 
@@ -98,9 +82,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/main.js"></script>
-<script src="js/access-gate.js"></script>
-<script>
+<script src="js/main.js"></script><script>
   document.getElementById("signup-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const msg = document.getElementById("form-msg");

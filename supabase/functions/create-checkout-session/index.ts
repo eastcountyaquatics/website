@@ -125,6 +125,22 @@ Deno.serve(async (req) => {
       discounts = [{ promotion_code: promoCodes.data[0].id }];
     }
 
+    // Stripe caps a metadata value at 500 characters -- fine for one athlete,
+    // but the full registrations array (names + labels) blows past that with
+    // just two or three in the same checkout, which would make
+    // sessions.create() below fail outright for exactly the multi-sibling
+    // checkout the site is meant to support. Store the cart server-side and
+    // pass only its id; the webhook reads it back with the service role.
+    const { data: cart, error: cartError } = await supabase
+      .from("registration_carts")
+      .insert({ user_id: user.id, items: registrations, consent })
+      .select("id")
+      .single();
+    if (cartError || !cart) {
+      console.error("Could not create registration cart", cartError);
+      return json({ error: "Could not start checkout. Please try again." }, 500);
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
@@ -134,8 +150,7 @@ Deno.serve(async (req) => {
       ...(discounts ? { discounts } : {}),
       metadata: {
         user_id: user.id,
-        registrations: JSON.stringify(registrations),
-        consent: JSON.stringify(consent),
+        cart_id: cart.id,
       },
     });
 

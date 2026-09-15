@@ -164,25 +164,33 @@ async function dispatchEvent(
   }
 
   const userId = session.metadata?.user_id;
-  const registrationsJson = session.metadata?.registrations;
+  const cartId = session.metadata?.cart_id;
 
-  if (!userId || !registrationsJson) {
+  if (!userId || !cartId) {
     console.error("Webhook missing expected metadata on session", session.id);
     return new Response("missing metadata", { status: 200 });
   }
 
-  let registrations: Array<{
+  // The cart (athlete/option pairs + consent answers) lives in its own
+  // table rather than session metadata, which caps a value at 500
+  // characters -- too small to hold more than one or two registrations'
+  // worth of names and labels. See registration_carts migration.
+  const { data: cart, error: cartError } = await supabase
+    .from("registration_carts")
+    .select("items, consent")
+    .eq("id", cartId)
+    .maybeSingle();
+  if (cartError || !cart) {
+    console.error("Could not load registration cart for session", session.id, cartId);
+    return new Response("missing cart", { status: 200 });
+  }
+
+  const registrations = cart.items as Array<{
     athlete_id: string;
     athlete_name: string;
     registration_option_id: string;
     registration_label: string;
   }>;
-  try {
-    registrations = JSON.parse(registrationsJson);
-  } catch {
-    console.error("Could not parse registrations metadata for session", session.id);
-    return new Response("bad metadata", { status: 200 });
-  }
 
   // A multi-item checkout produced one PaymentIntent for the whole cart —
   // split the total evenly across line items isn't right if prices differ,
@@ -194,14 +202,7 @@ async function dispatchEvent(
     .in("id", optionIds);
   const amountByOption = new Map((options ?? []).map((o) => [o.id, o.amount_cents]));
 
-  let consentResponses: unknown = null;
-  if (session.metadata?.consent) {
-    try {
-      consentResponses = JSON.parse(session.metadata.consent);
-    } catch {
-      console.error("Could not parse consent metadata for session", session.id);
-    }
-  }
+  const consentResponses: unknown = cart.consent ?? null;
 
   // Stripe delivers webhooks at-least-once -- a repeat delivery of the same
   // session would otherwise insert a second, duplicate set of purchase rows.
@@ -366,7 +367,7 @@ async function handleSponsorshipPayment(
     })
     .eq("id", sponsorshipId)
     .eq("status", "pending") // idempotency: a repeat delivery finds 0 rows and no-ops
-    .select("company_name, contact_email")
+    .select("company_name, contact_email, amount_cents")
     .maybeSingle();
 
   if (error) {
@@ -379,6 +380,12 @@ async function handleSponsorshipPayment(
       "Thank you for sponsoring East County Aquatics!",
       `Thank you for sponsoring San Diego East County Aquatics on behalf of ${updated.company_name}. ` +
         `We truly appreciate your support -- we'll be in touch about featuring your business.`
+    );
+    await sendReceiptEmail(
+      "eastcountyaquatics@gmail.com",
+      "Sponsorship payment received: " + updated.company_name,
+      `${updated.company_name} just paid their sponsorship of $${(updated.amount_cents / 100).toFixed(2)}. ` +
+        `Contact: ${updated.contact_email}.`
     );
   }
 

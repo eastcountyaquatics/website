@@ -28,10 +28,10 @@ begin
     raise exception 'No profile exists to attach test rows to.';
   end if;
 
-  insert into public.athletes (parent_id, full_name, birthdate, gender)
-    values (v_user,'Replay Sib One','2012-01-01','female') returning id into v_a1;
-  insert into public.athletes (parent_id, full_name, birthdate, gender)
-    values (v_user,'Replay Sib Two','2014-01-01','male') returning id into v_a2;
+  insert into public.athletes (parent_id, full_name, birthdate, sex)
+    values (v_user,'Replay Sib One','2012-01-01','Female') returning id into v_a1;
+  insert into public.athletes (parent_id, full_name, birthdate, sex)
+    values (v_user,'Replay Sib Two','2014-01-01','Male') returning id into v_a2;
   insert into public.registration_options (label, amount_cents, is_open, stripe_price_id)
     values ('Replay Fall 14U',45000,true,'price_replay_a') returning id into v_opt;
   insert into public.registration_options (label, amount_cents, is_open, stripe_price_id)

@@ -4,19 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Become a Sponsor | San Diego East County Aquatics</title>
-<meta name="description" content="Get in touch with San Diego East County Aquatics water polo club.">
+<meta name="description" content="Sponsor San Diego East County Aquatics water polo club and put your business in front of East County families.">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
 <meta name="theme-color" content="#0a1f6b">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://eastcountyaquatics.github.io/website/contact.html">
+<meta property="og:url" content="https://eastcountyaquatics.github.io/website/sponsor.html">
 <meta property="og:title" content="Become a Sponsor | San Diego East County Aquatics">
-<meta property="og:description" content="Get in touch with San Diego East County Aquatics water polo club.">
+<meta property="og:description" content="Sponsor San Diego East County Aquatics water polo club and put your business in front of East County families.">
 <meta property="og:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Become a Sponsor | San Diego East County Aquatics">
-<meta name="twitter:description" content="Get in touch with San Diego East County Aquatics water polo club.">
+<meta name="twitter:description" content="Sponsor San Diego East County Aquatics water polo club and put your business in front of East County families.">
 <meta name="twitter:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,19 +55,11 @@
 
 <section class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Contact</span>
-    <h1 data-cms="contact-0001">Get in Touch</h1>
-    <p data-cms="contact-0002">Questions about joining a team, programs, or sponsoring the club? We'd love to hear from you.</p>
+    <span class="breadcrumb">Sponsors &amp; Donors</span>
+    <h1>Become a Sponsor</h1>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
-  </div>
-</section>
-
-<section>
-  <div class="container">
-    <span class="breadcrumb">Sponsors &amp; Donors</span>
-    <h1>Become a Sponsor</h1>
   </div>
 </section>
 
@@ -84,36 +76,36 @@
         </div>
         <div class="field">
           <label for="sp-contact-name">Contact Name</label>
-          <input type="text" id="sp-contact-name">
+          <input type="text" id="sp-contact-name" required>
         </div>
         <div class="field">
           <label for="sp-email">Contact Email</label>
           <input type="email" id="sp-email" required>
         </div>
         <div class="field">
-          <label for="sp-phone">Contact Phone (optional)</label>
-          <input type="tel" id="sp-phone">
+          <label for="sp-phone">Contact Phone</label>
+          <input type="tel" id="sp-phone" required>
         </div>
         <div class="field">
-          <label for="sp-tier">Sponsorship Level (optional)</label>
-          <input type="text" id="sp-tier" placeholder="e.g. Gold, Silver, Bronze, or describe your own">
+          <label for="sp-tier">Sponsorship Level</label>
+          <input type="text" id="sp-tier" placeholder="e.g. Gold, Silver, Bronze, or describe your own" required>
         </div>
         <div class="field">
           <label for="sp-amount">Amount (USD)</label>
           <input type="number" id="sp-amount" step="0.01" min="1" placeholder="500.00" required>
         </div>
         <div class="field">
-          <label for="sp-website">Your Website (optional)</label>
-          <input type="url" id="sp-website" placeholder="https://...">
+          <label for="sp-website">Your Website</label>
+          <input type="url" id="sp-website" placeholder="https://..." required>
         </div>
         <div class="field">
-          <label for="sp-logo">Logo Image URL (optional)</label>
-          <input type="url" id="sp-logo" placeholder="https://...">
+          <label for="sp-logo">Logo Image URL</label>
+          <input type="url" id="sp-logo" placeholder="https://..." required>
           <p class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
         </div>
         <div class="field">
-          <label for="sp-blurb">What would you like us to say about your business? (optional)</label>
-          <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured."></textarea>
+          <label for="sp-blurb">What would you like us to say about your business?</label>
+          <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured." required></textarea>
         </div>
         <button type="submit" id="sponsor-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
@@ -165,6 +157,17 @@
     btn.disabled = true;
     btn.textContent = "Submitting...";
 
+    // The database only accepts http(s) URLs here (an owner reviewing
+    // submissions clicks these links, so anything else is a real risk, not
+    // just a validation nicety). A sponsor typing "www.company.com" without
+    // a scheme is normal, not an attack -- default it to https:// rather
+    // than bouncing them with a confusing database error.
+    function normalizeUrl(raw) {
+      const value = raw.trim();
+      if (!value) return null;
+      return /^https?:\/\//i.test(value) ? value : "https://" + value;
+    }
+
     // Inserted directly (RLS lets anyone submit a pending sponsorship), then
     // the checkout function looks it up by id to build the Stripe session --
     // this keeps the amount and company info authoritative in the database
@@ -178,8 +181,8 @@
         contact_phone: document.getElementById("sp-phone").value.trim() || null,
         tier: document.getElementById("sp-tier").value.trim() || null,
         amount_cents: Math.round(dollars * 100),
-        website_url: document.getElementById("sp-website").value.trim() || null,
-        logo_url: document.getElementById("sp-logo").value.trim() || null,
+        website_url: normalizeUrl(document.getElementById("sp-website").value),
+        logo_url: normalizeUrl(document.getElementById("sp-logo").value),
         blurb: document.getElementById("sp-blurb").value.trim() || null,
       })
       .select("id")

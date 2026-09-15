@@ -187,11 +187,9 @@
       document.getElementById("hours-card").style.display = "block";
       showUnreadMessages();
     }
-    if (auth.role === "owner" || auth.role === "accountant") {
+    if (auth.role === "owner") {
       document.getElementById("signups-card").style.display = "block";
       document.getElementById("sponsors-card").style.display = "block";
-    }
-    if (auth.role === "owner") {
       document.getElementById("registrations-card").style.display = "block";
       document.getElementById("coupons-card").style.display = "block";
       document.getElementById("masters-card").style.display = "block";

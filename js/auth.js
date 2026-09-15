@@ -16,11 +16,12 @@ async function renderNavAuthSlot(session) {
 
   if (session) {
     const role = await getUserRole(session.user.id);
-    const adminLink = role ? '<a href="admin.html" class="nav-btn nav-btn-admin">Admin</a>' : "";
-    slot.innerHTML =
-      adminLink +
-      '<a href="dashboard.html" class="nav-btn">My Account</a>' +
-      '<a href="#" id="nav-sign-out">Sign Out</a>';
+    // Staff go straight to the admin panel -- they don't need the
+    // parent-facing "My Account" dashboard cluttering their nav.
+    const middleLink = role
+      ? '<a href="admin.html" class="nav-btn nav-btn-admin">Admin</a>'
+      : '<a href="dashboard.html" class="nav-btn">My Account</a>';
+    slot.innerHTML = middleLink + '<a href="#" id="nav-sign-out">Sign Out</a>';
     const signOutLink = document.getElementById("nav-sign-out");
     signOutLink.addEventListener("click", async function (e) {
       e.preventDefault();
@@ -66,11 +67,7 @@ async function requireRole(allowedRoles) {
   if (!session) return null;
 
   const role = await getUserRole(session.user.id);
-  // 'staff' was dropped back in 20260902171905 and 'accountant' replaced
-  // it, but this default never caught up -- so an accountant got the Admin
-  // nav button, then bounced off admin.html, which has a card built
-  // specifically for them. The role was unusable end to end.
-  const roles = allowedRoles || ["owner", "coach", "accountant"];
+  const roles = allowedRoles || ["owner", "coach"];
   if (!role || roles.indexOf(role) === -1) {
     window.location.href = "dashboard.html";
     return null;

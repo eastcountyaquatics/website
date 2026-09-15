@@ -84,13 +84,15 @@
         <div id="athlete-list"><p class="muted">Loading&hellip;</p></div>
         <button type="button" id="add-athlete-toggle" class="btn btn-outline-dark" style="margin-top:16px;">+ Add an Athlete</button>
         <form id="athlete-form" style="margin-top:16px;display:none;">
+          <h4 id="athlete-form-title" style="margin-top:0;">Add an Athlete</h4>
+          <input type="hidden" id="athlete_id">
           <div class="field">
             <label for="athlete_name">Full Name</label>
             <input type="text" id="athlete_name" placeholder="Athlete's full name" required>
           </div>
           <div class="field">
             <label for="athlete_birthdate">Birthdate</label>
-            <input type="date" id="athlete_birthdate">
+            <input type="date" id="athlete_birthdate" required>
           </div>
           <div class="field">
             <label for="athlete_sex">Sex</label>
@@ -99,71 +101,49 @@
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
-            <p class="muted" style="font-size:12px;margin-top:4px;">Used for tournament and USA Water Polo roster eligibility.</p>
-          </div>
-          <div class="field">
-            <label for="athlete_gender">Gender</label>
-            <select id="athlete_gender">
-              <option value="">Select one...</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
-            </select>
+            <p class="muted" style="font-size:12px;margin-top:4px;">Used for team placement and tournament/USA Water Polo roster eligibility.</p>
           </div>
           <div class="field">
             <label for="athlete_school">School</label>
-            <input type="text" id="athlete_school" placeholder="e.g. Grossmont High School">
+            <input type="text" id="athlete_school" placeholder="e.g. Grossmont High School" required>
           </div>
           <div class="field">
             <label for="athlete_uswp_number">USA Water Polo (USWP) Membership Number</label>
-            <input type="text" id="athlete_uswp_number" placeholder="e.g. 1234567" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="athlete_shirt_size">Shirt Size</label>
-            <select id="athlete_shirt_size" autocomplete="on" name="shirt-size">
-              <option value="">Select one...</option>
-              <option value="YS">Youth Small</option>
-              <option value="YM">Youth Medium</option>
-              <option value="YL">Youth Large</option>
-              <option value="AS">Adult Small</option>
-              <option value="AM">Adult Medium</option>
-              <option value="AL">Adult Large</option>
-              <option value="AXL">Adult XL</option>
-            </select>
+            <input type="text" id="athlete_uswp_number" placeholder="e.g. 1234567" autocomplete="off" required>
           </div>
           <div class="field" style="border-top:1px solid #eef1f7;padding-top:14px;">
             <label style="font-weight:800;">Emergency Contact 1</label>
           </div>
           <div class="field">
             <label for="athlete_emergency_name">Name</label>
-            <input type="text" id="athlete_emergency_name" placeholder="e.g. Grandma Smith">
+            <input type="text" id="athlete_emergency_name" placeholder="e.g. Grandma Smith" required>
           </div>
           <div class="field">
             <label for="athlete_emergency_email">Email</label>
-            <input type="email" id="athlete_emergency_email" placeholder="grandma@example.com">
+            <input type="email" id="athlete_emergency_email" placeholder="grandma@example.com" required>
           </div>
           <div class="field">
             <label for="athlete_emergency_phone1">Cell Phone 1</label>
-            <input type="tel" id="athlete_emergency_phone1" placeholder="(619) 555-0100">
+            <input type="tel" id="athlete_emergency_phone1" placeholder="(619) 555-0100" required>
           </div>
           <div class="field">
             <label for="athlete_emergency_phone2">Cell Phone 2</label>
             <input type="tel" id="athlete_emergency_phone2" placeholder="(619) 555-0100">
           </div>
           <div class="field" style="border-top:1px solid #eef1f7;padding-top:14px;">
-            <label style="font-weight:800;">Emergency Contact 2 (optional)</label>
+            <label style="font-weight:800;">Emergency Contact 2</label>
           </div>
           <div class="field">
             <label for="athlete_emergency2_name">Name</label>
-            <input type="text" id="athlete_emergency2_name" placeholder="e.g. Uncle Mike">
+            <input type="text" id="athlete_emergency2_name" placeholder="e.g. Uncle Mike" required>
           </div>
           <div class="field">
             <label for="athlete_emergency2_email">Email</label>
-            <input type="email" id="athlete_emergency2_email" placeholder="uncle@example.com">
+            <input type="email" id="athlete_emergency2_email" placeholder="uncle@example.com" required>
           </div>
           <div class="field">
             <label for="athlete_emergency2_phone1">Cell Phone 1</label>
-            <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100">
+            <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100" required>
           </div>
           <div class="field">
             <label for="athlete_emergency2_phone2">Cell Phone 2</label>
@@ -174,7 +154,7 @@
             <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about"></textarea>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button type="submit" class="btn btn-primary">Save Athlete</button>
+            <button type="submit" id="athlete-submit-btn" class="btn btn-primary">Save Athlete</button>
             <button type="button" id="add-athlete-cancel" class="btn btn-outline-dark">Cancel</button>
           </div>
         </form>
@@ -357,9 +337,12 @@
     return new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
   function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.textContent = str || "";
-    return div.innerHTML;
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function showCheckoutBanner() {
@@ -413,7 +396,7 @@
     const today = new Date().toISOString().slice(0, 10);
     const { data: tlist } = await supabaseClient
       .from("tournaments")
-      .select("id, name, event_date, team_slug, rsvp_deadline")
+      .select("id, name, event_date, team_slug, rsvp_deadline, location, estimated_cost_note")
       .eq("is_published", true)
       .in("team_slug", teamSlugs)
       .gte("event_date", today)
@@ -469,8 +452,10 @@
 
         let body =
           '<h4 style="margin-bottom:2px;">' + escapeHtml(c.t.name) + "</h4>" +
-          '<p class="muted" style="margin-bottom:10px;">' + escapeHtml(c.a.full_name) + " &middot; " + formatDate(c.t.event_date) +
-          (c.t.rsvp_deadline ? " &middot; RSVP by " + formatDate(c.t.rsvp_deadline) : "") + "</p>";
+          '<p class="muted" style="margin-bottom:' + (c.t.estimated_cost_note ? "2px" : "10px") + ';">' + escapeHtml(c.a.full_name) + " &middot; " + formatDate(c.t.event_date) +
+          (c.t.location ? " &middot; " + escapeHtml(c.t.location) : "") +
+          (c.t.rsvp_deadline ? " &middot; RSVP by " + formatDate(c.t.rsvp_deadline) : "") + "</p>" +
+          (c.t.estimated_cost_note ? '<p class="muted" style="margin-bottom:10px;font-size:12.5px;">Estimated cost: ' + escapeHtml(c.t.estimated_cost_note) + " &mdash; estimate only</p>" : "");
 
         if (onRoster) {
           body += '<div class="form-msg success">You\'re on the roster!</div>';
@@ -707,6 +692,9 @@
     if (!show) {
       document.getElementById("athlete-form").reset();
       document.getElementById("athlete-form-msg").textContent = "";
+      document.getElementById("athlete_id").value = "";
+      document.getElementById("athlete-form-title").textContent = "Add an Athlete";
+      document.getElementById("athlete-submit-btn").textContent = "Save Athlete";
     }
   }
   document.getElementById("add-athlete-toggle").addEventListener("click", function () {
@@ -725,7 +713,7 @@
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, sex, gender, school, team_slug, uswp_number, shirt_size, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, notes")
+      .select("id, full_name, birthdate, sex, school, team_slug, uswp_number, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, notes")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -747,15 +735,13 @@
             escapeHtml(a.full_name) +
             (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") +
             "</h4>" +
-            '<div class="admin-list-actions"><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
+            '<div class="admin-list-actions"><button data-edit-athlete="' + a.id + '">Edit</button><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
             "</div>" +
             '<div class="athlete-detail" style="display:none;padding-top:10px;margin-top:10px;border-top:1px solid #eef1f7;">' +
             detailRow("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "") +
             detailRow("Sex", a.sex) +
-            detailRow("Gender", a.gender) +
             detailRow("School", a.school) +
             detailRow("USWP Number", a.uswp_number) +
-            detailRow("Shirt Size", a.shirt_size) +
             detailRow("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2].filter(Boolean).join(" · ")) +
             detailRow("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2].filter(Boolean).join(" · ")) +
             detailRow("Medical / Allergy Notes", a.notes) +
@@ -769,6 +755,12 @@
           if (e.target.closest("button")) return;
           const detail = row.querySelector(".athlete-detail");
           detail.style.display = detail.style.display === "none" ? "block" : "none";
+        });
+      });
+      listEl.querySelectorAll("[data-edit-athlete]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const athlete = myAthletes.find(function (x) { return x.id === btn.dataset.editAthlete; });
+          if (athlete) startEditAthlete(athlete);
         });
       });
       listEl.querySelectorAll("[data-remove-athlete]").forEach(function (btn) {
@@ -796,6 +788,29 @@
     loadRegistrationOptions();
   }
 
+  function startEditAthlete(a) {
+    toggleAthleteForm(true);
+    document.getElementById("athlete-form-msg").textContent = "";
+    document.getElementById("athlete-form-title").textContent = "Edit Athlete";
+    document.getElementById("athlete-submit-btn").textContent = "Save Changes";
+    document.getElementById("athlete_id").value = a.id;
+    document.getElementById("athlete_name").value = a.full_name || "";
+    document.getElementById("athlete_birthdate").value = a.birthdate || "";
+    document.getElementById("athlete_sex").value = a.sex || "";
+    document.getElementById("athlete_school").value = a.school || "";
+    document.getElementById("athlete_uswp_number").value = a.uswp_number || "";
+    document.getElementById("athlete_emergency_name").value = a.emergency_contact_name || "";
+    document.getElementById("athlete_emergency_email").value = a.emergency_contact_email || "";
+    document.getElementById("athlete_emergency_phone1").value = a.emergency_contact_phone1 || "";
+    document.getElementById("athlete_emergency_phone2").value = a.emergency_contact_phone2 || "";
+    document.getElementById("athlete_emergency2_name").value = a.emergency_contact2_name || "";
+    document.getElementById("athlete_emergency2_email").value = a.emergency_contact2_email || "";
+    document.getElementById("athlete_emergency2_phone1").value = a.emergency_contact2_phone1 || "";
+    document.getElementById("athlete_emergency2_phone2").value = a.emergency_contact2_phone2 || "";
+    document.getElementById("athlete_notes").value = a.notes || "";
+    document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   document.getElementById("athlete-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const msg = document.getElementById("athlete-form-msg");
@@ -804,15 +819,12 @@
     if (!name) return;
 
     const session = await requireAuth();
-    const { error } = await supabaseClient.from("athletes").insert({
+    const payload = {
       full_name: name,
-      parent_id: session.user.id,
       birthdate: document.getElementById("athlete_birthdate").value || null,
       sex: document.getElementById("athlete_sex").value || null,
-      gender: document.getElementById("athlete_gender").value || null,
       school: document.getElementById("athlete_school").value.trim() || null,
       uswp_number: document.getElementById("athlete_uswp_number").value.trim() || null,
-      shirt_size: document.getElementById("athlete_shirt_size").value || null,
       emergency_contact_name: document.getElementById("athlete_emergency_name").value.trim() || null,
       emergency_contact_email: document.getElementById("athlete_emergency_email").value.trim() || null,
       emergency_contact_phone1: document.getElementById("athlete_emergency_phone1").value.trim() || null,
@@ -822,7 +834,12 @@
       emergency_contact2_phone1: document.getElementById("athlete_emergency2_phone1").value.trim() || null,
       emergency_contact2_phone2: document.getElementById("athlete_emergency2_phone2").value.trim() || null,
       notes: document.getElementById("athlete_notes").value.trim() || null,
-    });
+    };
+
+    const editId = document.getElementById("athlete_id").value;
+    const { error } = editId
+      ? await supabaseClient.from("athletes").update(payload).eq("id", editId)
+      : await supabaseClient.from("athletes").insert(Object.assign({ parent_id: session.user.id }, payload));
 
     if (error) {
       msg.className = "form-msg error";
@@ -1012,9 +1029,9 @@
     const accountDetails = document.getElementById("account-details");
     accountDetails.innerHTML =
       '<li><span class="info-icon">👤</span><div><strong>Name</strong><div class="muted">' +
-      (profile && profile.full_name ? profile.full_name : "Not set") +
+      (profile && profile.full_name ? escapeHtml(profile.full_name) : "Not set") +
       '</div></div></li>' +
-      '<li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted">' + user.email + '</div></div></li>' +
+      '<li><span class="info-icon">✉️</span><div><strong>Email</strong><div class="muted">' + escapeHtml(user.email) + '</div></div></li>' +
       '<li><span class="info-icon">📱</span><div><strong>Phone</strong><div class="muted">' + (profile && profile.phone ? escapeHtml(profile.phone) : "Not set") + '</div></div></li>' +
       '<li><span class="info-icon">📅</span><div><strong>Member Since</strong><div class="muted">' +
       (profile && profile.created_at ? formatDate(profile.created_at) : formatDate(user.created_at)) +
@@ -1057,7 +1074,7 @@
         return (
           "<tr>" +
           "<td>" + formatDate(p.created_at) + "</td>" +
-          "<td>" + p.description + "</td>" +
+          "<td>" + escapeHtml(p.description) + "</td>" +
           "<td>" + formatAmount(p.amount_cents, p.currency) + "</td>" +
           '<td><span class="status-pill ' + p.status + '">' + p.status + "</span></td>" +
           "</tr>"

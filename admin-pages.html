@@ -21,6 +21,10 @@
   .editor-area h2{font-size:22px;margin:18px 0 8px;}
   .editor-area h3{font-size:18px;margin:16px 0 6px;}
   .editor-area ul,.editor-area ol{margin-left:20px;}
+  .cms-figure{position:relative;display:inline-block;max-width:100%;margin:10px 0;}
+  .cms-figure img{display:block;max-width:100%;border-radius:6px;}
+  .cms-figure-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,30,50,.75);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}
+  .cms-figure:hover .cms-figure-remove,.cms-figure-remove:focus{opacity:1;}
   .page-url{font-size:13px;word-break:break-all;}
 </style>
 </head>
@@ -84,6 +88,8 @@
             <button type="button" data-cmd="insertUnorderedList">&bull; List</button>
             <button type="button" data-cmd="insertOrderedList">1. List</button>
             <button type="button" id="link-btn">Link</button>
+            <button type="button" id="insert-image-btn">Image</button>
+            <button type="button" id="delete-block-btn" style="color:#a12626;">Delete Section</button>
             <button type="button" data-cmd="removeFormat">Clear</button>
           </div>
           <div class="editor-area" id="editor" contenteditable="true"></div>
@@ -139,6 +145,19 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
+  // The editor's live DOM wraps images in a delete-affordance figure (see
+  // imageFigureHtml/wrapImagesForEditing above); strip that back down to a
+  // bare <img> before this ever reaches the database or the sanitizer.
+  function getCleanBodyHtml() {
+    const clone = editor.cloneNode(true);
+    clone.querySelectorAll(".cms-figure").forEach(function (fig) {
+      const img = fig.querySelector("img");
+      if (img) fig.replaceWith(img);
+      else fig.remove();
+    });
+    return sanitizeHtml(clone.innerHTML);
+  }
+
   function slugify(str) {
     return String(str || "")
       .toLowerCase()
@@ -147,6 +166,21 @@
   }
 
   const editor = document.getElementById("editor");
+
+  // Clicking any toolbar button moves focus off the contenteditable area,
+  // which some browsers use as the cue to drop whatever Selection was
+  // inside it -- fine for execCommand (it restores the caret on
+  // editor.focus()), not fine for reading window.getSelection() after
+  // the fact. Track the last real selection made inside the editor so
+  // "Delete Section" can still act on it after the button click steals
+  // focus.
+  let lastEditorRange = null;
+  document.addEventListener("selectionchange", function () {
+    const sel = window.getSelection();
+    if (sel.rangeCount && editor.contains(sel.anchorNode)) {
+      lastEditorRange = sel.getRangeAt(0).cloneRange();
+    }
+  });
 
   document.querySelectorAll("[data-cmd]").forEach(function (btn) {
     btn.addEventListener("click", function () {
@@ -185,6 +219,84 @@
     if (!url) return;
     editor.focus();
     document.execCommand("createLink", false, url);
+  });
+
+  // Images are wrapped in a contenteditable="false" island while editing
+  // (an "atomic" block, same trick most rich editors use) so the browser
+  // treats the whole image as one unit -- click it and it selects as a
+  // whole, Backspace next to it removes it whole, and it carries its own
+  // hover-visible delete button. Only the bare <img> is ever saved; the
+  // wrapper and button are stripped back out right before saving (see
+  // getCleanBodyHtml) and rebuilt on load (see wrapImagesForEditing), so
+  // the stored page HTML stays plain and the public page.html renderer
+  // never has to know this editing affordance exists.
+  function imageFigureHtml(src, alt) {
+    return (
+      '<figure class="cms-figure" contenteditable="false">' +
+      '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(alt) + '">' +
+      '<button type="button" class="cms-figure-remove" title="Remove image" aria-label="Remove image">✕</button>' +
+      "</figure>"
+    );
+  }
+
+  function wrapImagesForEditing() {
+    editor.querySelectorAll("img").forEach(function (img) {
+      if (img.closest(".cms-figure")) return;
+      const figure = document.createElement("figure");
+      figure.className = "cms-figure";
+      figure.contentEditable = "false";
+      img.replaceWith(figure);
+      figure.appendChild(img);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cms-figure-remove";
+      btn.title = "Remove image";
+      btn.setAttribute("aria-label", "Remove image");
+      btn.textContent = "✕";
+      figure.appendChild(btn);
+    });
+  }
+
+  document.getElementById("insert-image-btn").addEventListener("click", function () {
+    const src = prompt("Image URL (e.g. images/team-photo.jpg or https://...)");
+    if (!src) return;
+    const alt = prompt("Describe the image, for screen readers (optional)") || "";
+    editor.focus();
+    document.execCommand("insertHTML", false, imageFigureHtml(src.trim(), alt.trim()));
+  });
+
+  // Click-to-remove for the per-image button, wired once via delegation
+  // since images (and their buttons) are added and removed dynamically.
+  editor.addEventListener("click", function (e) {
+    const removeBtn = e.target.closest(".cms-figure-remove");
+    if (!removeBtn) return;
+    e.preventDefault();
+    const figure = removeBtn.closest(".cms-figure");
+    if (figure && confirm("Remove this image?")) figure.remove();
+  });
+
+  // A second way to remove content -- not just images -- for whoever's
+  // cursor is sitting in a heading, paragraph, list or image and just
+  // wants that whole piece gone, without having to carefully select text
+  // by hand in a contenteditable box.
+  document.getElementById("delete-block-btn").addEventListener("click", function () {
+    if (!lastEditorRange || !editor.contains(lastEditorRange.startContainer)) {
+      alert("Click inside the section you want to delete first.");
+      return;
+    }
+    let node = lastEditorRange.startContainer;
+    if (node === editor) node = editor.childNodes[lastEditorRange.startOffset] || editor.lastChild;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    while (node && node.parentElement !== editor && node !== editor) {
+      node = node.parentElement;
+    }
+    if (!node || node === editor || !editor.contains(node)) {
+      alert("Click inside the section you want to delete first.");
+      return;
+    }
+    if (!confirm("Delete this section? This can't be undone once you save.")) return;
+    node.remove();
+    lastEditorRange = null;
   });
 
   // Keep pasted content plain so styling from Word/Docs doesn't leak in.
@@ -276,6 +388,7 @@
     document.getElementById("sort_order").value = p.sort_order || 0;
     document.getElementById("is_published").checked = !!p.is_published;
     editor.innerHTML = sanitizeHtml(p.body_html || "");
+    wrapImagesForEditing();
     document.getElementById("cancel-btn").style.display = "inline-block";
     updateSlugPreview();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -312,7 +425,7 @@
       meta_description: document.getElementById("meta_description").value.trim() || null,
       // Sanitized before storing as well as before rendering, so nothing
       // unexpected ever lands in the database.
-      body_html: sanitizeHtml(editor.innerHTML),
+      body_html: getCleanBodyHtml(),
       show_in_nav: document.getElementById("show_in_nav").checked,
       sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
       is_published: document.getElementById("is_published").checked,

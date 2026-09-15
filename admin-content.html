@@ -27,6 +27,18 @@
   .image-card .thumb{width:84px;height:84px;flex-shrink:0;border-radius:6px;object-fit:cover;background:#eef1f7;border:1px solid #e3e6f0;}
   .image-card .image-fields{flex:1;min-width:0;}
   .image-card input[type="text"]{width:100%;padding:7px 9px;border:1px solid #d7e6ee;border-radius:6px;font-size:13px;margin-top:4px;}
+  .editor-toolbar{display:flex;gap:6px;flex-wrap:wrap;padding:8px;border:1px solid #d7e6ee;border-bottom:none;border-radius:8px 8px 0 0;background:#f7f9fc;}
+  .editor-toolbar button{padding:6px 10px;border:1px solid #d7e6ee;background:#fff;border-radius:5px;cursor:pointer;font-size:13px;}
+  .editor-toolbar button:hover{background:#eef3f8;}
+  .editor-area{min-height:160px;padding:14px;border:1px solid #d7e6ee;border-radius:0 0 8px 8px;background:#fff;line-height:1.7;overflow-y:auto;}
+  .editor-area:focus{outline:2px solid var(--blue);outline-offset:-2px;}
+  .editor-area h2{font-size:22px;margin:18px 0 8px;}
+  .editor-area h3{font-size:18px;margin:16px 0 6px;}
+  .editor-area ul,.editor-area ol{margin-left:20px;}
+  .cms-figure{position:relative;display:inline-block;max-width:100%;margin:10px 0;}
+  .cms-figure img{display:block;max-width:100%;border-radius:6px;}
+  .cms-figure-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,30,50,.75);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}
+  .cms-figure:hover .cms-figure-remove,.cms-figure-remove:focus{opacity:1;}
   .block-actions{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;}
   .block-actions button{padding:6px 14px;font-size:13px;}
   .block-msg{font-size:12px;color:#6b7280;}
@@ -116,6 +128,29 @@
       <div class="blocks-pane">
         <div id="blocks"><p class="muted">Choose a page above to see its text.</p></div>
         <div id="images"></div>
+        <div id="extra-content-section" style="display:none;">
+          <div class="images-heading">Add Content to the Bottom of This Page</div>
+          <p class="muted" style="font-size:12px;margin:-4px 0 10px;">Appears after everything else, right before the footer &mdash; a new section, paragraph, image, or list this page didn't already have.</p>
+          <div class="editor-toolbar">
+            <button type="button" data-extra-cmd="bold"><strong>B</strong></button>
+            <button type="button" data-extra-cmd="italic"><em>I</em></button>
+            <button type="button" data-extra-block="H2">Heading</button>
+            <button type="button" data-extra-block="H3">Subheading</button>
+            <button type="button" id="extra-add-section-btn" style="font-weight:700;">+ Add Section</button>
+            <button type="button" data-extra-cmd="insertUnorderedList">&bull; List</button>
+            <button type="button" data-extra-cmd="insertOrderedList">1. List</button>
+            <button type="button" id="extra-link-btn">Link</button>
+            <button type="button" id="extra-insert-image-btn">Image</button>
+            <button type="button" id="extra-delete-block-btn" style="color:#a12626;">Delete Section</button>
+            <button type="button" data-extra-cmd="removeFormat">Clear</button>
+          </div>
+          <div class="editor-area" id="extra-editor" contenteditable="true"></div>
+          <input type="file" id="extra-image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <div class="block-actions" style="margin-top:10px;">
+            <button type="button" class="btn btn-primary" id="extra-save-btn">Save</button>
+            <span class="block-msg" id="extra-msg"></span>
+          </div>
+        </div>
       </div>
       <div class="preview-pane-wrap" id="preview-wrap" style="display:none;">
         <div class="preview-label">Live Preview &mdash; the actual page</div>
@@ -429,6 +464,224 @@
     });
   }
 
+  // ---- "Add Content to the Bottom of This Page" ------------------------
+  // A rich editor (same pattern as admin-pages.html's page builder) for
+  // appending brand-new sections/images to a page whose structure is
+  // otherwise fixed static HTML -- the piece "dead simple to change any
+  // forward-facing stuff" was still missing: swapping existing text/images
+  // covers what's already there, this covers adding something new.
+  const extraEditor = document.getElementById("extra-editor");
+  const extraSection = document.getElementById("extra-content-section");
+  let currentExtraPath = null;
+
+  let lastExtraEditorRange = null;
+  document.addEventListener("selectionchange", function () {
+    const sel = window.getSelection();
+    if (sel.rangeCount && extraEditor.contains(sel.anchorNode)) {
+      lastExtraEditorRange = sel.getRangeAt(0).cloneRange();
+    }
+  });
+
+  document.querySelectorAll("[data-extra-cmd]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      extraEditor.focus();
+      document.execCommand(btn.dataset.extraCmd, false, null);
+    });
+  });
+  document.querySelectorAll("[data-extra-block]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      extraEditor.focus();
+      document.execCommand("formatBlock", false, btn.dataset.extraBlock);
+    });
+  });
+
+  document.getElementById("extra-add-section-btn").addEventListener("click", function () {
+    extraEditor.focus();
+    const heading = document.createElement("h2");
+    heading.textContent = "New Section";
+    const para = document.createElement("p");
+    para.textContent = "Write this section's text here.";
+    extraEditor.appendChild(heading);
+    extraEditor.appendChild(para);
+    const range = document.createRange();
+    range.selectNodeContents(para);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    para.scrollIntoView({ behavior: "smooth", block: "center" });
+    updateExtraPreview(getCleanExtraHtml());
+  });
+
+  document.getElementById("extra-link-btn").addEventListener("click", function () {
+    const url = prompt("Link address (https://... or another page like teams.html)");
+    if (!url) return;
+    extraEditor.focus();
+    document.execCommand("createLink", false, url);
+    updateExtraPreview(getCleanExtraHtml());
+  });
+
+  function extraImageFigureHtml(src, alt) {
+    return (
+      '<figure class="cms-figure" contenteditable="false">' +
+      '<img src="' + escapeHtml(src) + '" alt="' + escapeHtml(alt) + '">' +
+      '<button type="button" class="cms-figure-remove" title="Remove image" aria-label="Remove image">✕</button>' +
+      "</figure>"
+    );
+  }
+
+  function wrapExtraImagesForEditing() {
+    extraEditor.querySelectorAll("img").forEach(function (img) {
+      if (img.closest(".cms-figure")) return;
+      const figure = document.createElement("figure");
+      figure.className = "cms-figure";
+      figure.contentEditable = "false";
+      img.replaceWith(figure);
+      figure.appendChild(img);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cms-figure-remove";
+      btn.title = "Remove image";
+      btn.setAttribute("aria-label", "Remove image");
+      btn.textContent = "✕";
+      figure.appendChild(btn);
+    });
+  }
+
+  document.getElementById("extra-insert-image-btn").addEventListener("click", function () {
+    document.getElementById("extra-image-file-input").click();
+  });
+
+  document.getElementById("extra-image-file-input").addEventListener("change", async function () {
+    const file = this.files[0];
+    const restoreRange = lastExtraEditorRange;
+    this.value = "";
+    if (!file) return;
+
+    const alt = prompt("Describe the image, for screen readers (optional)") || "";
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const storagePath = (currentExtraPath || "extra") + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+    const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file);
+    if (error) {
+      alert("Could not upload image: " + error.message);
+      return;
+    }
+    const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
+
+    extraEditor.focus();
+    if (restoreRange && extraEditor.contains(restoreRange.startContainer)) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(restoreRange);
+    }
+    document.execCommand("insertHTML", false, extraImageFigureHtml(data.publicUrl, alt.trim()));
+    updateExtraPreview(getCleanExtraHtml());
+  });
+
+  extraEditor.addEventListener("click", function (e) {
+    const removeBtn = e.target.closest(".cms-figure-remove");
+    if (!removeBtn) return;
+    e.preventDefault();
+    const figure = removeBtn.closest(".cms-figure");
+    if (figure && confirm("Remove this image?")) {
+      figure.remove();
+      updateExtraPreview(getCleanExtraHtml());
+    }
+  });
+
+  document.getElementById("extra-delete-block-btn").addEventListener("click", function () {
+    if (!lastExtraEditorRange || !extraEditor.contains(lastExtraEditorRange.startContainer)) {
+      alert("Click inside the section you want to delete first.");
+      return;
+    }
+    let node = lastExtraEditorRange.startContainer;
+    if (node === extraEditor) node = extraEditor.childNodes[lastExtraEditorRange.startOffset] || extraEditor.lastChild;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    while (node && node.parentElement !== extraEditor && node !== extraEditor) {
+      node = node.parentElement;
+    }
+    if (!node || node === extraEditor || !extraEditor.contains(node)) {
+      alert("Click inside the section you want to delete first.");
+      return;
+    }
+    if (!confirm("Delete this section? This can't be undone once you save.")) return;
+    node.remove();
+    lastExtraEditorRange = null;
+    updateExtraPreview(getCleanExtraHtml());
+  });
+
+  extraEditor.addEventListener("paste", function (e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  });
+
+  extraEditor.addEventListener("input", function () { updateExtraPreview(getCleanExtraHtml()); });
+
+  function getCleanExtraHtml() {
+    const clone = extraEditor.cloneNode(true);
+    clone.querySelectorAll(".cms-figure").forEach(function (fig) {
+      const img = fig.querySelector("img");
+      if (img) fig.replaceWith(img);
+      else fig.remove();
+    });
+    return sanitizeHtml(clone.innerHTML);
+  }
+
+  // The static page has no element for this yet -- build the same
+  // <section id="cms-extra-content"><div class="container">...</div>
+  // </section> js/page-extras.js creates for a real visitor, right before
+  // the footer, so the live preview shows exactly what they'll see.
+  function ensureExtraPreviewSection() {
+    let doc;
+    try {
+      doc = previewFrame.contentDocument;
+    } catch (e) {
+      return null;
+    }
+    if (!doc || !doc.body) return null;
+    let section = doc.getElementById("cms-extra-content");
+    if (!section) {
+      section = doc.createElement("section");
+      section.id = "cms-extra-content";
+      const container = doc.createElement("div");
+      container.className = "container";
+      section.appendChild(container);
+      const footer = doc.querySelector(".site-footer");
+      if (footer && footer.parentNode) footer.parentNode.insertBefore(section, footer);
+      else doc.body.appendChild(section);
+    }
+    return section.querySelector(".container");
+  }
+
+  function updateExtraPreview(html) {
+    const container = ensureExtraPreviewSection();
+    if (container) container.innerHTML = html;
+  }
+
+  async function loadExtraContent(path) {
+    currentExtraPath = path;
+    extraSection.style.display = "block";
+    extraEditor.innerHTML = "";
+    document.getElementById("extra-msg").textContent = "";
+
+    const { data } = await supabaseClient.from("page_extras").select("body_html").eq("page_path", path).maybeSingle();
+    const html = (data && data.body_html) || "";
+    extraEditor.innerHTML = sanitizeHtml(html);
+    wrapExtraImagesForEditing();
+    updateExtraPreview(sanitizeHtml(html));
+  }
+
+  document.getElementById("extra-save-btn").addEventListener("click", async function () {
+    const msg = document.getElementById("extra-msg");
+    msg.className = "block-msg";
+    msg.textContent = "Saving...";
+    const { error } = await supabaseClient
+      .from("page_extras")
+      .upsert({ page_path: currentExtraPath, body_html: getCleanExtraHtml() }, { onConflict: "page_path" });
+    msg.className = error ? "block-msg error" : "block-msg success";
+    msg.textContent = error ? error.message : "Saved.";
+  });
+
   async function loadPage(path) {
     blocksEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
     imagesEl.innerHTML = "";
@@ -466,6 +719,7 @@
     }
 
     renderImages(path, imageDefaults);
+    loadExtraContent(path);
 
     if (!defaults.length) {
       blocksEl.innerHTML = '<p class="muted">This page has no editable text blocks yet.</p>';
@@ -660,6 +914,8 @@
     const link = document.getElementById("view-page-link");
     if (!e.target.value) {
       blocksEl.innerHTML = '<p class="muted">Choose a page above to see its text.</p>';
+      imagesEl.innerHTML = "";
+      extraSection.style.display = "none";
       link.style.display = "none";
       previewWrap.style.display = "none";
       previewFrame.src = "about:blank";

@@ -93,6 +93,7 @@
             <button type="button" data-cmd="removeFormat">Clear</button>
           </div>
           <div class="editor-area" id="editor" contenteditable="true"></div>
+          <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
         </div>
         <div class="field">
           <label for="meta_description">Search Description (optional)</label>
@@ -258,11 +259,35 @@
   }
 
   document.getElementById("insert-image-btn").addEventListener("click", function () {
-    const src = prompt("Image URL (e.g. images/team-photo.jpg or https://...)");
-    if (!src) return;
+    document.getElementById("image-file-input").click();
+  });
+
+  document.getElementById("image-file-input").addEventListener("change", async function () {
+    const file = this.files[0];
+    const restoreRange = lastEditorRange;
+    this.value = ""; // so picking the same file twice in a row still fires change
+    if (!file) return;
+
     const alt = prompt("Describe the image, for screen readers (optional)") || "";
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const storagePath = "pages/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+    const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file);
+    if (error) {
+      alert("Could not upload image: " + error.message);
+      return;
+    }
+    const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
+
     editor.focus();
-    document.execCommand("insertHTML", false, imageFigureHtml(src.trim(), alt.trim()));
+    // The file picker dialog (and the upload itself) happen after the
+    // toolbar click already stole focus/selection -- restore exactly
+    // where the cursor was, same fix as Delete Section needed.
+    if (restoreRange && editor.contains(restoreRange.startContainer)) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(restoreRange);
+    }
+    document.execCommand("insertHTML", false, imageFigureHtml(data.publicUrl, alt.trim()));
   });
 
   // Click-to-remove for the per-image button, wired once via delegation

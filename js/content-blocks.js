@@ -15,7 +15,7 @@
       const result = await Promise.race([
         supabaseClient
           .from("content_blocks")
-          .select("block_key, content")
+          .select("block_key, content, tag")
           .eq("page_path", pagePath),
         new Promise(function (resolve) {
           setTimeout(function () { resolve({ data: null }); }, 6000);
@@ -26,12 +26,25 @@
       if (!rows || rows.length === 0) return;
 
       const byKey = {};
-      rows.forEach(function (r) { byKey[r.block_key] = r.content; });
+      rows.forEach(function (r) { byKey[r.block_key] = r; });
 
       blocks.forEach(function (el) {
         const override = byKey[el.getAttribute("data-cms")];
-        if (typeof override === "string") {
-          el.innerHTML = typeof sanitizeHtml === "function" ? sanitizeHtml(override) : override;
+        if (!override || typeof override.content !== "string") return;
+        const html = typeof sanitizeHtml === "function" ? sanitizeHtml(override.content) : override.content;
+        // A tag override (e.g. a paragraph promoted to a Heading) means
+        // swapping the element itself -- a tag name can't be changed on an
+        // existing node -- carrying its attributes (data-cms included, so
+        // future lookups still find it) onto a freshly made replacement.
+        if (override.tag && override.tag !== el.tagName.toLowerCase()) {
+          const replacement = document.createElement(override.tag);
+          Array.prototype.forEach.call(el.attributes, function (attr) {
+            replacement.setAttribute(attr.name, attr.value);
+          });
+          replacement.innerHTML = html;
+          el.replaceWith(replacement);
+        } else {
+          el.innerHTML = html;
         }
       });
     } catch (e) {

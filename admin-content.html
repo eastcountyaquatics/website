@@ -140,6 +140,8 @@
       .replace(/'/g, "&#39;");
   }
 
+  const TAG_OVERRIDE_OPTIONS = { p: "Normal text", h2: "Heading", h3: "Subheading" };
+
   const blocksEl = document.getElementById("blocks");
   const previewWrap = document.getElementById("preview-wrap");
   const previewFrame = document.getElementById("preview-frame");
@@ -156,9 +158,24 @@
     }
   }
 
-  function setPreviewContent(key, html) {
-    const el = previewElement(key);
-    if (el) el.innerHTML = html;
+  // Mirrors what js/content-blocks.js does on a real visit: a tag change
+  // means swapping the element for one of the new tag (carrying its
+  // attributes along, data-cms included, so this function still finds it
+  // next time), not just its content -- so "Display as: Heading" actually
+  // shows up as a heading in the live preview, not just bigger text.
+  function setPreviewContent(key, html, tag) {
+    let el = previewElement(key);
+    if (!el) return;
+    if (tag && tag !== el.tagName.toLowerCase()) {
+      const doc = previewFrame.contentDocument;
+      const replacement = doc.createElement(tag);
+      Array.prototype.forEach.call(el.attributes, function (attr) {
+        replacement.setAttribute(attr.name, attr.value);
+      });
+      el.replaceWith(replacement);
+      el = replacement;
+    }
+    el.innerHTML = html;
   }
 
   function highlightPreview(key) {
@@ -284,19 +301,38 @@
 
     const { data: overrides } = await supabaseClient
       .from("content_blocks")
-      .select("block_key, content")
+      .select("block_key, content, tag")
       .eq("page_path", path);
 
     const byKey = {};
-    (overrides || []).forEach(function (o) { byKey[o.block_key] = o.content; });
+    (overrides || []).forEach(function (o) { byKey[o.block_key] = { content: o.content, tag: o.tag || null }; });
 
     blocksEl.innerHTML = defaults
       .map(function (b) {
-        const edited = typeof byKey[b.key] === "string";
-        const value = edited ? byKey[b.key] : b.original;
+        const override = byKey[b.key];
+        const edited = !!override;
+        const value = edited ? override.content : b.original;
+        const renderTag = (edited && override.tag) || b.tag;
         const label = b.tag === "li" ? "list item" : b.tag;
         const parsed = parseInfoItem(value);
         const plainText = parsed ? null : isPlainTextValue(value);
+
+        // Changing which tag a block renders as (e.g. a paragraph shown
+        // as a Heading) is independent of how its text is edited above,
+        // so it's offered for any of the three editor shapes -- but only
+        // for blocks that are already p/h2/h3. h1 is left alone (a page
+        // should keep exactly one, for SEO/accessibility), and li/span/
+        // div carry structural meaning tied to their parent that
+        // retagging would break.
+        const tagPickerHtml = TAG_OVERRIDE_OPTIONS.hasOwnProperty(b.tag)
+          ? '<div class="field" style="margin-bottom:8px;max-width:220px;">' +
+            '<label style="font-size:12px;">Display as</label>' +
+            '<select data-tag-select>' +
+            Object.keys(TAG_OVERRIDE_OPTIONS).map(function (t) {
+              return '<option value="' + t + '"' + (t === renderTag ? " selected" : "") + '>' + TAG_OVERRIDE_OPTIONS[t] + "</option>";
+            }).join("") +
+            "</select></div>"
+          : "";
 
         const editorHtml = parsed
           ? '<div class="info-item-fields">' +
@@ -328,6 +364,7 @@
           '<div class="block-card' + (edited ? " edited" : "") + '" data-key="' + escapeHtml(b.key) + '">' +
           '<span class="block-tag">' + escapeHtml(label) + "</span>" +
           (edited ? ' <span class="block-msg">edited</span>' : "") +
+          tagPickerHtml +
           editorHtml +
           '<div class="block-actions">' +
           '<button type="button" class="btn btn-primary" data-save>Save</button>' +
@@ -342,8 +379,17 @@
     blocksEl.querySelectorAll(".block-card").forEach(function (card) {
       const key = card.dataset.key;
       const msg = card.querySelector("[data-msg]");
-      const original = (defaults.find(function (d) { return d.key === key; }) || {}).original || "";
+      const defaultEntry = defaults.find(function (d) { return d.key === key; }) || {};
+      const original = defaultEntry.original || "";
+      const originalTag = defaultEntry.tag;
       const infoFields = card.querySelector(".info-item-fields");
+
+      // No tag select on this block (h1, li, span, div) -> it can never be
+      // retagged, so its tag is always just whatever the static page has.
+      function currentTag() {
+        const tagSelect = card.querySelector("[data-tag-select]");
+        return tagSelect ? tagSelect.value : originalTag;
+      }
 
       function currentHtml() {
         if (infoFields) {
@@ -371,10 +417,17 @@
         ? Array.prototype.slice.call(infoFields.querySelectorAll("input, textarea"))
         : [card.querySelector("textarea")];
       inputs.forEach(function (input) {
-        input.addEventListener("input", function () { setPreviewContent(key, currentHtml()); });
+        input.addEventListener("input", function () { setPreviewContent(key, currentHtml(), currentTag()); });
         input.addEventListener("focus", function () { highlightPreview(key); });
         input.addEventListener("blur", function () { unhighlightPreview(key); });
       });
+
+      const tagSelect = card.querySelector("[data-tag-select]");
+      if (tagSelect) {
+        tagSelect.addEventListener("input", function () { setPreviewContent(key, currentHtml(), currentTag()); });
+        tagSelect.addEventListener("focus", function () { highlightPreview(key); });
+        tagSelect.addEventListener("blur", function () { unhighlightPreview(key); });
+      }
 
       card.querySelectorAll("[data-rte]").forEach(function (btn) {
         btn.addEventListener("click", function () {
@@ -391,9 +444,12 @@
       card.querySelector("[data-save]").addEventListener("click", async function () {
         msg.textContent = "Saving...";
         const content = currentHtml();
+        const tag = currentTag();
+        // Store a tag only when it actually differs from what the static
+        // page already has -- no point carrying a redundant override.
         const { error } = await supabaseClient
           .from("content_blocks")
-          .upsert({ block_key: key, page_path: path, content: content }, { onConflict: "block_key" });
+          .upsert({ block_key: key, page_path: path, content: content, tag: tag !== originalTag ? tag : null }, { onConflict: "block_key" });
         msg.textContent = error ? error.message : "Saved.";
         if (!error) card.classList.add("edited");
       });
@@ -417,7 +473,8 @@
             const textarea = card.querySelector("textarea");
             textarea.value = textarea.dataset.plainText !== undefined ? isPlainTextValue(original) : original;
           }
-          setPreviewContent(key, original);
+          if (tagSelect) tagSelect.value = originalTag;
+          setPreviewContent(key, original, originalTag);
           card.classList.remove("edited");
           revertBtn.remove();
           msg.textContent = "Back to the original wording.";

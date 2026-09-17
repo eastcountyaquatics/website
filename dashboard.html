@@ -473,6 +473,32 @@
         group.forEach(function (b) { b.disabled = true; });
         const ok = await respondToTournamentInvite(btn.dataset.notifTournament, btn.dataset.notifAthlete, btn.dataset.notifResponse);
         if (!ok) { group.forEach(function (b) { b.disabled = false; }); return; }
+
+        // Same rule as the Tournaments card: accepting a LIVE tournament
+        // goes straight to checkout instead of leaving the family to find
+        // a Pay button elsewhere.
+        if (btn.dataset.notifResponse === "yes") {
+          const { data: t } = await supabaseClient.from("tournaments").select("status").eq("id", btn.dataset.notifTournament).maybeSingle();
+          if (t && t.status === "live") {
+            const { data: inv } = await supabaseClient
+              .from("tournament_invites").select("token")
+              .eq("tournament_id", btn.dataset.notifTournament).eq("athlete_id", btn.dataset.notifAthlete).maybeSingle();
+            if (inv && inv.token) {
+              const { data, error } = await supabaseClient.functions.invoke("create-tournament-checkout", {
+                body: {
+                  token: inv.token,
+                  payer_name: (currentProfile && currentProfile.full_name) || (currentUser && currentUser.email) || "",
+                  payer_email: (currentUser && currentUser.email) || "",
+                },
+              });
+              if (!error && data && data.url) {
+                window.location.href = data.url;
+                return;
+              }
+            }
+          }
+        }
+
         loadNotificationsSection();
         loadTournamentsSection();
       });
@@ -503,7 +529,7 @@
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const tournamentCols = "id, name, event_date, team_slug, rsvp_deadline, location, estimated_cost_note";
+    const tournamentCols = "id, name, status, event_date, team_slug, rsvp_deadline, location, estimated_cost_note";
     const [byTeamRes, byInviteRes] = await Promise.all([
       teamSlugs.length
         ? supabaseClient.from("tournaments").select(tournamentCols).eq("is_published", true).in("team_slug", teamSlugs).gte("event_date", today)
@@ -580,15 +606,24 @@
           (c.crossTeam ? '<p class="muted" style="margin-bottom:8px;font-size:12.5px;">' + escapeHtml(c.a.full_name) + " has been invited to this tournament individually &mdash; accepting only adds them to this tournament's roster and does not change their team.</p>" : "") +
           (c.t.estimated_cost_note ? '<p class="muted" style="margin-bottom:10px;font-size:12.5px;">Estimated cost: ' + escapeHtml(c.t.estimated_cost_note) + " &mdash; estimate only</p>" : "");
 
-        if (onRoster) {
-          body += '<div class="form-msg success">You\'re on the roster!</div>';
-          if (c.invite && c.invite.status === "paid") {
-            body += '<p class="muted">Payment received &mdash; you\'re all set.</p>';
-          } else if (c.invite) {
+        const isLive = c.t.status === "live";
+        const paid = c.invite && c.invite.status === "paid";
+
+        if (paid) {
+          body += '<div class="form-msg success">Paid / Registered' + (onRoster ? " — you're on the roster!" : "") + "</div>";
+        } else if (isLive && response === "yes") {
+          // Accepting a live tournament sends the family straight to
+          // checkout (see the click handler below); if they abandon it,
+          // this is exactly the "Accepted / Payment Pending" state they
+          // land back on, with a button to resume.
+          body += '<div class="form-msg">Accepted — Payment Pending</div>';
+          if (c.invite) {
             body += '<div class="form-msg" id="tpay-msg-' + c.invite.id + '"></div>' +
               '<button type="button" class="btn btn-primary" data-pay-token="' + escapeHtml(c.invite.token) + '" data-pay-msg="tpay-msg-' + c.invite.id + '">' +
-              "Pay" + (c.tier ? " " + formatAmount(c.tier.amount_cents) : "") + " Now</button>";
+              "Resume Payment" + (c.tier ? " (" + formatAmount(c.tier.amount_cents) + ")" : "") + "</button>";
           }
+        } else if (onRoster) {
+          body += '<div class="form-msg success">You\'re on the roster!</div>';
         } else if (response) {
           body += '<p class="muted">You responded <strong>' + escapeHtml(c.crossTeam ? statusLabel : response) + "</strong>." +
             (deadlinePassed ? "" : " Coaches haven't finalized the roster yet.") + "</p>";
@@ -616,6 +651,36 @@
         btn.disabled = true;
         const ok = await respondToTournamentInvite(btn.dataset.rsvpTournament, btn.dataset.rsvpAthlete, btn.dataset.rsvpResponse);
         if (!ok) { btn.disabled = false; return; }
+
+        // Accepting a LIVE tournament (not just an interest form) goes
+        // straight into checkout -- the family is never left "accepted"
+        // with nothing to do next. tournament_rsvps_create_invite already
+        // guarantees an invite row exists the instant the RSVP is saved,
+        // whether or not this athlete's own team matches the tournament.
+        const t = tlist.find(function (x) { return x.id === btn.dataset.rsvpTournament; });
+        if (btn.dataset.rsvpResponse === "yes" && t && t.status === "live") {
+          const { data: inv } = await supabaseClient
+            .from("tournament_invites")
+            .select("token")
+            .eq("tournament_id", btn.dataset.rsvpTournament)
+            .eq("athlete_id", btn.dataset.rsvpAthlete)
+            .maybeSingle();
+          if (inv && inv.token) {
+            btn.textContent = "Redirecting to payment...";
+            const { data, error } = await supabaseClient.functions.invoke("create-tournament-checkout", {
+              body: {
+                token: inv.token,
+                payer_name: (currentProfile && currentProfile.full_name) || (currentUser && currentUser.email) || "",
+                payer_email: (currentUser && currentUser.email) || "",
+              },
+            });
+            if (!error && data && data.url) {
+              window.location.href = data.url;
+              return;
+            }
+          }
+        }
+
         loadTournamentsSection();
         loadNotificationsSection();
       });

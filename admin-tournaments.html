@@ -13,28 +13,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  .tier-row, .invite-row, .roster-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;flex-wrap:wrap;}
-  .pay-summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 12px;}
-  .pay-stat{flex:1;min-width:130px;border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;background:#fff;}
-  .pay-stat .v{font-size:21px;font-weight:800;color:var(--blue);line-height:1.2;}
-  .pay-stat .l{font-size:12px;color:var(--muted);margin-top:2px;}
-  .pay-stat.owed .v{color:#a12626;}
-  .pay-controls{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
-  .pay-tabs{display:flex;gap:6px;flex-wrap:wrap;}
-  .pay-tabs button{padding:6px 14px;border-radius:999px;border:1px solid #d7e6ee;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;}
-  .pay-tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700;}
-  .pay-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid #e3e6f0;border-left-width:4px;border-radius:8px;padding:10px 14px;margin-bottom:8px;background:#fff;font-size:14px;}
-  .pay-row.is-paid{border-left-color:#1c7a3a;}
-  .pay-row.is-unpaid{border-left-color:#d8a01a;background:#fffdf5;}
-  .pay-meta{font-size:12.5px;color:var(--muted);margin-top:2px;}
-  .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
-  .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
-  .tournament-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
-  .tournament-detail.open{display:block;}
-  .invite-athlete-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:14px;flex-wrap:wrap;}
-  .invite-athlete-row label{display:flex;align-items:center;gap:8px;font-weight:600;margin:0;}
-  .invite-chip{display:inline-flex;align-items:center;gap:6px;background:#eef3fb;border:1px solid #d7e6ee;border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;}
-  .invite-chip button{border:none;background:#d7e6ee;color:#333;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;padding:0;}
+  .date-mode-tabs{display:flex;gap:6px;margin-bottom:10px;}
+  .date-mode-tabs button{padding:6px 14px;border-radius:999px;border:1px solid #d7e6ee;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;}
+  .date-mode-tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700;}
+  .extra-dates-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .status-pill.interest{background:#eef3fb;color:#2a4d8f;}
+  .status-pill.live{background:#e9f8ee;color:#1c7a3a;}
 </style>
 </head>
 <body>
@@ -81,12 +65,33 @@
       <form id="tournament-form">
         <input type="hidden" id="t-id">
         <div class="field">
+          <label for="t-status">Status</label>
+          <select id="t-status">
+            <option value="live" selected>Live Tournament &mdash; open for RSVP/registration</option>
+            <option value="interest">Interest Form &mdash; the club is only considering this one</option>
+          </select>
+          <p class="muted" style="font-size:12px;margin-top:4px;">An interest form collects who'd want to go, with no payment involved. You can make it live later from its management page once it's confirmed &mdash; everyone who said they were interested carries over automatically.</p>
+        </div>
+        <div class="field">
           <label for="t-name">Tournament Name</label>
           <input type="text" id="t-name" placeholder="e.g. Rocktober Classic" required>
         </div>
         <div class="field">
-          <label for="t-event-date">Event Date</label>
+          <label>Event Dates</label>
+          <div class="date-mode-tabs">
+            <button type="button" data-datemode="single" class="active">Single Day</button>
+            <button type="button" data-datemode="range">Date Range</button>
+            <button type="button" data-datemode="multiple">Multiple Dates</button>
+          </div>
           <input type="date" id="t-event-date" required>
+          <div id="t-end-date-wrap" style="display:none;margin-top:8px;">
+            <label for="t-end-date" style="font-weight:400;font-size:13px;">Through</label>
+            <input type="date" id="t-end-date">
+          </div>
+          <div id="t-extra-dates-wrap" style="display:none;margin-top:8px;">
+            <div id="t-extra-dates-list"></div>
+            <button type="button" id="t-add-date-btn" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;">+ Add Another Date</button>
+          </div>
         </div>
         <div class="field">
           <label for="t-team-slug">Team (optional)</label>
@@ -104,17 +109,18 @@
           <input type="text" id="t-location" placeholder="e.g. Riverside Aquatics Complex, Riverside, CA">
         </div>
         <div class="field">
-          <label for="t-cost-note">Estimated Cost (optional)</label>
-          <input type="text" id="t-cost-note" placeholder="e.g. $250 (doesn't include travel and lodging)">
-          <p class="muted" style="font-size:12px;margin-top:4px;">Shown to families before they RSVP, so they know roughly what to expect &mdash; the real charge is whatever the price tiers below add up to.</p>
+          <label for="t-cost-note">Estimated Cost of Tournament (optional)</label>
+          <input type="text" id="t-cost-note" placeholder="e.g. $250">
+          <p class="muted" style="font-size:12px;margin-top:4px;">Does not include lodging and travel, if applicable. Shown to families before they RSVP &mdash; the real charge is whatever the price tiers add up to.</p>
         </div>
         <div class="field">
-          <label for="t-hotel-name">Hotel (optional)</label>
-          <input type="text" id="t-hotel-name" placeholder="e.g. Hampton Inn Riverside">
+          <label for="t-max-age">Maximum Age (optional)</label>
+          <input type="number" id="t-max-age" min="1" placeholder="Leave blank for no age cap">
         </div>
-        <div class="field">
-          <label for="t-hotel-url">Hotel Booking Link (optional)</label>
-          <input type="url" id="t-hotel-url" placeholder="https://...">
+        <div class="field" id="t-age-as-of-wrap" style="display:none;">
+          <label for="t-age-as-of">Age As Of</label>
+          <input type="date" id="t-age-as-of">
+          <p class="muted" style="font-size:12px;margin-top:4px;">Defaults to the tournament's start date &mdash; change it if the age cutoff should be a different date.</p>
         </div>
         <div class="field">
           <label for="t-description">Description (optional)</label>
@@ -141,91 +147,6 @@
 
     <h3 style="margin-top:32px;">All Tournaments</h3>
     <div id="tournament-list"><p class="muted">Loading&hellip;</p></div>
-
-    <div class="tournament-detail" id="tournament-detail">
-      <h3 id="detail-heading">Price Tiers</h3>
-      <p class="muted" style="font-size:13px;">Leave Min/Max Age or Gender blank to match anyone. The first matching tier (by display order) is used.</p>
-      <div id="tier-list"></div>
-      <form id="tier-form" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-        <div class="field" style="margin:0;flex:1;min-width:140px;">
-          <label for="tier-label">Label</label>
-          <input type="text" id="tier-label" placeholder="e.g. 10U & Under" required>
-        </div>
-        <div class="field" style="margin:0;width:90px;">
-          <label for="tier-min-age">Min Age</label>
-          <input type="number" id="tier-min-age" min="0">
-        </div>
-        <div class="field" style="margin:0;width:90px;">
-          <label for="tier-max-age">Max Age</label>
-          <input type="number" id="tier-max-age" min="0">
-        </div>
-        <div class="field" style="margin:0;width:120px;">
-          <label for="tier-gender">Gender</label>
-          <select id="tier-gender">
-            <option value="">Any</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
-        <div class="field" style="margin:0;width:110px;">
-          <label for="tier-amount">Amount ($)</label>
-          <input type="number" id="tier-amount" step="0.01" min="0" required>
-        </div>
-        <button type="submit" class="btn btn-outline-dark">Add Tier</button>
-      </form>
-
-      <div id="roster-section" style="display:none;">
-        <h3 style="margin-top:32px;">RSVP &amp; Roster</h3>
-        <p class="muted" style="font-size:13px;">Families RSVP from their dashboard. Check a "Yes" athlete onto the roster once you've decided who's going &mdash; that automatically creates their payment link.</p>
-        <div id="roster-list"></div>
-      </div>
-
-      <div id="payments-section" style="display:none;">
-        <h3 style="margin-top:32px;">Who Has Paid</h3>
-        <p class="muted" style="font-size:13px;">Every athlete with a payment link for this tournament. Updates the moment Stripe confirms a payment.</p>
-        <div id="pay-summary" class="pay-summary"></div>
-        <div class="pay-controls">
-          <div class="pay-tabs">
-            <button type="button" data-payfilter="all" class="active">All</button>
-            <button type="button" data-payfilter="unpaid">Not paid</button>
-            <button type="button" data-payfilter="paid">Paid</button>
-          </div>
-          <button type="button" id="pay-export" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;">Export CSV</button>
-        </div>
-        <div id="payments-list"></div>
-      </div>
-
-      <h3 style="margin-top:32px;">Invite Players</h3>
-      <p class="muted" style="font-size:13px;">Pick a team to see its players, or search the whole roster below &mdash; either way, inviting a player to this tournament doesn't move them off their real team. Check everyone you want to invite, then send all the invites at once.</p>
-
-      <div class="field" style="max-width:280px;margin:0 0 10px;">
-        <label for="invite-team-select">Team</label>
-        <select id="invite-team-select"><option value="">Choose a team&hellip;</option></select>
-      </div>
-      <div id="invite-team-roster" style="display:none;">
-        <div style="display:flex;gap:10px;margin-bottom:8px;">
-          <button type="button" id="invite-select-all" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">Select All</button>
-          <button type="button" id="invite-deselect-all" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">Deselect All</button>
-        </div>
-        <div id="invite-team-roster-list"></div>
-      </div>
-
-      <div class="field" style="max-width:340px;margin:16px 0 0;">
-        <label for="invite-search">Search Full Roster</label>
-        <input type="text" id="invite-search" placeholder="Search by name, team, or age group&hellip;" autocomplete="off">
-      </div>
-      <div id="invite-search-results" style="margin-top:8px;"></div>
-
-      <div id="invite-selected-wrap" style="margin-top:18px;display:none;">
-        <h4 style="margin-bottom:6px;">Selected to Invite (<span id="invite-selected-count">0</span>)</h4>
-        <div id="invite-selected-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
-        <div id="invite-send-msg" class="form-msg"></div>
-        <button type="button" id="invite-send-btn" class="btn btn-primary">Send Invitations</button>
-      </div>
-
-      <h4 style="margin-top:24px;">Invites Sent</h4>
-      <div id="invite-list"><p class="muted">No invites yet.</p></div>
-    </div>
   </div>
 </section>
 
@@ -252,9 +173,6 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
-  function formatAmount(cents) {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
-  }
   function formatDate(iso) {
     if (!iso) return "";
     return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -262,7 +180,6 @@
 
   let tournaments = [];
   let teams = [];
-  let currentTournamentId = null;
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
@@ -274,6 +191,19 @@
   function teamLabel(slug) {
     const t = teams.find(function (x) { return x.team_slug === slug; });
     return t ? t.team_label : slug;
+  }
+
+  // Shows all the dates a tournament runs on, whichever way they were
+  // entered: a single day, a start/end range, or a handful of picked days.
+  function formatTournamentDates(t) {
+    var extra = (t.additional_dates || []).slice().sort();
+    if (t.end_date && t.end_date !== t.event_date) {
+      return formatDate(t.event_date) + " – " + formatDate(t.end_date);
+    }
+    if (extra.length) {
+      return [t.event_date].concat(extra).map(formatDate).join(", ");
+    }
+    return formatDate(t.event_date);
   }
 
   async function loadTournaments() {
@@ -296,58 +226,114 @@
     listEl.innerHTML = tournaments
       .map(function (t) {
         return (
-          '<div class="admin-list-item" style="cursor:pointer;" data-select="' + t.id + '">' +
+          '<div class="admin-list-item">' +
           "<div>" +
-          "<h4>" + escapeHtml(t.name) + (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatDate(t.event_date) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + "</div>" +
+          "<h4>" + escapeHtml(t.name) + " " +
+          '<span class="status-pill ' + t.status + '">' + (t.status === "interest" ? "Interest Form" : "Live") + "</span>" +
+          (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
+          '<div class="muted" style="font-size:13px;">' + formatTournamentDates(t) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + (t.max_age ? " &middot; " + t.max_age + "U max" : "") + "</div>" +
           "</div>" +
-          '<div class="admin-list-actions"><button data-edit="' + t.id + '">Edit</button></div>' +
+          '<div class="admin-list-actions">' +
+          '<a href="admin-tournament-manage.html?id=' + t.id + '" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;text-decoration:none;">Manage &rarr;</a>' +
+          '<button data-edit="' + t.id + '">Edit</button>' +
+          "</div>" +
           "</div>"
         );
       })
       .join("");
 
-    listEl.querySelectorAll("[data-select]").forEach(function (row) {
-      row.addEventListener("click", function (e) {
-        if (e.target.closest("button")) return;
-        selectTournament(row.dataset.select);
-      });
-    });
     listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
-      btn.addEventListener("click", function (e) {
-        e.stopPropagation();
+      btn.addEventListener("click", function () {
         const t = tournaments.find(function (x) { return x.id === btn.dataset.edit; });
         if (t) startEditTournament(t);
       });
     });
   }
 
+  // ---- Event date mode (single day / range / multiple dates) -------------
+  function setDateMode(mode) {
+    document.querySelectorAll("[data-datemode]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.dataset.datemode === mode);
+    });
+    document.getElementById("t-end-date-wrap").style.display = mode === "range" ? "block" : "none";
+    document.getElementById("t-extra-dates-wrap").style.display = mode === "multiple" ? "block" : "none";
+  }
+  document.querySelectorAll("[data-datemode]").forEach(function (btn) {
+    btn.addEventListener("click", function () { setDateMode(btn.dataset.datemode); });
+  });
+
+  function renderExtraDates(dates) {
+    const listEl = document.getElementById("t-extra-dates-list");
+    listEl.innerHTML = dates.map(function (d, i) {
+      return '<div class="extra-dates-row"><input type="date" data-extra-date="' + i + '" value="' + escapeHtml(d) + '"><button type="button" data-remove-date="' + i + '" class="danger" style="border:none;background:none;">Remove</button></div>';
+    }).join("");
+    listEl.querySelectorAll("[data-remove-date]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        dates.splice(parseInt(btn.dataset.removeDate, 10), 1);
+        renderExtraDates(dates);
+      });
+    });
+  }
+  let extraDatesDraft = [];
+  document.getElementById("t-add-date-btn").addEventListener("click", function () {
+    extraDatesDraft.push("");
+    renderExtraDates(extraDatesDraft);
+  });
+
+  document.getElementById("t-max-age").addEventListener("input", function () {
+    document.getElementById("t-age-as-of-wrap").style.display = this.value ? "block" : "none";
+    if (this.value && !document.getElementById("t-age-as-of").value) {
+      document.getElementById("t-age-as-of").value = document.getElementById("t-event-date").value;
+    }
+  });
+  document.getElementById("t-event-date").addEventListener("change", function () {
+    const ageAsOf = document.getElementById("t-age-as-of");
+    if (!ageAsOf.dataset.touched) ageAsOf.value = this.value;
+  });
+  document.getElementById("t-age-as-of").addEventListener("input", function () { this.dataset.touched = "1"; });
+
   function startEditTournament(t) {
     document.getElementById("tournament-form-title").textContent = "Edit Tournament";
     document.getElementById("t-id").value = t.id;
+    document.getElementById("t-status").value = t.status || "live";
     document.getElementById("t-name").value = t.name;
     document.getElementById("t-event-date").value = t.event_date;
     document.getElementById("t-team-slug").value = t.team_slug || "";
     document.getElementById("t-rsvp-deadline").value = t.rsvp_deadline || "";
     document.getElementById("t-location").value = t.location || "";
     document.getElementById("t-cost-note").value = t.estimated_cost_note || "";
-    document.getElementById("t-hotel-name").value = t.hotel_name || "";
-    document.getElementById("t-hotel-url").value = t.hotel_url || "";
+    document.getElementById("t-max-age").value = t.max_age || "";
+    document.getElementById("t-age-as-of").value = t.age_as_of || t.event_date;
+    document.getElementById("t-age-as-of").dataset.touched = t.age_as_of ? "1" : "";
+    document.getElementById("t-age-as-of-wrap").style.display = t.max_age ? "block" : "none";
     document.getElementById("t-description").value = t.description || "";
     document.getElementById("t-requirements").value = t.requirements || "";
     document.getElementById("t-shirt-enabled").checked = !!t.shirt_size_enabled;
     document.getElementById("t-published").checked = !!t.is_published;
     document.getElementById("t-submit-btn").textContent = "Save Changes";
     document.getElementById("t-cancel-btn").style.display = "inline-block";
+
+    document.getElementById("t-end-date").value = t.end_date || "";
+    extraDatesDraft = (t.additional_dates || []).slice();
+    renderExtraDates(extraDatesDraft);
+    if (t.end_date) setDateMode("range");
+    else if (extraDatesDraft.length) setDateMode("multiple");
+    else setDateMode("single");
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function resetTournamentForm() {
     document.getElementById("tournament-form").reset();
     document.getElementById("t-id").value = "";
+    document.getElementById("t-age-as-of").dataset.touched = "";
+    document.getElementById("t-age-as-of-wrap").style.display = "none";
     document.getElementById("tournament-form-title").textContent = "Add a Tournament";
     document.getElementById("t-submit-btn").textContent = "Add Tournament";
     document.getElementById("t-cancel-btn").style.display = "none";
+    extraDatesDraft = [];
+    renderExtraDates(extraDatesDraft);
+    setDateMode("single");
   }
   document.getElementById("t-cancel-btn").addEventListener("click", resetTournamentForm);
 
@@ -356,15 +342,23 @@
     const msg = document.getElementById("tournament-form-msg");
     msg.className = "form-msg";
 
+    const activeMode = document.querySelector("[data-datemode].active").dataset.datemode;
+    const extraDates = activeMode === "multiple"
+      ? Array.from(document.querySelectorAll("[data-extra-date]")).map(function (i) { return i.value; }).filter(Boolean)
+      : [];
+
     const payload = {
+      status: document.getElementById("t-status").value,
       name: document.getElementById("t-name").value.trim(),
       event_date: document.getElementById("t-event-date").value,
+      end_date: activeMode === "range" ? (document.getElementById("t-end-date").value || null) : null,
+      additional_dates: extraDates,
       team_slug: document.getElementById("t-team-slug").value || null,
       rsvp_deadline: document.getElementById("t-rsvp-deadline").value || null,
       location: document.getElementById("t-location").value.trim() || null,
       estimated_cost_note: document.getElementById("t-cost-note").value.trim() || null,
-      hotel_name: document.getElementById("t-hotel-name").value.trim() || null,
-      hotel_url: document.getElementById("t-hotel-url").value.trim() || null,
+      max_age: document.getElementById("t-max-age").value ? parseInt(document.getElementById("t-max-age").value, 10) : null,
+      age_as_of: document.getElementById("t-max-age").value ? (document.getElementById("t-age-as-of").value || document.getElementById("t-event-date").value) : null,
       description: document.getElementById("t-description").value.trim() || null,
       requirements: document.getElementById("t-requirements").value.trim() || null,
       shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,
@@ -388,638 +382,16 @@
     loadTournaments();
   });
 
-  async function selectTournament(id) {
-    currentTournamentId = id;
-    const t = tournaments.find(function (x) { return x.id === id; });
-    document.getElementById("detail-heading").textContent = "Price Tiers — " + (t ? t.name : "");
-    document.getElementById("tournament-detail").classList.add("open");
-    selectedInviteIds = new Set();
-    inviteStatusByAthlete = {};
-    document.getElementById("invite-search").value = "";
-    document.getElementById("invite-search-results").innerHTML = "";
-    await loadAllAthletes();
-    setupInviteTeamSelect(t);
-    await Promise.all([loadTiers(), loadInvites(), loadRoster(), loadPayments()]);
-    renderInviteTeamRoster();
-    document.getElementById("tournament-detail").scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  async function loadRoster() {
-    const t = tournaments.find(function (x) { return x.id === currentTournamentId; });
-    const sectionEl = document.getElementById("roster-section");
-    const listEl = document.getElementById("roster-list");
-    if (!t || !t.team_slug) {
-      sectionEl.style.display = "none";
-      return;
-    }
-    sectionEl.style.display = "block";
-    listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
-
-    const { data: rosterAthletes } = await supabaseClient
-      .from("athletes")
-      .select("id, full_name")
-      .eq("team_slug", t.team_slug)
-      .order("full_name", { ascending: true });
-
-    const { data: rsvps } = await supabaseClient
-      .from("tournament_rsvps")
-      .select("id, athlete_id, response, on_roster")
-      .eq("tournament_id", currentTournamentId);
-    const rsvpByAthlete = {};
-    (rsvps || []).forEach(function (r) { rsvpByAthlete[r.athlete_id] = r; });
-
-    const { data: rosterInvites } = await supabaseClient
-      .from("tournament_invites")
-      .select("athlete_id, token, status")
-      .eq("tournament_id", currentTournamentId);
-    const inviteByAthlete = {};
-    (rosterInvites || []).forEach(function (i) { inviteByAthlete[i.athlete_id] = i; });
-
-    if (!rosterAthletes || rosterAthletes.length === 0) {
-      listEl.innerHTML = '<p class="muted">No athletes are assigned to this team yet.</p>';
-      return;
-    }
-
-    listEl.innerHTML = rosterAthletes
-      .map(function (a) {
-        const rsvp = rsvpByAthlete[a.id];
-        const response = rsvp ? rsvp.response : null;
-        const onRoster = rsvp ? !!rsvp.on_roster : false;
-        const invite = inviteByAthlete[a.id];
-        const responsePill = '<span class="response-pill ' + (response || "none") + '">' +
-          (response ? response.charAt(0).toUpperCase() + response.slice(1) : "No response") + "</span>";
-        let paymentBit = "";
-        if (onRoster && invite) {
-          paymentBit =
-            '<span class="status-pill ' + (invite.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(invite.status) + "</span> " +
-            '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(buildInviteUrl(invite.token)) + '" style="padding:4px 10px;font-size:12px;">Copy Link</button>';
-        }
-        return (
-          '<div class="roster-row">' +
-          "<div><strong>" + escapeHtml(a.full_name) + "</strong> &middot; " + responsePill + "</div>" +
-          '<div style="display:flex;align-items:center;gap:10px;">' +
-          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;">' +
-          '<input type="checkbox" data-roster-athlete="' + a.id + '" data-roster-response="' + escapeHtml(response || "yes") + '" ' + (onRoster ? "checked" : "") + ' style="width:auto;"> On Roster</label>' +
-          paymentBit +
-          "</div>" +
-          "</div>"
-        );
-      })
-      .join("");
-
-    listEl.querySelectorAll("[data-roster-athlete]").forEach(function (cb) {
-      cb.addEventListener("change", async function () {
-        cb.disabled = true;
-        // Coaches can select straight off the team list, RSVP or not --
-        // this is an upsert so an athlete with no RSVP row yet gets one
-        // created here, defaulting to "yes" since being put on the roster
-        // implies they're going. An existing RSVP's actual response is
-        // left untouched (only on_roster changes for it).
-        const { error } = await supabaseClient.from("tournament_rsvps").upsert(
-          {
-            tournament_id: currentTournamentId,
-            athlete_id: cb.dataset.rosterAthlete,
-            response: cb.dataset.rosterResponse,
-            on_roster: cb.checked,
-          },
-          { onConflict: "tournament_id,athlete_id" }
-        );
-        if (error) alert("Could not update roster: " + error.message);
-        loadRoster();
-        loadPayments();
-      });
-    });
-    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        navigator.clipboard.writeText(btn.dataset.copyLink);
-        btn.textContent = "Copied!";
-        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
-      });
-    });
-  }
-
-  async function loadTiers() {
-    const { data } = await supabaseClient
-      .from("tournament_price_tiers")
-      .select("*")
-      .eq("tournament_id", currentTournamentId)
-      .order("sort_order", { ascending: true });
-
-    const listEl = document.getElementById("tier-list");
-    if (!data || data.length === 0) {
-      listEl.innerHTML = '<p class="muted">No price tiers yet — add one below.</p>';
-      return;
-    }
-    listEl.innerHTML = data
-      .map(function (t) {
-        const ageRange = t.min_age != null || t.max_age != null
-          ? "Age " + (t.min_age != null ? t.min_age : "0") + "–" + (t.max_age != null ? t.max_age : "+")
-          : "Any age";
-        return (
-          '<div class="tier-row">' +
-          "<div><strong>" + escapeHtml(t.label) + "</strong> &middot; " + ageRange + (t.gender ? " &middot; " + escapeHtml(t.gender) : "") + "</div>" +
-          "<div style=\"display:flex;align-items:center;gap:10px;\">" + formatAmount(t.amount_cents) +
-          ' <button data-delete-tier="' + t.id + '" class="danger">Delete</button></div>' +
-          "</div>"
-        );
-      })
-      .join("");
-
-    listEl.querySelectorAll("[data-delete-tier]").forEach(function (btn) {
-      btn.addEventListener("click", async function () {
-        if (!confirm("Delete this price tier?")) return;
-        const { error } = await supabaseClient
-          .from("tournament_price_tiers").delete().eq("id", btn.dataset.deleteTier);
-        if (error) {
-          alert("Could not delete that price tier: " + error.message);
-          return;
-        }
-        loadTiers();
-        loadPayments();
-      });
-    });
-  }
-
-  document.getElementById("tier-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    const dollars = parseFloat(document.getElementById("tier-amount").value);
-    if (isNaN(dollars) || dollars < 0) return;
-
-    const { data: existing } = await supabaseClient.from("tournament_price_tiers").select("id").eq("tournament_id", currentTournamentId);
-    const payload = {
-      tournament_id: currentTournamentId,
-      label: document.getElementById("tier-label").value.trim(),
-      min_age: document.getElementById("tier-min-age").value ? parseInt(document.getElementById("tier-min-age").value, 10) : null,
-      max_age: document.getElementById("tier-max-age").value ? parseInt(document.getElementById("tier-max-age").value, 10) : null,
-      gender: document.getElementById("tier-gender").value || null,
-      amount_cents: Math.round(dollars * 100),
-      sort_order: (existing || []).length,
-    };
-    const { error } = await supabaseClient.from("tournament_price_tiers").insert(payload);
-    if (error) {
-      alert("Could not add tier: " + error.message);
-      return;
-    }
-    e.target.reset();
-    loadTiers();
-  });
-
-  // ---- Invite Players: team roster + roster-wide search --------------------
-  // Selecting a team never auto-invites anyone -- it just shows that team's
-  // players as checkboxes. Nothing is actually invited until "Send
-  // Invitations" is clicked. `selectedInviteIds` survives switching teams
-  // and using search, so an admin can build up a cross-team invite list
-  // (e.g. most of 14U Boys plus one 16U player found via search) before
-  // sending it all at once.
-  let allAthletesCache = null;
-  let selectedInviteIds = new Set();
-  let inviteStatusByAthlete = {}; // athlete_id -> { status: 'invited'|'accepted'|'declined', invite }
-
-  async function loadAllAthletes() {
-    const { data } = await supabaseClient
-      .from("athletes")
-      .select("id, full_name, birthdate, sex, team_slug, parent_id")
-      .order("full_name", { ascending: true });
-    allAthletesCache = data || [];
-    return allAthletesCache;
-  }
-
-  // Same fallback the Roster page and roll-call use: an athlete's explicit
-  // team_slug if staff set one, otherwise the age/sex-derived default.
-  function athleteResolvedTeamSlug(a) {
-    return a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
-  }
-  function athleteResolvedTeamLabel(a) {
-    return a.team_slug ? teamLabel(a.team_slug) : deriveTeamLabel(calcAge(a.birthdate), a.sex);
-  }
-
-  function setupInviteTeamSelect(t) {
-    const select = document.getElementById("invite-team-select");
-    select.innerHTML = '<option value="">Choose a team&hellip;</option>' +
-      teams.map(function (tm) { return '<option value="' + escapeHtml(tm.team_slug) + '">' + escapeHtml(tm.team_label) + "</option>"; }).join("");
-    select.value = (t && t.team_slug) || "";
-    renderInviteTeamRoster();
-  }
-
-  function renderInviteTeamRoster() {
-    const slug = document.getElementById("invite-team-select").value;
-    const wrapEl = document.getElementById("invite-team-roster");
-    const listEl = document.getElementById("invite-team-roster-list");
-    if (!slug) {
-      wrapEl.style.display = "none";
-      return;
-    }
-    wrapEl.style.display = "block";
-    const players = (allAthletesCache || []).filter(function (a) { return athleteResolvedTeamSlug(a) === slug; });
-    if (!players.length) {
-      listEl.innerHTML = '<p class="muted">No players on this team yet.</p>';
-      return;
-    }
-    listEl.innerHTML = players.map(inviteAthleteRowHtml).join("");
-    wireInviteAthleteRows(listEl);
-  }
-
-  function inviteAthleteRowHtml(a) {
-    const existing = inviteStatusByAthlete[a.id];
-    const checked = selectedInviteIds.has(a.id);
-    let statusBit;
-    if (existing) {
-      statusBit = '<span class="response-pill ' + existing.status + '">' + existing.status.charAt(0).toUpperCase() + existing.status.slice(1) + "</span>";
-    } else {
-      statusBit = '<label><input type="checkbox" data-invite-athlete="' + a.id + '" ' + (checked ? "checked" : "") + ' style="width:auto;"> ' + escapeHtml(a.full_name) + "</label>";
-    }
-    return (
-      '<div class="invite-athlete-row">' +
-      (existing ? "<div>" + escapeHtml(a.full_name) + "</div>" : "<div>" + statusBit + "</div>") +
-      (existing ? "<div>" + statusBit + "</div>" : '<div class="muted" style="font-size:12.5px;">' + escapeHtml(athleteResolvedTeamLabel(a)) + "</div>") +
-      "</div>"
-    );
-  }
-
-  function wireInviteAthleteRows(container) {
-    container.querySelectorAll("[data-invite-athlete]").forEach(function (cb) {
-      cb.addEventListener("change", function () {
-        if (cb.checked) selectedInviteIds.add(cb.dataset.inviteAthlete);
-        else selectedInviteIds.delete(cb.dataset.inviteAthlete);
-        renderSelectedChips();
-      });
-    });
-  }
-
-  document.getElementById("invite-team-select").addEventListener("change", renderInviteTeamRoster);
-  document.getElementById("invite-select-all").addEventListener("click", function () {
-    const slug = document.getElementById("invite-team-select").value;
-    (allAthletesCache || []).forEach(function (a) {
-      if (athleteResolvedTeamSlug(a) === slug && !inviteStatusByAthlete[a.id]) selectedInviteIds.add(a.id);
-    });
-    renderInviteTeamRoster();
-    renderSelectedChips();
-  });
-  document.getElementById("invite-deselect-all").addEventListener("click", function () {
-    const slug = document.getElementById("invite-team-select").value;
-    (allAthletesCache || []).forEach(function (a) {
-      if (athleteResolvedTeamSlug(a) === slug) selectedInviteIds.delete(a.id);
-    });
-    renderInviteTeamRoster();
-    renderSelectedChips();
-  });
-
-  document.getElementById("invite-search").addEventListener("input", function () {
-    const q = this.value.trim().toLowerCase();
-    const resultsEl = document.getElementById("invite-search-results");
-    if (!q) { resultsEl.innerHTML = ""; return; }
-    const matches = (allAthletesCache || []).filter(function (a) {
-      return a.full_name.toLowerCase().indexOf(q) !== -1 || athleteResolvedTeamLabel(a).toLowerCase().indexOf(q) !== -1;
-    }).slice(0, 20);
-    if (!matches.length) {
-      resultsEl.innerHTML = '<p class="muted">No matching players.</p>';
-      return;
-    }
-    resultsEl.innerHTML = matches.map(function (a) {
-      const existing = inviteStatusByAthlete[a.id];
-      const already = selectedInviteIds.has(a.id);
-      const rightBit = existing
-        ? '<span class="response-pill ' + existing.status + '">' + existing.status.charAt(0).toUpperCase() + existing.status.slice(1) + "</span>"
-        : '<button type="button" class="btn btn-outline-dark" data-search-add="' + a.id + '" style="padding:4px 10px;font-size:12px;" ' + (already ? "disabled" : "") + '>' + (already ? "Added" : "+ Add") + "</button>";
-      return (
-        '<div class="invite-athlete-row">' +
-        "<div>" + escapeHtml(a.full_name) + '<div class="muted" style="font-size:12.5px;">' + escapeHtml(athleteResolvedTeamLabel(a)) + "</div></div>" +
-        "<div>" + rightBit + "</div>" +
-        "</div>"
-      );
-    }).join("");
-    resultsEl.querySelectorAll("[data-search-add]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        selectedInviteIds.add(btn.dataset.searchAdd);
-        renderSelectedChips();
-        renderInviteTeamRoster();
-        document.getElementById("invite-search").dispatchEvent(new Event("input"));
-      });
-    });
-  });
-
-  function renderSelectedChips() {
-    const wrapEl = document.getElementById("invite-selected-wrap");
-    const listEl = document.getElementById("invite-selected-list");
-    const ids = Array.from(selectedInviteIds);
-    document.getElementById("invite-selected-count").textContent = ids.length;
-    if (!ids.length) {
-      wrapEl.style.display = "none";
-      return;
-    }
-    wrapEl.style.display = "block";
-    const byId = {};
-    (allAthletesCache || []).forEach(function (a) { byId[a.id] = a; });
-    listEl.innerHTML = ids.map(function (id) {
-      const a = byId[id];
-      return '<span class="invite-chip">' + escapeHtml(a ? a.full_name : "Unknown") +
-        ' <button type="button" data-remove-selected="' + id + '" aria-label="Remove">&times;</button></span>';
-    }).join("");
-    listEl.querySelectorAll("[data-remove-selected]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        selectedInviteIds.delete(btn.dataset.removeSelected);
-        renderSelectedChips();
-        renderInviteTeamRoster();
-      });
-    });
-  }
-
-  document.getElementById("invite-send-btn").addEventListener("click", async function () {
-    const msg = document.getElementById("invite-send-msg");
-    msg.className = "form-msg";
-    const ids = Array.from(selectedInviteIds).filter(function (id) { return !inviteStatusByAthlete[id]; });
-    if (!ids.length) return;
-    const btn = this;
-    btn.disabled = true;
-    // Idempotent by design: the DB has a real UNIQUE(tournament_id, athlete_id)
-    // constraint on tournament_invites, so ignoring duplicate-key conflicts
-    // here just means "already invited" rows are silently left alone rather
-    // than erroring out the whole batch.
-    const rows = ids.map(function (id) { return { tournament_id: currentTournamentId, athlete_id: id }; });
-    const { error } = await supabaseClient
-      .from("tournament_invites")
-      .upsert(rows, { onConflict: "tournament_id,athlete_id", ignoreDuplicates: true });
-    btn.disabled = false;
-    if (error) {
-      msg.className = "form-msg error";
-      msg.textContent = error.message;
-      return;
-    }
-    msg.className = "form-msg success";
-    msg.textContent = "Sent " + ids.length + " invitation" + (ids.length === 1 ? "" : "s") + ".";
-    selectedInviteIds = new Set();
-    document.getElementById("invite-search").value = "";
-    document.getElementById("invite-search-results").innerHTML = "";
-    await loadInvites();
-    renderInviteTeamRoster();
-    renderSelectedChips();
-  });
-
-  async function loadInvites() {
-    const { data } = await supabaseClient
-      .from("tournament_invites")
-      .select("id, athlete_id, token, status, created_at")
-      .eq("tournament_id", currentTournamentId)
-      .order("created_at", { ascending: false });
-
-    const { data: rsvps } = await supabaseClient
-      .from("tournament_rsvps")
-      .select("athlete_id, response")
-      .eq("tournament_id", currentTournamentId);
-    const responseByAthlete = {};
-    (rsvps || []).forEach(function (r) { responseByAthlete[r.athlete_id] = r.response; });
-
-    inviteStatusByAthlete = {};
-    (data || []).forEach(function (inv) {
-      const response = responseByAthlete[inv.athlete_id];
-      const status = response === "yes" ? "accepted" : response === "no" ? "declined" : "invited";
-      inviteStatusByAthlete[inv.athlete_id] = { status: status, invite: inv };
-    });
-
-    const listEl = document.getElementById("invite-list");
-    if (!data || data.length === 0) {
-      listEl.innerHTML = '<p class="muted">No invites yet.</p>';
-      return;
-    }
-
-    const byId = {};
-    (allAthletesCache || []).forEach(function (a) { byId[a.id] = a; });
-
-    listEl.innerHTML = data
-      .map(function (inv) {
-        const url = buildInviteUrl(inv.token);
-        const a = byId[inv.athlete_id];
-        const rsvpStatus = inviteStatusByAthlete[inv.athlete_id].status;
-        return (
-          '<div class="invite-row">' +
-          "<div><strong>" + escapeHtml(a ? a.full_name : "Unknown") + "</strong> &middot; " +
-          (a ? '<span class="muted" style="font-size:12.5px;">' + escapeHtml(athleteResolvedTeamLabel(a)) + "</span> &middot; " : "") +
-          '<span class="response-pill ' + rsvpStatus + '">' + rsvpStatus.charAt(0).toUpperCase() + rsvpStatus.slice(1) + "</span> " +
-          '<span class="status-pill ' + (inv.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(inv.status) + "</span></div>" +
-          '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(url) + '" style="padding:6px 12px;font-size:13px;">Copy Link</button>' +
-          "</div>"
-        );
-      })
-      .join("");
-
-    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        navigator.clipboard.writeText(btn.dataset.copyLink);
-        btn.textContent = "Copied!";
-        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
-      });
-    });
-  }
-
-
-  // ---- Who has paid -------------------------------------------------------
-  // Driven by invites rather than the team roster, so one-off invites for
-  // players from other teams show up here too.
-  var payFilter = "all";
-  var payRows = [];
-  var payIsOwner = false;
-
-  // Same rule the tournament Edge Functions use: age as of the event date,
-  // NOT the Aug-1 season cutoff used for team placement. Keep in step with
-  // create-tournament-checkout / get-tournament-invite.
-  function calcAgeAsOf(birthdate, asOfDate) {
-    if (!birthdate || !asOfDate) return null;
-    const dob = new Date(birthdate + "T00:00:00");
-    const cutoff = new Date(asOfDate + "T00:00:00");
-    let age = cutoff.getFullYear() - dob.getFullYear();
-    const had = cutoff.getMonth() > dob.getMonth() ||
-      (cutoff.getMonth() === dob.getMonth() && cutoff.getDate() >= dob.getDate());
-    if (!had) age--;
-    return age;
-  }
-  function tierFor(tiers, athlete, eventDate) {
-    const age = calcAgeAsOf(athlete.birthdate, eventDate);
-    if (age === null) return null;
-    return tiers.find(function (t) {
-      const ageOk = (t.min_age == null || age >= t.min_age) && (t.max_age == null || age <= t.max_age);
-      const genderOk = !t.gender || t.gender === athlete.sex;
-      return ageOk && genderOk;
-    }) || null;
-  }
-  function money(cents) {
-    return "$" + (cents / 100).toFixed(2).replace(/\.00$/, "");
-  }
-
-  async function loadPayments() {
-    const t = tournaments.find(function (x) { return x.id === currentTournamentId; });
-    const sectionEl = document.getElementById("payments-section");
-    const listEl = document.getElementById("payments-list");
-    if (!t) { sectionEl.style.display = "none"; return; }
-
-    const { data: invites } = await supabaseClient
-      .from("tournament_invites")
-      .select("id, athlete_id, token, status, paid_at, created_at")
-      .eq("tournament_id", currentTournamentId);
-
-    if (!invites || !invites.length) {
-      sectionEl.style.display = "none";
-      return;
-    }
-    sectionEl.style.display = "block";
-
-    const { data: athletes } = await supabaseClient
-      .from("athletes").select("id, full_name, birthdate, sex, parent_id");
-    const athleteById = {};
-    (athletes || []).forEach(function (a) { athleteById[a.id] = a; });
-
-    const { data: tiers } = await supabaseClient
-      .from("tournament_price_tiers")
-      .select("label, min_age, max_age, gender, amount_cents, sort_order")
-      .eq("tournament_id", currentTournamentId)
-      .order("sort_order", { ascending: true });
-
-    // Who actually paid, and how much. Only owners can read purchases, so
-    // a coach still gets paid/unpaid -- just not payer details.
-    var purchaseByInvite = {};
-    if (payIsOwner) {
-      const { data: purchases } = await supabaseClient
-        .from("purchases")
-        .select("tournament_invite_id, amount_cents, payer_name, payer_email, created_at, status")
-        .eq("tournament_id", currentTournamentId);
-      (purchases || []).forEach(function (pu) {
-        if (pu.tournament_invite_id) purchaseByInvite[pu.tournament_invite_id] = pu;
-      });
-    }
-
-    payRows = invites.map(function (inv) {
-      const a = athleteById[inv.athlete_id] || { full_name: "Unknown athlete" };
-      const tier = tiers ? tierFor(tiers, a, t.event_date) : null;
-      const purchase = purchaseByInvite[inv.id];
-      const paid = inv.status === "paid";
-      return {
-        invite: inv,
-        name: a.full_name,
-        paid: paid,
-        expected_cents: tier ? tier.amount_cents : null,
-        tier_label: tier ? tier.label : null,
-        // The charged amount is the truth once it exists; the tier is only
-        // an estimate of what they were asked for.
-        paid_cents: purchase ? purchase.amount_cents : (paid && tier ? tier.amount_cents : null),
-        payer_name: purchase ? purchase.payer_name : null,
-        payer_email: purchase ? purchase.payer_email : null,
-        paid_at: inv.paid_at || (purchase ? purchase.created_at : null),
-      };
-    }).sort(function (x, y) {
-      // Unpaid first -- that is the list anyone actually acts on.
-      if (x.paid !== y.paid) return x.paid ? 1 : -1;
-      return x.name.localeCompare(y.name);
-    });
-
-    renderPayments();
-  }
-
-  function renderPayments() {
-    const listEl = document.getElementById("payments-list");
-    const paidRows = payRows.filter(function (r) { return r.paid; });
-    const unpaidRows = payRows.filter(function (r) { return !r.paid; });
-
-    const collected = paidRows.reduce(function (s, r) { return s + (r.paid_cents || 0); }, 0);
-    const outstanding = unpaidRows.reduce(function (s, r) { return s + (r.expected_cents || 0); }, 0);
-    const anyUnknown = payRows.some(function (r) { return r.expected_cents === null; });
-
-    document.getElementById("pay-summary").innerHTML =
-      '<div class="pay-stat"><div class="v">' + paidRows.length + " / " + payRows.length + '</div><div class="l">paid</div></div>' +
-      '<div class="pay-stat"><div class="v">' + money(collected) + '</div><div class="l">collected</div></div>' +
-      '<div class="pay-stat' + (outstanding ? " owed" : "") + '"><div class="v">' + money(outstanding) + '</div><div class="l">still owed' +
-        (anyUnknown ? " (some prices unknown)" : "") + "</div></div>";
-
-    const rows = payFilter === "paid" ? paidRows : payFilter === "unpaid" ? unpaidRows : payRows;
-    if (!rows.length) {
-      listEl.innerHTML = '<p class="muted">' +
-        (payFilter === "unpaid" ? "Everyone on this list has paid." :
-         payFilter === "paid" ? "Nobody has paid yet." : "No invites yet.") + "</p>";
-      return;
-    }
-
-    listEl.innerHTML = rows.map(function (r) {
-      const when = r.paid_at
-        ? new Date(r.paid_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-        : null;
-      const meta = r.paid
-        ? (when ? "Paid " + when : "Paid") +
-          (r.payer_name ? " by " + escapeHtml(r.payer_name) : "") +
-          (r.payer_email ? ' &middot; <a href="mailto:' + escapeHtml(r.payer_email) + '">' + escapeHtml(r.payer_email) + "</a>" : "")
-        : (r.tier_label ? escapeHtml(r.tier_label) : "No matching price tier") +
-          (r.expected_cents === null ? " \u2014 check this athlete's birthdate and the price tiers" : "");
-
-      return '<div class="pay-row ' + (r.paid ? "is-paid" : "is-unpaid") + '">' +
-        "<div><strong>" + escapeHtml(r.name) + "</strong> " +
-          '<span class="status-pill ' + (r.paid ? "paid" : "pending") + '">' + (r.paid ? "paid" : "not paid") + "</span>" +
-          '<div class="pay-meta">' + meta + "</div></div>" +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
-          "<strong>" + (r.paid ? money(r.paid_cents || 0) : (r.expected_cents === null ? "\u2014" : money(r.expected_cents))) + "</strong>" +
-          (r.paid ? "" : '<button type="button" class="btn btn-outline-dark" data-copy-link="' +
-            escapeHtml(buildInviteUrl(r.invite.token)) + '" style="padding:4px 10px;font-size:12px;">Copy Link</button>') +
-        "</div></div>";
-    }).join("");
-
-    listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        navigator.clipboard.writeText(btn.dataset.copyLink);
-        btn.textContent = "Copied!";
-        setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
-      });
-    });
-  }
-
-  document.querySelectorAll("[data-payfilter]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      document.querySelectorAll("[data-payfilter]").forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      payFilter = btn.dataset.payfilter;
-      renderPayments();
-    });
-  });
-
-  document.getElementById("pay-export").addEventListener("click", function () {
-    if (!payRows.length) return;
-    function csvField(value) {
-      let str = String(value == null ? "" : value);
-      if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
-      return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
-    }
-    const t = tournaments.find(function (x) { return x.id === currentTournamentId; });
-    const header = ["Athlete", "Status", "Amount", "Paid On", "Payer", "Payer Email", "Price Tier"];
-    const lines = [header.map(csvField).join(",")];
-    payRows.forEach(function (r) {
-      lines.push([
-        r.name,
-        r.paid ? "Paid" : "Not paid",
-        ((r.paid ? r.paid_cents : r.expected_cents) || 0) / 100,
-        r.paid_at ? new Date(r.paid_at).toISOString().slice(0, 10) : "",
-        r.payer_name || "",
-        r.payer_email || "",
-        r.tier_label || "",
-      ].map(csvField).join(","));
-    });
-    const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "eca-tournament-payments-" +
-      (t ? t.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() + "-" : "") +
-      new Date().toISOString().slice(0, 10) + ".csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-
-  function buildInviteUrl(token) {
-    return window.location.origin + window.location.pathname.replace("admin-tournaments.html", "tournament-invite.html") + "?token=" + token;
-  }
-
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
-    // Only owners can read purchases, so the payer name and the exact
-    // amount charged are shown to them and quietly omitted for coaches,
-    // who still get the paid/not-paid list they need to chase people.
-    payIsOwner = auth.role === "owner";
     await loadTeams();
-    loadTournaments();
+    await loadTournaments();
+    const editId = new URLSearchParams(window.location.search).get("edit");
+    if (editId) {
+      const t = tournaments.find(function (x) { return x.id === editId; });
+      if (t) startEditTournament(t);
+    }
   })();
 </script>
 </body>

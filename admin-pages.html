@@ -26,6 +26,12 @@
   .cms-figure-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,30,50,.75);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}
   .cms-figure:hover .cms-figure-remove,.cms-figure-remove:focus{opacity:1;}
   .page-url{font-size:13px;word-break:break-all;}
+  .template-gallery{display:none;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid #d7e6ee;border-top:none;background:#f7f9fc;}
+  .template-gallery.open{display:flex;}
+  .template-choice{border:1px solid #d7e6ee;background:#fff;border-radius:6px;padding:8px 12px;cursor:pointer;font-family:inherit;text-align:left;max-width:180px;}
+  .template-choice:hover{background:#eef3f8;}
+  .template-choice strong{display:block;font-size:13px;margin-bottom:2px;}
+  .template-choice span{display:block;font-size:11.5px;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -89,9 +95,13 @@
             <button type="button" data-cmd="insertOrderedList">1. List</button>
             <button type="button" id="link-btn">Link</button>
             <button type="button" id="insert-image-btn">Image</button>
+            <button type="button" id="add-card-btn">+ Add Card</button>
+            <button type="button" id="move-up-btn" title="Move this section up">&uarr; Move Up</button>
+            <button type="button" id="move-down-btn" title="Move this section down">&darr; Move Down</button>
             <button type="button" id="delete-block-btn" style="color:#a12626;">Delete Section</button>
             <button type="button" data-cmd="removeFormat">Clear</button>
           </div>
+          <div class="template-gallery" id="template-gallery"></div>
           <div class="editor-area" id="editor" contenteditable="true"></div>
           <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
         </div>
@@ -195,24 +205,182 @@
       document.execCommand("formatBlock", false, btn.dataset.block);
     });
   });
-  // Drops a ready-made heading + placeholder paragraph at the end of the
-  // page and puts the cursor in the placeholder text, selected, so typing
-  // immediately replaces it -- the closest thing to a real "add section"
-  // button this contenteditable-based editor can offer.
+  // ---- Section templates ----------------------------------------------
+  // Ready-made, already-styled chunks of markup (using the same
+  // .grid/.card/.stat/.notice/.cta-band classes every public page already
+  // uses) so adding a section is picking a layout and editing its text in
+  // place, not building one from scratch. Every template is built from
+  // tags/attributes js/sanitize-html.js allows through, so nothing here
+  // gets silently stripped on save.
+  //
+  // Templates that repeat a card use the real ".card" / ".grid" classes as
+  // the marker for "this is one field/cell" -- see the Delete Section and
+  // Add Card handlers below -- rather than inventing a data-* attribute,
+  // which the sanitizer would strip on save anyway (only class/style
+  // survive), losing the marker the next time the page is reopened to edit.
+  const SECTION_TEMPLATES = [
+    {
+      key: "two-col",
+      label: "Two-Column Text",
+      hint: "Side-by-side paragraphs",
+      html:
+        '<div class="grid grid-2" style="margin:28px 0;">' +
+        "<div><h3>First Topic</h3><p>Write about the first topic here.</p></div>" +
+        "<div><h3>Second Topic</h3><p>Write about the second topic here.</p></div>" +
+        "</div>",
+    },
+    {
+      key: "feature-cards",
+      label: "Feature Cards",
+      hint: "3 cards in a row",
+      html:
+        '<div class="grid grid-3" style="margin:28px 0;">' +
+        '<div class="card"><h3>Feature One</h3><p class="muted">Describe this feature or benefit.</p></div>' +
+        '<div class="card"><h3>Feature Two</h3><p class="muted">Describe this feature or benefit.</p></div>' +
+        '<div class="card"><h3>Feature Three</h3><p class="muted">Describe this feature or benefit.</p></div>' +
+        "</div>",
+    },
+    {
+      key: "stats",
+      label: "Stats Row",
+      hint: "A few big numbers",
+      html:
+        '<div class="grid grid-3" style="margin:28px 0;">' +
+        '<div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">100+</h3><p class="muted">Athletes</p></div>' +
+        '<div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">10+</h3><p class="muted">Years Running</p></div>' +
+        '<div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">6</h3><p class="muted">Age Groups</p></div>' +
+        "</div>",
+    },
+    {
+      key: "quote",
+      label: "Quote / Callout",
+      hint: "A highlighted note",
+      html:
+        '<div class="notice" style="margin:28px 0;"><p style="margin:0;">Put an important note, quote, or announcement here.</p></div>',
+    },
+    {
+      key: "photo-text",
+      label: "Photo + Text",
+      hint: "Image on one side",
+      html:
+        '<div class="grid grid-2" style="margin:28px 0;align-items:center;">' +
+        '<p class="muted">Click the <strong>Image</strong> button above to add a photo here, then delete this placeholder text.</p>' +
+        "<div><h3>About This Photo</h3><p>Write a caption or related text here.</p></div>" +
+        "</div>",
+    },
+    {
+      key: "cta",
+      label: "Call to Action",
+      hint: "Banner with a button",
+      html:
+        '<div class="cta-band" style="margin:28px 0;">' +
+        "<h2>Ready to Join East County Aquatics?</h2>" +
+        '<p>Write a short call to action here.</p>' +
+        '<p style="margin-top:16px;"><a href="#" class="btn btn-primary">Button Text</a></p>' +
+        "</div>",
+    },
+    {
+      key: "teams",
+      label: "Our Teams",
+      hint: "Auto-filled from your teams",
+      async html() {
+        const { data } = await supabaseClient.from("schedules").select("team_label").order("sort_order", { ascending: true });
+        const teams = (data || []).length ? data : [{ team_label: "8U Coed" }, { team_label: "12U Girls" }, { team_label: "14U Boys" }];
+        return (
+          '<div class="grid grid-3" style="margin:28px 0;">' +
+          teams.map(function (t) {
+            return '<div class="card"><h3>' + escapeHtml(t.team_label) + "</h3><p class=\"muted\">Practice schedule and details for this team.</p></div>";
+          }).join("") +
+          "</div>"
+        );
+      },
+    },
+  ];
+
+  const galleryEl = document.getElementById("template-gallery");
+  galleryEl.innerHTML = SECTION_TEMPLATES.map(function (t) {
+    return '<button type="button" class="template-choice" data-template="' + t.key + '"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.hint) + "</span></button>";
+  }).join("");
+
+  // Appends the chosen template's markup at the end of the page and
+  // scrolls to it, then lets normal contenteditable editing (typing over
+  // placeholder text, Bold/Heading toolbar, Image button, etc.) take it
+  // from there -- picking a template is the first step, not the whole job.
+  galleryEl.querySelectorAll("[data-template]").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      const tpl = SECTION_TEMPLATES.find(function (t) { return t.key === btn.dataset.template; });
+      if (!tpl) return;
+      const html = typeof tpl.html === "function" ? await tpl.html() : tpl.html;
+      editor.focus();
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = html;
+      const inserted = Array.prototype.slice.call(wrapper.childNodes);
+      inserted.forEach(function (node) { editor.appendChild(node); });
+      galleryEl.classList.remove("open");
+      if (inserted[0] && inserted[0].scrollIntoView) inserted[0].scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
   document.getElementById("add-section-btn").addEventListener("click", function () {
-    editor.focus();
-    const heading = document.createElement("h2");
-    heading.textContent = "New Section";
-    const para = document.createElement("p");
-    para.textContent = "Write this section's text here.";
-    editor.appendChild(heading);
-    editor.appendChild(para);
-    const range = document.createRange();
-    range.selectNodeContents(para);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    para.scrollIntoView({ behavior: "smooth", block: "center" });
+    galleryEl.classList.toggle("open");
+  });
+
+  // Duplicates the last card in whichever template grid the cursor is
+  // currently inside -- the "add a field/cell" half of "add/remove fields
+  // without rebuilding the section." Matching removal is the Delete
+  // Section button below, which deletes just one card when the cursor is
+  // inside one.
+  document.getElementById("add-card-btn").addEventListener("click", function () {
+    if (!lastEditorRange || !editor.contains(lastEditorRange.startContainer)) {
+      alert("Click inside a card grid (like Feature Cards) first, then Add Card.");
+      return;
+    }
+    let node = lastEditorRange.startContainer;
+    if (node.nodeType === 3) node = node.parentElement;
+    const cell = node.closest ? node.closest(".card") : null;
+    const row = cell ? cell.parentElement : (node.closest ? node.closest(".grid") : null);
+    if (!row || !row.classList.contains("grid") || !editor.contains(row)) {
+      alert("Click inside a card grid (like Feature Cards) first, then Add Card.");
+      return;
+    }
+    const template = row.querySelector(".card");
+    if (!template) {
+      alert("This row doesn't have cards to duplicate.");
+      return;
+    }
+    const clone = template.cloneNode(true);
+    row.appendChild(clone);
+    clone.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  // Shared by Move Up/Move Down: the top-level child of the editor that
+  // contains the cursor, i.e. one whole "section."
+  function currentTopLevelBlock() {
+    if (!lastEditorRange || !editor.contains(lastEditorRange.startContainer)) return null;
+    let node = lastEditorRange.startContainer;
+    if (node === editor) node = editor.childNodes[lastEditorRange.startOffset] || editor.lastChild;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    while (node && node.parentElement !== editor && node !== editor) {
+      node = node.parentElement;
+    }
+    return node && node !== editor ? node : null;
+  }
+
+  document.getElementById("move-up-btn").addEventListener("click", function () {
+    const node = currentTopLevelBlock();
+    if (!node) { alert("Click inside the section you want to move first."); return; }
+    const prev = node.previousElementSibling;
+    if (!prev) return;
+    editor.insertBefore(node, prev);
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  document.getElementById("move-down-btn").addEventListener("click", function () {
+    const node = currentTopLevelBlock();
+    if (!node) { alert("Click inside the section you want to move first."); return; }
+    const next = node.nextElementSibling;
+    if (!next) return;
+    editor.insertBefore(next, node);
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
   document.getElementById("link-btn").addEventListener("click", function () {
@@ -312,6 +480,19 @@
     let node = lastEditorRange.startContainer;
     if (node === editor) node = editor.childNodes[lastEditorRange.startOffset] || editor.lastChild;
     if (node && node.nodeType === 3) node = node.parentElement;
+
+    // Inside a template's card grid, delete just the one card the cursor is
+    // in rather than climbing all the way up to the whole row -- lets an
+    // admin drop a single feature/stat/team card without losing its
+    // siblings. Falls back to whole-section deletion everywhere else.
+    const cell = node && node.closest ? node.closest(".card") : null;
+    if (cell && editor.contains(cell) && cell.parentElement && cell.parentElement.classList.contains("grid")) {
+      if (!confirm("Delete this card? This can't be undone once you save.")) return;
+      cell.remove();
+      lastEditorRange = null;
+      return;
+    }
+
     while (node && node.parentElement !== editor && node !== editor) {
       node = node.parentElement;
     }

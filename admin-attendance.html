@@ -114,6 +114,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/team-age.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -126,37 +127,12 @@
       .replace(/'/g, "&#39;");
   }
 
-  // Same domestic-eligibility age + auto team-derivation rule used on the
-  // Roster page, so "who's on this team" matches what the Roster shows.
-  function seasonYear() {
-    var now = new Date();
-    var aug1 = new Date(now.getFullYear(), 7, 1);
-    return now >= aug1 ? now.getFullYear() : now.getFullYear() - 1;
-  }
-  function calcAge(birthdate) {
-    if (!birthdate) return null;
-    var dob = new Date(birthdate + "T00:00:00");
-    var cutoff = new Date(seasonYear(), 7, 1);
-    var age = cutoff.getFullYear() - dob.getFullYear();
-    var hadBirthdayByCutoff =
-      cutoff.getMonth() > dob.getMonth() ||
-      (cutoff.getMonth() === dob.getMonth() && cutoff.getDate() >= dob.getDate());
-    if (!hadBirthdayByCutoff) age--;
-    return age;
-  }
-  function deriveTeam(age, sex) {
-    if (age === null) return null;
-    if (age <= 8) return "8u-coed";
-    if (age <= 10) return "10u-coed";
-    const bracket = age <= 12 ? "12u" : age <= 14 ? "14u" : age <= 16 ? "16u" : age <= 18 ? "18u" : null;
-    if (!bracket) return null;
-    const s = (sex || "").toLowerCase();
-    if (s === "male") return bracket + "-boys";
-    if (s === "female") return bracket + "-girls";
-    return null;
-  }
+  // Domestic-eligibility age + team derivation now live in one shared
+  // place (js/team-age.js) -- calcAge/deriveTeamSlug below come from
+  // there, not a local copy, so "who's on this team" always matches what
+  // the Roster page shows.
   function athleteTeamSlug(a) {
-    return a.team_slug || deriveTeam(calcAge(a.birthdate), a.sex);
+    return a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
   }
 
   let teams = [];

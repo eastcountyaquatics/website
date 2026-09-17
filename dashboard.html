@@ -62,6 +62,13 @@
   </div>
 </div>
 
+<section class="section-tight" id="notifications-wrap" style="display:none;padding-bottom:0;">
+  <div class="container">
+    <h3>Notifications</h3>
+    <div id="notifications-list"></div>
+  </div>
+</section>
+
 <section class="section-tight">
   <div class="container">
     <div class="dash-grid">
@@ -386,49 +393,153 @@
 
   var currentUser = null;
   var currentProfile = null;
+  var teamLabelBySlug = {};
+
+  async function loadTeamLabels() {
+    const { data } = await supabaseClient.from("schedules").select("team_slug, team_label");
+    (data || []).forEach(function (t) { teamLabelBySlug[t.team_slug] = t.team_label; });
+  }
+  function teamLabelForSlug(slug) {
+    return teamLabelBySlug[slug] || slug;
+  }
+
+  // Saves a family's yes/no/maybe to a tournament invite, and -- when the
+  // response is a real accept/decline (yes/no) -- also marks any matching
+  // "you've been invited" notification as actioned, whether the family
+  // responded from the Tournaments card below or from the Notifications
+  // panel. Using a jsonb containment match instead of a notification id
+  // means either entry point can call this same function.
+  async function respondToTournamentInvite(tournamentId, athleteId, response) {
+    const { error } = await supabaseClient.from("tournament_rsvps").upsert(
+      { tournament_id: tournamentId, athlete_id: athleteId, response: response, responded_at: new Date().toISOString() },
+      { onConflict: "tournament_id,athlete_id" }
+    );
+    if (error) {
+      alert("Could not save your response: " + error.message);
+      return false;
+    }
+    if (response === "yes" || response === "no") {
+      await supabaseClient
+        .from("notifications")
+        .update({ actioned_at: new Date().toISOString(), action_result: response === "yes" ? "accepted" : "declined" })
+        .eq("type", "tournament_invite")
+        .contains("data", { tournament_id: tournamentId, athlete_id: athleteId })
+        .is("actioned_at", null);
+    }
+    return true;
+  }
+
+  async function loadNotificationsSection() {
+    const wrapEl = document.getElementById("notifications-wrap");
+    const listEl = document.getElementById("notifications-list");
+    const { data } = await supabaseClient
+      .from("notifications")
+      .select("id, type, title, body, data, read_at, actioned_at, action_result, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    const notifs = data || [];
+    if (!notifs.length) {
+      wrapEl.style.display = "none";
+      return;
+    }
+    wrapEl.style.display = "block";
+
+    listEl.innerHTML = notifs
+      .map(function (n) {
+        const needsAction = n.type === "tournament_invite" && !n.actioned_at;
+        let actionsHtml = "";
+        if (needsAction) {
+          actionsHtml =
+            '<div style="display:flex;gap:8px;margin-top:10px;">' +
+            '<button type="button" class="btn btn-primary" data-notif-id="' + n.id + '" data-notif-tournament="' + escapeHtml(n.data.tournament_id || "") + '" data-notif-athlete="' + escapeHtml(n.data.athlete_id || "") + '" data-notif-response="yes">Accept</button>' +
+            '<button type="button" class="btn btn-outline-dark" data-notif-id="' + n.id + '" data-notif-tournament="' + escapeHtml(n.data.tournament_id || "") + '" data-notif-athlete="' + escapeHtml(n.data.athlete_id || "") + '" data-notif-response="no">Decline</button>' +
+            "</div>";
+        } else if (n.actioned_at) {
+          actionsHtml = '<p class="muted" style="font-size:12.5px;margin-top:6px;">You ' + escapeHtml(n.action_result || "responded") + ".</p>";
+        }
+        return (
+          '<div style="border:1px solid #e3e6f0;border-radius:8px;padding:14px 16px;margin-bottom:10px;' + (n.read_at ? "" : "background:#f7faff;") + '">' +
+          "<strong>" + escapeHtml(n.title) + "</strong>" +
+          (n.body ? '<p class="muted" style="margin:4px 0 0;">' + escapeHtml(n.body) + "</p>" : "") +
+          actionsHtml +
+          "</div>"
+        );
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-notif-response]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const group = listEl.querySelectorAll('[data-notif-id="' + btn.dataset.notifId + '"]');
+        group.forEach(function (b) { b.disabled = true; });
+        const ok = await respondToTournamentInvite(btn.dataset.notifTournament, btn.dataset.notifAthlete, btn.dataset.notifResponse);
+        if (!ok) { group.forEach(function (b) { b.disabled = false; }); return; }
+        loadNotificationsSection();
+        loadTournamentsSection();
+      });
+    });
+
+    const unreadIds = notifs.filter(function (n) { return !n.read_at; }).map(function (n) { return n.id; });
+    if (unreadIds.length) {
+      supabaseClient.from("notifications").update({ read_at: new Date().toISOString() }).in("id", unreadIds);
+    }
+  }
 
   async function loadTournamentsSection() {
     const wrap = document.getElementById("tournaments-section");
+    const athleteIds = myAthletes.map(function (a) { return a.id; });
     const teamSlugs = [...new Set((myAthletes || []).map(function (a) { return a.team_slug; }).filter(Boolean))];
-    if (teamSlugs.length === 0) {
+
+    const { data: inviteRows } = await supabaseClient
+      .from("tournament_invites")
+      .select("id, tournament_id, athlete_id, token, status")
+      .in("athlete_id", athleteIds.length ? athleteIds : ["00000000-0000-0000-0000-000000000000"]);
+    const inviteByKey = {};
+    (inviteRows || []).forEach(function (i) { inviteByKey[i.tournament_id + ":" + i.athlete_id] = i; });
+    const invitedTournamentIds = [...new Set((inviteRows || []).map(function (i) { return i.tournament_id; }))];
+
+    if (teamSlugs.length === 0 && invitedTournamentIds.length === 0) {
       wrap.innerHTML = '<p class="muted">No tournaments to RSVP for yet &mdash; make sure your athlete has a team assigned.</p>';
       return;
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const { data: tlist } = await supabaseClient
-      .from("tournaments")
-      .select("id, name, event_date, team_slug, rsvp_deadline, location, estimated_cost_note")
-      .eq("is_published", true)
-      .in("team_slug", teamSlugs)
-      .gte("event_date", today)
-      .order("event_date", { ascending: true });
+    const tournamentCols = "id, name, event_date, team_slug, rsvp_deadline, location, estimated_cost_note";
+    const [byTeamRes, byInviteRes] = await Promise.all([
+      teamSlugs.length
+        ? supabaseClient.from("tournaments").select(tournamentCols).eq("is_published", true).in("team_slug", teamSlugs).gte("event_date", today)
+        : Promise.resolve({ data: [] }),
+      // A direct invite always shows the tournament to that athlete's family,
+      // even if the tournament's own team doesn't match any of their teams
+      // (a cross-age/cross-team invite) or the tournament isn't otherwise published.
+      invitedTournamentIds.length
+        ? supabaseClient.from("tournaments").select(tournamentCols).in("id", invitedTournamentIds).gte("event_date", today)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const tournamentById = {};
+    (byTeamRes.data || []).forEach(function (t) { tournamentById[t.id] = t; });
+    (byInviteRes.data || []).forEach(function (t) { tournamentById[t.id] = t; });
+    const tlist = Object.values(tournamentById).sort(function (x, y) { return x.event_date < y.event_date ? -1 : x.event_date > y.event_date ? 1 : 0; });
 
-    if (!tlist || tlist.length === 0) {
+    if (tlist.length === 0) {
       wrap.innerHTML = '<p class="muted">No upcoming tournaments right now.</p>';
       return;
     }
 
-    const athleteIds = myAthletes.map(function (a) { return a.id; });
     const { data: rsvpRows } = await supabaseClient
       .from("tournament_rsvps")
       .select("tournament_id, athlete_id, response, on_roster")
-      .in("athlete_id", athleteIds);
+      .in("athlete_id", athleteIds.length ? athleteIds : ["00000000-0000-0000-0000-000000000000"]);
     const rsvpByKey = {};
     (rsvpRows || []).forEach(function (r) { rsvpByKey[r.tournament_id + ":" + r.athlete_id] = r; });
 
-    const { data: inviteRows } = await supabaseClient
-      .from("tournament_invites")
-      .select("id, tournament_id, athlete_id, token, status")
-      .in("athlete_id", athleteIds);
-    const inviteByKey = {};
-    (inviteRows || []).forEach(function (i) { inviteByKey[i.tournament_id + ":" + i.athlete_id] = i; });
-
     const cards = [];
     tlist.forEach(function (t) {
-      myAthletes.filter(function (a) { return a.team_slug === t.team_slug; }).forEach(function (a) {
+      myAthletes.forEach(function (a) {
         const key = t.id + ":" + a.id;
-        cards.push({ t: t, a: a, rsvp: rsvpByKey[key], invite: inviteByKey[key] });
+        const isOwnTeam = a.team_slug === t.team_slug;
+        const invite = inviteByKey[key];
+        if (!isOwnTeam && !invite) return;
+        cards.push({ t: t, a: a, rsvp: rsvpByKey[key], invite: invite, crossTeam: !isOwnTeam });
       });
     });
 
@@ -452,11 +563,21 @@
         const onRoster = c.rsvp ? !!c.rsvp.on_roster : false;
         const deadlinePassed = c.t.rsvp_deadline && c.t.rsvp_deadline < today;
 
+        // Cross-team invites use Accept/Decline (mapped to yes/no under the
+        // hood) since "maybe" doesn't make sense for an individual invite,
+        // and the tournament's own team/age group is called out explicitly
+        // since it's likely different from this athlete's own team.
+        const opts = c.crossTeam ? [["yes", "Accept"], ["no", "Decline"]] : [["yes", "Yes"], ["maybe", "Maybe"], ["no", "No"]];
+        const statusLabel = c.crossTeam ? (response === "yes" ? "Accepted" : response === "no" ? "Declined" : "Invited") : null;
+
         let body =
-          '<h4 style="margin-bottom:2px;">' + escapeHtml(c.t.name) + "</h4>" +
+          '<h4 style="margin-bottom:2px;">' + escapeHtml(c.t.name) +
+          (statusLabel ? ' <span class="response-pill ' + statusLabel.toLowerCase() + '" style="vertical-align:middle;">' + statusLabel + "</span>" : "") + "</h4>" +
           '<p class="muted" style="margin-bottom:' + (c.t.estimated_cost_note ? "2px" : "10px") + ';">' + escapeHtml(c.a.full_name) + " &middot; " + formatDate(c.t.event_date) +
+          (c.t.team_slug ? " &middot; " + escapeHtml(teamLabelForSlug(c.t.team_slug)) : "") +
           (c.t.location ? " &middot; " + escapeHtml(c.t.location) : "") +
           (c.t.rsvp_deadline ? " &middot; RSVP by " + formatDate(c.t.rsvp_deadline) : "") + "</p>" +
+          (c.crossTeam ? '<p class="muted" style="margin-bottom:8px;font-size:12.5px;">' + escapeHtml(c.a.full_name) + " has been invited to this tournament individually &mdash; accepting only adds them to this tournament's roster and does not change their team.</p>" : "") +
           (c.t.estimated_cost_note ? '<p class="muted" style="margin-bottom:10px;font-size:12.5px;">Estimated cost: ' + escapeHtml(c.t.estimated_cost_note) + " &mdash; estimate only</p>" : "");
 
         if (onRoster) {
@@ -469,20 +590,20 @@
               "Pay" + (c.tier ? " " + formatAmount(c.tier.amount_cents) : "") + " Now</button>";
           }
         } else if (response) {
-          body += '<p class="muted">You responded <strong>' + escapeHtml(response) + "</strong>." +
+          body += '<p class="muted">You responded <strong>' + escapeHtml(c.crossTeam ? statusLabel : response) + "</strong>." +
             (deadlinePassed ? "" : " Coaches haven't finalized the roster yet.") + "</p>";
           if (!deadlinePassed) {
             body += '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-              ["yes", "maybe", "no"].map(function (opt) {
-                return '<button type="button" class="btn ' + (response === opt ? "btn-primary" : "btn-outline-dark") + '" data-rsvp-tournament="' + c.t.id + '" data-rsvp-athlete="' + c.a.id + '" data-rsvp-response="' + opt + '" style="text-transform:capitalize;">' + opt + "</button>";
+              opts.map(function (opt) {
+                return '<button type="button" class="btn ' + (response === opt[0] ? "btn-primary" : "btn-outline-dark") + '" data-rsvp-tournament="' + c.t.id + '" data-rsvp-athlete="' + c.a.id + '" data-rsvp-response="' + opt[0] + '">' + opt[1] + "</button>";
               }).join("") + "</div>";
           }
         } else if (deadlinePassed) {
           body += '<p class="muted">RSVP closed.</p>';
         } else {
           body += '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-            ["yes", "maybe", "no"].map(function (opt) {
-              return '<button type="button" class="btn btn-outline-dark" data-rsvp-tournament="' + c.t.id + '" data-rsvp-athlete="' + c.a.id + '" data-rsvp-response="' + opt + '" style="text-transform:capitalize;">' + opt + "</button>";
+            opts.map(function (opt) {
+              return '<button type="button" class="btn btn-outline-dark" data-rsvp-tournament="' + c.t.id + '" data-rsvp-athlete="' + c.a.id + '" data-rsvp-response="' + opt[0] + '">' + opt[1] + "</button>";
             }).join("") + "</div>";
         }
 
@@ -493,21 +614,10 @@
     wrap.querySelectorAll("[data-rsvp-response]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
         btn.disabled = true;
-        const { error } = await supabaseClient.from("tournament_rsvps").upsert(
-          {
-            tournament_id: btn.dataset.rsvpTournament,
-            athlete_id: btn.dataset.rsvpAthlete,
-            response: btn.dataset.rsvpResponse,
-            responded_at: new Date().toISOString(),
-          },
-          { onConflict: "tournament_id,athlete_id" }
-        );
-        if (error) {
-          alert("Could not save RSVP: " + error.message);
-          btn.disabled = false;
-          return;
-        }
+        const ok = await respondToTournamentInvite(btn.dataset.rsvpTournament, btn.dataset.rsvpAthlete, btn.dataset.rsvpResponse);
+        if (!ok) { btn.disabled = false; return; }
         loadTournamentsSection();
+        loadNotificationsSection();
       });
     });
 
@@ -1013,7 +1123,8 @@
     });
 
     await loadAthletes();
-    loadTournamentsSection();
+    loadNotificationsSection();
+    loadTeamLabels().then(loadTournamentsSection);
     loadMastersSection();
     loadInterestSection();
 

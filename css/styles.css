@@ -344,6 +344,12 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 .status-pill.paid{background:#e9f8ee;color:#1c7a3a;}
 .status-pill.pending{background:#fff8e6;color:#8a6a00;}
 .status-pill.refunded, .status-pill.canceled{background:#f1f1f3;color:#5a5a5a;}
+.response-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+.response-pill.yes, .response-pill.accepted{background:#e9f8ee;color:#1c7a3a;}
+.response-pill.no, .response-pill.declined{background:#f1f1f3;color:#5a5a5a;}
+.response-pill.maybe{background:#fff8e6;color:#8a6a00;}
+.response-pill.invited{background:#eef3fb;color:#2a4d8f;}
+.response-pill.none{background:#f1f1f3;color:#8a8a8a;}
 .empty-state{
   text-align:center;padding:48px 20px;color:var(--muted);
 }

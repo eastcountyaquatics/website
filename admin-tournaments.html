@@ -14,11 +14,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   .tier-row, .invite-row, .roster-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;flex-wrap:wrap;}
-  .response-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;}
-  .response-pill.yes{background:#e9f8ee;color:#1c7a3a;}
-  .response-pill.no{background:#f1f1f3;color:#5a5a5a;}
-  .response-pill.maybe{background:#fff8e6;color:#8a6a00;}
-  .response-pill.none{background:#f1f1f3;color:#8a8a8a;}
   .pay-summary{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 12px;}
   .pay-stat{flex:1;min-width:130px;border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;background:#fff;}
   .pay-stat .v{font-size:21px;font-weight:800;color:var(--blue);line-height:1.2;}
@@ -36,6 +31,10 @@
   .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
   .tournament-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
   .tournament-detail.open{display:block;}
+  .invite-athlete-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:14px;flex-wrap:wrap;}
+  .invite-athlete-row label{display:flex;align-items:center;gap:8px;font-weight:600;margin:0;}
+  .invite-chip{display:inline-flex;align-items:center;gap:6px;background:#eef3fb;border:1px solid #d7e6ee;border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:600;}
+  .invite-chip button{border:none;background:#d7e6ee;color:#333;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;padding:0;}
 </style>
 </head>
 <body>
@@ -196,21 +195,32 @@
         <div id="payments-list"></div>
       </div>
 
-      <h3 style="margin-top:32px;">Invite a Player</h3>
-      <p class="muted" style="font-size:13px;">For a one-off invite outside the team roster above (e.g. a player from another team, or a standalone tournament with no team set).</p>
-      <div id="invite-form-msg" class="form-msg"></div>
-      <form id="invite-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
-        <div class="field" style="margin:0;flex:1;min-width:200px;">
-          <label for="invite-athlete">Athlete</label>
-          <select id="invite-athlete" required>
-            <option value="">Choose an athlete&hellip;</option>
-          </select>
+      <h3 style="margin-top:32px;">Invite Players</h3>
+      <p class="muted" style="font-size:13px;">Pick a team to see its players, or search the whole roster below &mdash; either way, inviting a player to this tournament doesn't move them off their real team. Check everyone you want to invite, then send all the invites at once.</p>
+
+      <div class="field" style="max-width:280px;margin:0 0 10px;">
+        <label for="invite-team-select">Team</label>
+        <select id="invite-team-select"><option value="">Choose a team&hellip;</option></select>
+      </div>
+      <div id="invite-team-roster" style="display:none;">
+        <div style="display:flex;gap:10px;margin-bottom:8px;">
+          <button type="button" id="invite-select-all" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">Select All</button>
+          <button type="button" id="invite-deselect-all" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12px;">Deselect All</button>
         </div>
-        <button type="submit" class="btn btn-primary">Generate Invite Link</button>
-      </form>
-      <div id="new-invite-link" style="display:none;" class="invite-link-box">
-        <input type="text" id="new-invite-url" readonly>
-        <button type="button" id="copy-invite-btn" class="btn btn-outline-dark">Copy</button>
+        <div id="invite-team-roster-list"></div>
+      </div>
+
+      <div class="field" style="max-width:340px;margin:16px 0 0;">
+        <label for="invite-search">Search Full Roster</label>
+        <input type="text" id="invite-search" placeholder="Search by name, team, or age group&hellip;" autocomplete="off">
+      </div>
+      <div id="invite-search-results" style="margin-top:8px;"></div>
+
+      <div id="invite-selected-wrap" style="margin-top:18px;display:none;">
+        <h4 style="margin-bottom:6px;">Selected to Invite (<span id="invite-selected-count">0</span>)</h4>
+        <div id="invite-selected-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <div id="invite-send-msg" class="form-msg"></div>
+        <button type="button" id="invite-send-btn" class="btn btn-primary">Send Invitations</button>
       </div>
 
       <h4 style="margin-top:24px;">Invites Sent</h4>
@@ -230,6 +240,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/team-age.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -382,8 +393,14 @@
     const t = tournaments.find(function (x) { return x.id === id; });
     document.getElementById("detail-heading").textContent = "Price Tiers — " + (t ? t.name : "");
     document.getElementById("tournament-detail").classList.add("open");
-    document.getElementById("new-invite-link").style.display = "none";
-    await Promise.all([loadTiers(), loadAthletesForInvite(), loadInvites(), loadRoster(), loadPayments()]);
+    selectedInviteIds = new Set();
+    inviteStatusByAthlete = {};
+    document.getElementById("invite-search").value = "";
+    document.getElementById("invite-search-results").innerHTML = "";
+    await loadAllAthletes();
+    setupInviteTeamSelect(t);
+    await Promise.all([loadTiers(), loadInvites(), loadRoster(), loadPayments()]);
+    renderInviteTeamRoster();
     document.getElementById("tournament-detail").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -547,12 +564,196 @@
     loadTiers();
   });
 
-  async function loadAthletesForInvite() {
-    const { data } = await supabaseClient.from("athletes").select("id, full_name").order("full_name", { ascending: true });
-    const select = document.getElementById("invite-athlete");
-    select.innerHTML = '<option value="">Choose an athlete&hellip;</option>' +
-      (data || []).map(function (a) { return '<option value="' + a.id + '">' + escapeHtml(a.full_name) + "</option>"; }).join("");
+  // ---- Invite Players: team roster + roster-wide search --------------------
+  // Selecting a team never auto-invites anyone -- it just shows that team's
+  // players as checkboxes. Nothing is actually invited until "Send
+  // Invitations" is clicked. `selectedInviteIds` survives switching teams
+  // and using search, so an admin can build up a cross-team invite list
+  // (e.g. most of 14U Boys plus one 16U player found via search) before
+  // sending it all at once.
+  let allAthletesCache = null;
+  let selectedInviteIds = new Set();
+  let inviteStatusByAthlete = {}; // athlete_id -> { status: 'invited'|'accepted'|'declined', invite }
+
+  async function loadAllAthletes() {
+    const { data } = await supabaseClient
+      .from("athletes")
+      .select("id, full_name, birthdate, sex, team_slug, parent_id")
+      .order("full_name", { ascending: true });
+    allAthletesCache = data || [];
+    return allAthletesCache;
   }
+
+  // Same fallback the Roster page and roll-call use: an athlete's explicit
+  // team_slug if staff set one, otherwise the age/sex-derived default.
+  function athleteResolvedTeamSlug(a) {
+    return a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
+  }
+  function athleteResolvedTeamLabel(a) {
+    return a.team_slug ? teamLabel(a.team_slug) : deriveTeamLabel(calcAge(a.birthdate), a.sex);
+  }
+
+  function setupInviteTeamSelect(t) {
+    const select = document.getElementById("invite-team-select");
+    select.innerHTML = '<option value="">Choose a team&hellip;</option>' +
+      teams.map(function (tm) { return '<option value="' + escapeHtml(tm.team_slug) + '">' + escapeHtml(tm.team_label) + "</option>"; }).join("");
+    select.value = (t && t.team_slug) || "";
+    renderInviteTeamRoster();
+  }
+
+  function renderInviteTeamRoster() {
+    const slug = document.getElementById("invite-team-select").value;
+    const wrapEl = document.getElementById("invite-team-roster");
+    const listEl = document.getElementById("invite-team-roster-list");
+    if (!slug) {
+      wrapEl.style.display = "none";
+      return;
+    }
+    wrapEl.style.display = "block";
+    const players = (allAthletesCache || []).filter(function (a) { return athleteResolvedTeamSlug(a) === slug; });
+    if (!players.length) {
+      listEl.innerHTML = '<p class="muted">No players on this team yet.</p>';
+      return;
+    }
+    listEl.innerHTML = players.map(inviteAthleteRowHtml).join("");
+    wireInviteAthleteRows(listEl);
+  }
+
+  function inviteAthleteRowHtml(a) {
+    const existing = inviteStatusByAthlete[a.id];
+    const checked = selectedInviteIds.has(a.id);
+    let statusBit;
+    if (existing) {
+      statusBit = '<span class="response-pill ' + existing.status + '">' + existing.status.charAt(0).toUpperCase() + existing.status.slice(1) + "</span>";
+    } else {
+      statusBit = '<label><input type="checkbox" data-invite-athlete="' + a.id + '" ' + (checked ? "checked" : "") + ' style="width:auto;"> ' + escapeHtml(a.full_name) + "</label>";
+    }
+    return (
+      '<div class="invite-athlete-row">' +
+      (existing ? "<div>" + escapeHtml(a.full_name) + "</div>" : "<div>" + statusBit + "</div>") +
+      (existing ? "<div>" + statusBit + "</div>" : '<div class="muted" style="font-size:12.5px;">' + escapeHtml(athleteResolvedTeamLabel(a)) + "</div>") +
+      "</div>"
+    );
+  }
+
+  function wireInviteAthleteRows(container) {
+    container.querySelectorAll("[data-invite-athlete]").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        if (cb.checked) selectedInviteIds.add(cb.dataset.inviteAthlete);
+        else selectedInviteIds.delete(cb.dataset.inviteAthlete);
+        renderSelectedChips();
+      });
+    });
+  }
+
+  document.getElementById("invite-team-select").addEventListener("change", renderInviteTeamRoster);
+  document.getElementById("invite-select-all").addEventListener("click", function () {
+    const slug = document.getElementById("invite-team-select").value;
+    (allAthletesCache || []).forEach(function (a) {
+      if (athleteResolvedTeamSlug(a) === slug && !inviteStatusByAthlete[a.id]) selectedInviteIds.add(a.id);
+    });
+    renderInviteTeamRoster();
+    renderSelectedChips();
+  });
+  document.getElementById("invite-deselect-all").addEventListener("click", function () {
+    const slug = document.getElementById("invite-team-select").value;
+    (allAthletesCache || []).forEach(function (a) {
+      if (athleteResolvedTeamSlug(a) === slug) selectedInviteIds.delete(a.id);
+    });
+    renderInviteTeamRoster();
+    renderSelectedChips();
+  });
+
+  document.getElementById("invite-search").addEventListener("input", function () {
+    const q = this.value.trim().toLowerCase();
+    const resultsEl = document.getElementById("invite-search-results");
+    if (!q) { resultsEl.innerHTML = ""; return; }
+    const matches = (allAthletesCache || []).filter(function (a) {
+      return a.full_name.toLowerCase().indexOf(q) !== -1 || athleteResolvedTeamLabel(a).toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 20);
+    if (!matches.length) {
+      resultsEl.innerHTML = '<p class="muted">No matching players.</p>';
+      return;
+    }
+    resultsEl.innerHTML = matches.map(function (a) {
+      const existing = inviteStatusByAthlete[a.id];
+      const already = selectedInviteIds.has(a.id);
+      const rightBit = existing
+        ? '<span class="response-pill ' + existing.status + '">' + existing.status.charAt(0).toUpperCase() + existing.status.slice(1) + "</span>"
+        : '<button type="button" class="btn btn-outline-dark" data-search-add="' + a.id + '" style="padding:4px 10px;font-size:12px;" ' + (already ? "disabled" : "") + '>' + (already ? "Added" : "+ Add") + "</button>";
+      return (
+        '<div class="invite-athlete-row">' +
+        "<div>" + escapeHtml(a.full_name) + '<div class="muted" style="font-size:12.5px;">' + escapeHtml(athleteResolvedTeamLabel(a)) + "</div></div>" +
+        "<div>" + rightBit + "</div>" +
+        "</div>"
+      );
+    }).join("");
+    resultsEl.querySelectorAll("[data-search-add]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        selectedInviteIds.add(btn.dataset.searchAdd);
+        renderSelectedChips();
+        renderInviteTeamRoster();
+        document.getElementById("invite-search").dispatchEvent(new Event("input"));
+      });
+    });
+  });
+
+  function renderSelectedChips() {
+    const wrapEl = document.getElementById("invite-selected-wrap");
+    const listEl = document.getElementById("invite-selected-list");
+    const ids = Array.from(selectedInviteIds);
+    document.getElementById("invite-selected-count").textContent = ids.length;
+    if (!ids.length) {
+      wrapEl.style.display = "none";
+      return;
+    }
+    wrapEl.style.display = "block";
+    const byId = {};
+    (allAthletesCache || []).forEach(function (a) { byId[a.id] = a; });
+    listEl.innerHTML = ids.map(function (id) {
+      const a = byId[id];
+      return '<span class="invite-chip">' + escapeHtml(a ? a.full_name : "Unknown") +
+        ' <button type="button" data-remove-selected="' + id + '" aria-label="Remove">&times;</button></span>';
+    }).join("");
+    listEl.querySelectorAll("[data-remove-selected]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        selectedInviteIds.delete(btn.dataset.removeSelected);
+        renderSelectedChips();
+        renderInviteTeamRoster();
+      });
+    });
+  }
+
+  document.getElementById("invite-send-btn").addEventListener("click", async function () {
+    const msg = document.getElementById("invite-send-msg");
+    msg.className = "form-msg";
+    const ids = Array.from(selectedInviteIds).filter(function (id) { return !inviteStatusByAthlete[id]; });
+    if (!ids.length) return;
+    const btn = this;
+    btn.disabled = true;
+    // Idempotent by design: the DB has a real UNIQUE(tournament_id, athlete_id)
+    // constraint on tournament_invites, so ignoring duplicate-key conflicts
+    // here just means "already invited" rows are silently left alone rather
+    // than erroring out the whole batch.
+    const rows = ids.map(function (id) { return { tournament_id: currentTournamentId, athlete_id: id }; });
+    const { error } = await supabaseClient
+      .from("tournament_invites")
+      .upsert(rows, { onConflict: "tournament_id,athlete_id", ignoreDuplicates: true });
+    btn.disabled = false;
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Sent " + ids.length + " invitation" + (ids.length === 1 ? "" : "s") + ".";
+    selectedInviteIds = new Set();
+    document.getElementById("invite-search").value = "";
+    document.getElementById("invite-search-results").innerHTML = "";
+    await loadInvites();
+    renderInviteTeamRoster();
+    renderSelectedChips();
+  });
 
   async function loadInvites() {
     const { data } = await supabaseClient
@@ -561,22 +762,39 @@
       .eq("tournament_id", currentTournamentId)
       .order("created_at", { ascending: false });
 
+    const { data: rsvps } = await supabaseClient
+      .from("tournament_rsvps")
+      .select("athlete_id, response")
+      .eq("tournament_id", currentTournamentId);
+    const responseByAthlete = {};
+    (rsvps || []).forEach(function (r) { responseByAthlete[r.athlete_id] = r.response; });
+
+    inviteStatusByAthlete = {};
+    (data || []).forEach(function (inv) {
+      const response = responseByAthlete[inv.athlete_id];
+      const status = response === "yes" ? "accepted" : response === "no" ? "declined" : "invited";
+      inviteStatusByAthlete[inv.athlete_id] = { status: status, invite: inv };
+    });
+
     const listEl = document.getElementById("invite-list");
     if (!data || data.length === 0) {
       listEl.innerHTML = '<p class="muted">No invites yet.</p>';
       return;
     }
 
-    const { data: athletes } = await supabaseClient.from("athletes").select("id, full_name");
-    const nameById = {};
-    (athletes || []).forEach(function (a) { nameById[a.id] = a.full_name; });
+    const byId = {};
+    (allAthletesCache || []).forEach(function (a) { byId[a.id] = a; });
 
     listEl.innerHTML = data
       .map(function (inv) {
         const url = buildInviteUrl(inv.token);
+        const a = byId[inv.athlete_id];
+        const rsvpStatus = inviteStatusByAthlete[inv.athlete_id].status;
         return (
           '<div class="invite-row">' +
-          "<div><strong>" + escapeHtml(nameById[inv.athlete_id] || "Unknown") + "</strong> &middot; " +
+          "<div><strong>" + escapeHtml(a ? a.full_name : "Unknown") + "</strong> &middot; " +
+          (a ? '<span class="muted" style="font-size:12.5px;">' + escapeHtml(athleteResolvedTeamLabel(a)) + "</span> &middot; " : "") +
+          '<span class="response-pill ' + rsvpStatus + '">' + rsvpStatus.charAt(0).toUpperCase() + rsvpStatus.slice(1) + "</span> " +
           '<span class="status-pill ' + (inv.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(inv.status) + "</span></div>" +
           '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(url) + '" style="padding:6px 12px;font-size:13px;">Copy Link</button>' +
           "</div>"
@@ -792,39 +1010,6 @@
   function buildInviteUrl(token) {
     return window.location.origin + window.location.pathname.replace("admin-tournaments.html", "tournament-invite.html") + "?token=" + token;
   }
-
-  document.getElementById("invite-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    const msg = document.getElementById("invite-form-msg");
-    msg.className = "form-msg";
-    const athleteId = document.getElementById("invite-athlete").value;
-    if (!athleteId) return;
-
-    const { data, error } = await supabaseClient
-      .from("tournament_invites")
-      .insert({ tournament_id: currentTournamentId, athlete_id: athleteId })
-      .select("token")
-      .single();
-
-    if (error) {
-      msg.className = "form-msg error";
-      msg.textContent = error.message;
-      return;
-    }
-
-    const url = buildInviteUrl(data.token);
-    document.getElementById("new-invite-url").value = url;
-    document.getElementById("new-invite-link").style.display = "flex";
-    document.getElementById("invite-form").reset();
-    loadInvites();
-  });
-
-  document.getElementById("copy-invite-btn").addEventListener("click", function () {
-    const input = document.getElementById("new-invite-url");
-    navigator.clipboard.writeText(input.value);
-    this.textContent = "Copied!";
-    setTimeout(() => { this.textContent = "Copy"; }, 1500);
-  });
 
   (async function () {
     const auth = await requireRole(["owner", "coach"]);

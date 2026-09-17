@@ -68,7 +68,7 @@
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
     <div class="notice" style="margin-bottom:16px;font-size:13px;">
-      <strong>Team &amp; age shown here use domestic age eligibility</strong>, the rule sanctioned leagues and tournaments use: a player's age for the season is their age <strong>as of August 1</strong> of the year the season runs, not their age today. A player who is 14 on August 1 plays 14U all season even after turning 15 in the fall; one who turns 15 on July 30 has already moved up to 16U. Use the Team dropdown below to override this when a player is placed differently (e.g. playing up an age group).
+      <strong>Team &amp; age shown here use domestic age eligibility</strong>, the rule sanctioned leagues and tournaments use: a player's age for a season is their age <strong>as of August 1 of the year after that season starts</strong> &mdash; e.g. the age group for the season starting Fall 2026 is set by age as of August 1, 2027, not their age today. A player who will be 14 by that cutoff plays 14U all season; one who'll already be 15 has moved up to 16U. Use the Team dropdown below to override this when a player is placed differently (e.g. playing up an age group).
     </div>
     <div class="search-box">
       <input type="text" id="roster-search" placeholder="Search by athlete, parent, or school...">
@@ -123,6 +123,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/team-age.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -150,30 +151,9 @@
   function formatAmount(cents) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
   }
-  // Domestic age eligibility (the rule used by USA Water Polo and most
-  // sanctioned leagues/tournaments): a player's age for a season is their
-  // age as of August 1 of the year the season is held -- not their actual
-  // age today. A player who is 14 on August 1 plays 14U all season even
-  // after turning 15; one who turns 15 on July 30 has already moved to
-  // 16U. The "season year" is the current calendar year once August 1 has
-  // passed, otherwise last year's (the season that started last August is
-  // still the one running).
-  function seasonYear() {
-    var now = new Date();
-    var aug1 = new Date(now.getFullYear(), 7, 1);
-    return now >= aug1 ? now.getFullYear() : now.getFullYear() - 1;
-  }
-  function calcAge(birthdate) {
-    if (!birthdate) return null;
-    var dob = new Date(birthdate + "T00:00:00");
-    var cutoff = new Date(seasonYear(), 7, 1);
-    var age = cutoff.getFullYear() - dob.getFullYear();
-    var hadBirthdayByCutoff =
-      cutoff.getMonth() > dob.getMonth() ||
-      (cutoff.getMonth() === dob.getMonth() && cutoff.getDate() >= dob.getDate());
-    if (!hadBirthdayByCutoff) age--;
-    return age;
-  }
+  // Domestic-eligibility age + team derivation now live in one shared
+  // place (js/team-age.js) -- calcAge/deriveTeamLabel below come from
+  // there, not a local copy.
 
   // Age groups follow the club's team pages: 8U and 10U are coed, 12U and
   // up split by sex. Derived from domestic-eligibility age + sex so nobody
@@ -186,18 +166,6 @@
     "18U Boys", "18U Girls",
   ];
 
-  function deriveTeam(age, sex) {
-    if (age === null) return "Needs birthdate";
-    if (age <= 8) return "8U Coed";
-    if (age <= 10) return "10U Coed";
-    const bracket = age <= 12 ? "12U" : age <= 14 ? "14U" : age <= 16 ? "16U" : age <= 18 ? "18U" : null;
-    if (!bracket) return "Aged out (19+)";
-    const s = (sex || "").toLowerCase();
-    if (s === "male") return bracket + " Boys";
-    if (s === "female") return bracket + " Girls";
-    return bracket + " — needs sex";
-  }
-
   let allAthletes = [];
   let teams = []; // {team_slug, team_label} from the schedules table
 
@@ -206,7 +174,7 @@
       const t = teams.find(function (x) { return x.team_slug === a.team_slug; });
       if (t) return t.team_label;
     }
-    return deriveTeam(calcAge(a.birthdate), a.sex);
+    return deriveTeamLabel(calcAge(a.birthdate), a.sex);
   }
 
   function teamSortIndex(name) {
@@ -282,7 +250,7 @@
           "<dt>Registrations</dt>" + regList +
           "<dt>Team</dt><dd>" +
           '<select data-team-for="' + a.id + '">' +
-          '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; sex (" + escapeHtml(deriveTeam(age, a.sex)) + ")</option>" +
+          '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; sex (" + escapeHtml(deriveTeamLabel(age, a.sex)) + ")</option>" +
           teams
             .map(function (t) {
               return '<option value="' + escapeHtml(t.team_slug) + '"' +

@@ -165,6 +165,7 @@
           "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
           "</select></div>"
         : "") +
+      '<div class="field"><label for="discount_code">Discount Code (optional)</label><input type="text" id="discount_code" style="text-transform:uppercase;"></div>' +
       '<div id="invite-msg" class="form-msg"></div>' +
       '<button type="submit" class="btn btn-primary" style="width:100%;">Pay ' + formatAmount(data.tier.amount_cents) + "</button>";
     cardEl.appendChild(form);
@@ -184,6 +185,8 @@
       };
       const shirtSizeEl = document.getElementById("shirt_size");
       if (shirtSizeEl) payload.shirt_size = shirtSizeEl.value;
+      const discountCode = document.getElementById("discount_code").value.trim();
+      if (discountCode) payload.discount_code = discountCode;
 
       const { data: checkoutData, error: checkoutError } = await supabaseClient.functions.invoke("create-tournament-checkout", { body: payload });
 

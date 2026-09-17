@@ -1,8 +1,8 @@
 // Shared auth-state UI: populates the nav "account" slot on every page
 // and (optionally) guards pages that require a signed-in user or a staff role.
 
-async function getUserRole(userId) {
-  const { data } = await supabaseClient
+async function getUserRole(userId, client) {
+  const { data } = await (client || supabaseClient)
     .from("profiles")
     .select("role")
     .eq("id", userId)

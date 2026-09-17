@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
     const payerName = String(body.payer_name || "").trim().slice(0, 120);
     const payerEmail = String(body.payer_email || "").trim().slice(0, 200);
     const shirtSize = typeof body.shirt_size === "string" ? body.shirt_size.trim().slice(0, 20) : null;
+    const discountCode = typeof body.discount_code === "string" ? body.discount_code.trim().slice(0, 40) : "";
 
     if (!token) return json({ error: "Missing token" }, 400);
     if (!payerEmail || !payerEmail.includes("@")) return json({ error: "Enter a valid email address" }, 400);
@@ -57,6 +58,29 @@ Deno.serve(async (req) => {
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
     const returnUrl = `${siteUrl}/tournament-invite.html?token=${encodeURIComponent(token)}`;
 
+    // Same rule as registration checkout: a code only works for the
+    // specific tournament it was created for, checked server-side against
+    // the coupon's own metadata rather than trusted from the client.
+    let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
+    if (discountCode) {
+      const promoCodes = await stripe.promotionCodes.list({
+        code: discountCode.toUpperCase(),
+        active: true,
+        limit: 1,
+        expand: ["data.coupon"],
+      });
+      if (promoCodes.data.length === 0) {
+        return json({ error: `Discount code "${discountCode}" was not recognized or has expired.` }, 400);
+      }
+      const promo = promoCodes.data[0];
+      const appliesHere = promo.coupon.metadata?.scope_type === "tournament" &&
+        promo.coupon.metadata?.scope_id === tournament.id;
+      if (!appliesHere) {
+        return json({ error: `Discount code "${discountCode}" doesn't apply to this tournament.` }, 400);
+      }
+      discounts = [{ promotion_code: promo.id }];
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [
@@ -72,6 +96,7 @@ Deno.serve(async (req) => {
           quantity: 1,
         },
       ],
+      discounts,
       customer_email: payerEmail,
       success_url: `${returnUrl}&checkout=success`,
       cancel_url: `${returnUrl}&checkout=cancelled`,

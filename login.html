@@ -54,6 +54,10 @@
         <label for="password">Password</label>
         <input type="password" id="password" name="password" autocomplete="current-password" required>
       </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="stay-signed-in" style="width:auto;" checked>
+        <label for="stay-signed-in" style="margin:0;">Stay signed in on this device</label>
+      </div>
       <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Sign In</button>
     </form>
 
@@ -85,11 +89,22 @@
 
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
+    const staySignedIn = document.getElementById("stay-signed-in").checked;
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Signing In...";
 
-    const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+    // The shared global supabaseClient was already constructed (with
+    // whatever storage last session left behind) by the time this handler
+    // runs, so the box's choice can't retroactively change it -- sign in
+    // with a one-off client built against the storage actually chosen right
+    // now instead, and use that same client for everything else below.
+    try { localStorage.setItem("eca_remember_me", staySignedIn ? "1" : "0"); } catch (e) {}
+    const authClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { storage: staySignedIn ? localStorage : sessionStorage },
+    });
+
+    const { error } = await authClient.auth.signInWithPassword({ email: email, password: password });
 
     submitBtn.disabled = false;
     submitBtn.textContent = "Sign In";
@@ -106,7 +121,7 @@
         resend.addEventListener("click", async function (ev) {
           ev.preventDefault();
           resend.replaceWith(document.createTextNode("sending..."));
-          await supabaseClient.auth.resend({
+          await authClient.auth.resend({
             type: "signup",
             email: email,
             options: { emailRedirectTo: window.location.origin + window.location.pathname },
@@ -126,8 +141,8 @@
 
     const {
       data: { session },
-    } = await supabaseClient.auth.getSession();
-    const role = session ? await getUserRole(session.user.id) : null;
+    } = await authClient.auth.getSession();
+    const role = session ? await getUserRole(session.user.id, authClient) : null;
     window.location.href = role ? "admin.html" : "dashboard.html";
   });
 </script>

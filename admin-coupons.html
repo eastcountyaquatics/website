@@ -61,17 +61,29 @@
         <div class="field">
           <label for="discount_type">Discount Type</label>
           <select id="discount_type">
+            <option value="amount" selected>Dollar Amount Off</option>
             <option value="percent">Percent Off</option>
-            <option value="amount">Dollar Amount Off</option>
           </select>
         </div>
         <div class="field">
-          <label for="value" id="value-label">Percent (1-100)</label>
+          <label for="value" id="value-label">Dollar Amount ($)</label>
           <input type="number" id="value" step="0.01" min="0" required>
         </div>
         <div class="field">
-          <label for="max_redemptions">Max Uses (optional)</label>
-          <input type="number" id="max_redemptions" min="1" placeholder="Leave blank for unlimited">
+          <label for="scope_type">Applies To</label>
+          <select id="scope_type" required>
+            <option value="tournament">A Tournament</option>
+            <option value="registration_option">A Team Registration Session</option>
+          </select>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Every code must be tied to one specific tournament or session &mdash; there are no club-wide codes.</p>
+        </div>
+        <div class="field">
+          <label for="scope_id">Which One</label>
+          <select id="scope_id" required><option value="">Loading&hellip;</option></select>
+        </div>
+        <div class="field">
+          <label for="max_redemptions">Max Uses</label>
+          <input type="number" id="max_redemptions" min="1" value="1">
         </div>
         <div class="field">
           <label for="expires_at">Expires (optional)</label>
@@ -123,6 +135,32 @@
     document.getElementById("value-label").textContent = e.target.value === "percent" ? "Percent (1-100)" : "Dollar Amount ($)";
   });
 
+  var tournamentOptions = [];
+  var registrationOptions = [];
+
+  async function loadScopeOptions() {
+    const [{ data: tRows }, { data: rRows }] = await Promise.all([
+      supabaseClient.from("tournaments").select("id, name").order("event_date", { ascending: false }),
+      supabaseClient.from("registration_options").select("id, label").order("sort_order", { ascending: true }),
+    ]);
+    tournamentOptions = tRows || [];
+    registrationOptions = rRows || [];
+    renderScopeIdOptions();
+  }
+
+  function renderScopeIdOptions() {
+    const type = document.getElementById("scope_type").value;
+    const select = document.getElementById("scope_id");
+    const list = type === "tournament" ? tournamentOptions : registrationOptions;
+    if (!list.length) {
+      select.innerHTML = '<option value="">None yet &mdash; create one first</option>';
+      return;
+    }
+    select.innerHTML = '<option value="">Choose one&hellip;</option>' +
+      list.map(function (o) { return '<option value="' + o.id + '">' + escapeHtml(o.name || o.label) + "</option>"; }).join("");
+  }
+  document.getElementById("scope_type").addEventListener("change", renderScopeIdOptions);
+
   async function loadCoupons() {
     const listEl = document.getElementById("coupon-list");
     const { data, error } = await supabaseClient.functions.invoke("manage-coupons", { body: { action: "list" } });
@@ -144,6 +182,7 @@
           "<div>" +
           "<h4>" + escapeHtml(c.code) + (c.active ? "" : ' <span class="muted" style="font-weight:400;">(inactive)</span>') + "</h4>" +
           '<div class="muted" style="font-size:13px;">' + formatDiscount(c) + " &middot; " + usage + (c.expires_at ? " &middot; expires " + formatDate(c.expires_at) : "") + "</div>" +
+          (c.scope_label ? '<div class="muted" style="font-size:12.5px;">Applies to: ' + escapeHtml(c.scope_label) + "</div>" : '<div class="muted" style="font-size:12.5px;color:#a12626;">No scope on file (created before this was required)</div>') +
           "</div>" +
           (c.active ? '<div class="admin-list-actions"><button data-deactivate="' + c.id + '" class="danger">Deactivate</button></div>' : "") +
           "</div>"
@@ -169,12 +208,21 @@
     const msg = document.getElementById("form-msg");
     msg.className = "form-msg";
 
+    const scopeId = document.getElementById("scope_id").value;
+    if (!scopeId) {
+      msg.className = "form-msg error";
+      msg.textContent = "Choose which tournament or session this code applies to.";
+      return;
+    }
+
     const payload = {
       action: "create",
       code: document.getElementById("code").value.trim(),
       discount_type: document.getElementById("discount_type").value,
       value: parseFloat(document.getElementById("value").value),
-      max_redemptions: document.getElementById("max_redemptions").value || null,
+      scope_type: document.getElementById("scope_type").value,
+      scope_id: scopeId,
+      max_redemptions: document.getElementById("max_redemptions").value || 1,
       expires_at: document.getElementById("expires_at").value || null,
     };
 
@@ -202,6 +250,7 @@
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
+    loadScopeOptions();
     loadCoupons();
   })();
 </script>

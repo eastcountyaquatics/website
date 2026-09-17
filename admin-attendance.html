@@ -21,13 +21,19 @@
   .attendance-row .status{font-size:12px;color:var(--muted,#6b7280);min-width:70px;text-align:right;}
   .attendance-summary{font-size:14px;font-weight:700;margin-bottom:14px;}
   .coach-hours-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f7f9fc;border:1px solid #e3edf3;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13.5px;}
-  .coach-hours-row button{border:none;background:none;color:#a12626;cursor:pointer;font-size:13px;font-weight:700;padding:2px 4px;}
+  .coach-hours-row .actions{display:flex;gap:4px;flex-shrink:0;}
+  .coach-hours-row button{border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;padding:2px 6px;}
+  .coach-hours-row button.remove{color:#a12626;}
+  .coach-hours-row button.edit{color:var(--blue);}
 </style>
 <style>
-  .attendance-row.absent{background:#fdecec;border-color:#f5c2c2;}
-  .attendance-row.absent .att-name{text-decoration:line-through;color:#a12626;}
+  /* Neutral by default -- nothing here should look like anyone is marked
+     absent just because roll call was opened. Marking someone present is
+     the only state with a visual treatment: bold name, dark gray row. */
+  .attendance-row.present{background:#e9e9ec;border-color:#c7c7cd;}
+  .attendance-row.present .att-name{font-weight:800;}
   .att-toggle{border:1px solid #d7e6ee;background:#fff;border-radius:6px;padding:6px 14px;font-size:13px;font-family:inherit;cursor:pointer;min-width:92px;}
-  .attendance-row.absent .att-toggle{background:#a12626;border-color:#a12626;color:#fff;font-weight:700;}
+  .attendance-row.present .att-toggle{background:#3a3a3f;border-color:#3a3a3f;color:#fff;font-weight:700;}
 </style>
 </head>
 <body>
@@ -138,10 +144,10 @@
   let teams = [];
   let allAthletes = [];
   let currentUserId = null;
-  // Athlete ids currently marked ABSENT. Everyone not in here is present --
-  // the coaches asked for it this way round because on a normal day only a
-  // couple of swimmers are missing, so it is two taps instead of fifteen.
-  let absentIds = new Set();
+  // Athlete ids marked PRESENT so far. Everyone not in here stays in the
+  // plain default look -- roll call should never visually suggest someone
+  // is absent just because nobody has tapped them in yet.
+  let presentIds = new Set();
   let rollExists = false;
   let currentMembers = [];
 
@@ -155,11 +161,15 @@
     const [{ data: teamRows }, { data: athleteRows }, { data: coachRows }] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
       supabaseClient.from("athletes").select("id, full_name, birthdate, sex, team_slug"),
-      supabaseClient.from("coaches").select("full_name, profile_id").not("profile_id", "is", null).order("full_name", { ascending: true }),
+      // Everyone with real coach/owner access, straight from profiles.role --
+      // not the separate "About Us" coaches bio table -- so a brand-new
+      // coach shows up here the moment they have access, with nothing to
+      // manually maintain. See list_staff_profiles migration.
+      supabaseClient.rpc("list_staff_profiles"),
     ]);
     teams = teamRows || [];
     allAthletes = athleteRows || [];
-    coachRoster = coachRows || [];
+    coachRoster = (coachRows || []).map(function (c) { return { profile_id: c.id, full_name: c.full_name }; });
 
     const teamSelect = document.getElementById("attendance-team");
     teamSelect.innerHTML = '<option value="">Choose a team&hellip;</option>' +
@@ -169,7 +179,7 @@
     coachSelect.innerHTML = '<option value="">Choose a coach&hellip;</option>' +
       coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
     if (coachRoster.length === 0) {
-      coachSelect.innerHTML = '<option value="">No coaches linked to accounts yet</option>';
+      coachSelect.innerHTML = '<option value="">No coaches yet</option>';
       coachSelect.disabled = true;
     }
 
@@ -197,13 +207,26 @@
     listEl.innerHTML = ids.map(function (id) {
       return '<div class="coach-hours-row"><span>' + escapeHtml(coachName(id)) + " &mdash; " +
         parseFloat(coachHoursEntries[id]).toFixed(2) + ' hrs</span>' +
-        '<button type="button" data-remove-hours="' + id + '">Remove</button></div>';
+        '<div class="actions">' +
+        '<button type="button" class="edit" data-edit-hours="' + id + '">Edit</button>' +
+        '<button type="button" class="remove" data-remove-hours="' + id + '">Remove</button>' +
+        "</div></div>";
     }).join("");
     listEl.querySelectorAll("[data-remove-hours]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         delete coachHoursEntries[btn.dataset.removeHours];
         renderCoachHoursEntries();
         markUnsaved();
+      });
+    });
+    // Loads that entry back into the picker so an admin can change the
+    // number and hit "+ Add" again -- since entries are keyed by coach_id,
+    // that overwrites the existing entry rather than creating a duplicate.
+    listEl.querySelectorAll("[data-edit-hours]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.getElementById("hours-coach-select").value = btn.dataset.editHours;
+        document.getElementById("hours-amount").value = coachHoursEntries[btn.dataset.editHours];
+        document.getElementById("hours-amount").focus();
       });
     });
   }
@@ -230,23 +253,23 @@
   }
 
   function updateSummary() {
-    const present = currentMembers.length - absentIds.size;
+    const present = presentIds.size;
     document.getElementById("attendance-summary").textContent =
-      absentIds.size === 0
-        ? "Everyone present \u2014 " + present + " of " + currentMembers.length
-        : absentIds.size + " absent \u2014 " + present + " of " + currentMembers.length + " present";
+      present === 0
+        ? "Nobody marked present yet \u2014 0 of " + currentMembers.length
+        : present + " of " + currentMembers.length + " marked present";
   }
 
   function renderRows() {
     const listEl = document.getElementById("attendance-list");
     listEl.innerHTML = currentMembers
       .map(function (a) {
-        const absent = absentIds.has(a.id);
+        const present = presentIds.has(a.id);
         return (
-          '<div class="attendance-row' + (absent ? " absent" : "") + '" data-row="' + a.id + '">' +
+          '<div class="attendance-row' + (present ? " present" : "") + '" data-row="' + a.id + '">' +
           '<span class="att-name">' + escapeHtml(a.full_name) + "</span>" +
-          '<button type="button" class="att-toggle" data-athlete="' + a.id + '" aria-pressed="' + absent + '">' +
-          (absent ? "Absent" : "Here") + "</button>" +
+          '<button type="button" class="att-toggle" data-athlete="' + a.id + '" aria-pressed="' + present + '">' +
+          (present ? "\u2713 Present" : "Mark Present") + "</button>" +
           "</div>"
         );
       })
@@ -255,8 +278,8 @@
     listEl.querySelectorAll("[data-athlete]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const id = btn.dataset.athlete;
-        if (absentIds.has(id)) absentIds.delete(id);
-        else absentIds.add(id);
+        if (presentIds.has(id)) presentIds.delete(id);
+        else presentIds.add(id);
         renderRows();
         updateSummary();
         markUnsaved();
@@ -318,8 +341,8 @@
     // the same as "everyone showed up". Only rows the coach actually saved
     // count as attendance, so an untouched date stays visibly untaken.
     rollExists = !!(existing && existing.length);
-    absentIds = new Set();
-    (existing || []).forEach(function (r) { if (!r.present) absentIds.add(r.athlete_id); });
+    presentIds = new Set();
+    (existing || []).forEach(function (r) { if (r.present) presentIds.add(r.athlete_id); });
 
     coachHoursEntries = {};
     (hoursRows || []).forEach(function (r) { coachHoursEntries[r.coach_id] = parseFloat(r.hours); });
@@ -355,7 +378,7 @@
     btn.disabled = true;
     btn.textContent = "Saving...";
 
-    // Write a row for every athlete, not just the absent ones, so the saved
+    // Write a row for every athlete, not just the present ones, so the saved
     // record says exactly who was marked present rather than leaving it to
     // be inferred from missing rows.
     const rows = currentMembers.map(function (a) {
@@ -363,7 +386,7 @@
         team_slug: teamSlug,
         athlete_id: a.id,
         session_date: date,
-        present: !absentIds.has(a.id),
+        present: presentIds.has(a.id),
         recorded_by: currentUserId,
       };
     });

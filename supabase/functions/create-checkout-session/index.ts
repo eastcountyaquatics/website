@@ -118,11 +118,24 @@ Deno.serve(async (req) => {
         code: consent.discount_code.toUpperCase(),
         active: true,
         limit: 1,
+        expand: ["data.coupon"],
       });
       if (promoCodes.data.length === 0) {
         return json({ error: `Discount code "${consent.discount_code}" was not recognized or has expired. Remove it or double-check it to continue.` }, 400);
       }
-      discounts = [{ promotion_code: promoCodes.data[0].id }];
+      const promo = promoCodes.data[0];
+      // Every code is scoped to one tournament or registration option -- it
+      // never applies globally. Checked here, server-side, rather than
+      // trusting whatever the client sent, since the discount otherwise
+      // has nothing stopping it from being reused on an unrelated purchase.
+      const scopeType = promo.coupon.metadata?.scope_type;
+      const scopeId = promo.coupon.metadata?.scope_id;
+      const appliesHere = scopeType === "registration_option" && !!scopeId &&
+        registrations.some((r) => r.registration_option_id === scopeId);
+      if (!appliesHere) {
+        return json({ error: `Discount code "${consent.discount_code}" doesn't apply to this registration.` }, 400);
+      }
+      discounts = [{ promotion_code: promo.id }];
     }
 
     // Stripe caps a metadata value at 500 characters -- fine for one athlete,

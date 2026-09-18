@@ -47,10 +47,12 @@
 <section class="section-tight">
   <div class="container">
     <div class="admin-nav-cards">
-      <a href="admin-coaches.html" class="admin-nav-card">
-        <h3>Coaches</h3>
-        <p class="muted">Add, edit, or remove coaches shown on the About Us page.</p>
-      </a>
+      <div class="admin-nav-card" id="coaches-card" style="display:none;">
+        <a href="admin-coaches.html" style="display:block;color:inherit;">
+          <h3>Coaches</h3>
+          <p class="muted">Add, edit, or remove coaches shown on the About Us page.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="schedules-card" style="display:none;">
         <a href="admin-schedules.html" style="display:block;color:inherit;">
           <h3>Schedules</h3>
@@ -175,6 +177,7 @@
     // team), so a head coach -- who only has access to their own team's
     // data -- doesn't get these two even though owner/coach do.
     if (auth.role === "owner" || auth.role === "coach") {
+      document.getElementById("coaches-card").style.display = "block";
       document.getElementById("hosted-events-card").style.display = "block";
       document.getElementById("hours-card").style.display = "block";
     }

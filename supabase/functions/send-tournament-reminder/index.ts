@@ -1,6 +1,7 @@
-// Owner/coach only: sends a reminder (in-app notification + best-effort
-// email) to one or more athletes' parents about a tournament invite they
-// haven't finished responding to or paying for. Reuses the same
+// Owner/coach/head_coach (own team only): sends a reminder (in-app
+// notification + best-effort email) to one or more athletes' parents
+// about a tournament invite they haven't finished responding to or
+// paying for. Reuses the same
 // notifications table/shape the tournament_invites_notify trigger already
 // writes, and the same Resend pattern create-sponsorship-checkout uses for
 // email -- nothing new invented, just applied on demand instead of only
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
     if (userError || !userData.user) return json({ error: "Not signed in" }, 401);
 
     const { data: profile } = await callerClient.from("profiles").select("role").eq("id", userData.user.id).single();
-    if (!profile || !["owner", "coach"].includes(profile.role)) {
+    if (!profile || !["owner", "coach", "head_coach"].includes(profile.role)) {
       return json({ error: "Staff access required" }, 403);
     }
 
@@ -56,10 +57,19 @@ Deno.serve(async (req) => {
 
     const { data: tournament } = await supabase
       .from("tournaments")
-      .select("id, name, event_date")
+      .select("id, name, event_date, team_slug")
       .eq("id", tournamentId)
       .maybeSingle();
     if (!tournament) return json({ error: "Tournament not found" }, 404);
+
+    // A head coach can only remind athletes for their own team's
+    // tournaments -- the service-role client above bypasses RLS, so that
+    // check has to happen here explicitly, same as send-team-announcement-email.
+    if (profile.role === "head_coach") {
+      if (!tournament.team_slug) return json({ error: "You can only send reminders for your own team's tournaments" }, 403);
+      const { data: isHc } = await callerClient.rpc("is_head_coach_for", { target_team_slug: tournament.team_slug });
+      if (!isHc) return json({ error: "You can only send reminders for your own team's tournaments" }, 403);
+    }
 
     const { data: invites } = await supabase
       .from("tournament_invites")

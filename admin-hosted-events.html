@@ -12,6 +12,24 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
+  .event-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
+  .event-detail.open{display:block;}
+  .invite-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;flex-wrap:wrap;}
+  .date-mode-tabs{display:flex;gap:6px;margin-bottom:10px;}
+  .date-mode-tabs button{padding:6px 14px;border-radius:999px;border:1px solid #d7e6ee;background:#fff;cursor:pointer;font-family:inherit;font-size:13px;}
+  .date-mode-tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700;}
+  .extra-dates-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .level-options{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:6px;}
+  .level-options label{display:flex;align-items:center;gap:6px;font-weight:400;margin:0;}
+  .level-options input{width:auto;}
+  .contact-suggestions{position:relative;}
+  .contact-suggestions-list{position:absolute;z-index:5;top:100%;left:0;right:0;background:#fff;border:1px solid #d7e6ee;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:var(--shadow);}
+  .contact-suggestions-list div{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f1f3;}
+  .contact-suggestions-list div:hover{background:#f7f9fc;}
+</style>
 </head>
 <body>
 
@@ -44,14 +62,6 @@
   </div>
 </section>
 
-<style>
-  .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
-  .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
-  .event-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
-  .event-detail.open{display:block;}
-  .invite-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #e3e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;flex-wrap:wrap;}
-</style>
-
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
 
@@ -69,12 +79,28 @@
           <input type="text" id="ev-name" placeholder="e.g. ECA Fall Invitational" required>
         </div>
         <div class="field">
-          <label for="ev-date">Event Date</label>
+          <label>Event Dates</label>
+          <div class="date-mode-tabs">
+            <button type="button" data-datemode="single" class="active">Single Day</button>
+            <button type="button" data-datemode="range">Date Range</button>
+            <button type="button" data-datemode="multiple">Multiple Dates</button>
+          </div>
           <input type="date" id="ev-date" required>
+          <div id="ev-end-date-wrap" style="display:none;margin-top:8px;">
+            <label for="ev-end-date" style="font-weight:400;font-size:13px;">Through</label>
+            <input type="date" id="ev-end-date">
+          </div>
+          <div id="ev-extra-dates-wrap" style="display:none;margin-top:8px;">
+            <div id="ev-extra-dates-list"></div>
+            <button type="button" id="ev-add-date-btn" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;">+ Add Another Date</button>
+          </div>
         </div>
         <div class="field">
-          <label for="ev-level">Level (optional)</label>
-          <input type="text" id="ev-level" placeholder="e.g. 10U-14U, all levels">
+          <label>Age / Level</label>
+          <div class="level-options" id="ev-level-options"></div>
+          <div id="ev-level-other-wrap" style="display:none;margin-top:8px;">
+            <input type="text" id="ev-level-other" placeholder="Describe the custom age/level">
+          </div>
         </div>
         <div class="field">
           <label for="ev-description">Description (optional)</label>
@@ -85,20 +111,8 @@
           <input type="text" id="ev-location">
         </div>
         <div class="field">
-          <label for="ev-hotel-name">Hotel (optional)</label>
-          <input type="text" id="ev-hotel-name">
-        </div>
-        <div class="field">
-          <label for="ev-hotel-url">Hotel Booking Link (optional)</label>
-          <input type="url" id="ev-hotel-url">
-        </div>
-        <div class="field">
           <label for="ev-fee">Fee per Team (USD)</label>
           <input type="number" id="ev-fee" step="0.01" min="0.01" required>
-        </div>
-        <div class="field">
-          <label for="ev-max-teams">Max Teams (optional)</label>
-          <input type="number" id="ev-max-teams" min="1">
         </div>
         <div style="display:flex;gap:12px;">
           <button type="submit" id="event-submit-btn" class="btn btn-primary">Add Event</button>
@@ -111,12 +125,35 @@
     <div id="event-list"><p class="muted">Loading&hellip;</p></div>
 
     <div class="event-detail" id="event-detail">
-      <h3 id="detail-heading">Invite a Team</h3>
+      <h3 style="margin-bottom:6px;">Schedule</h3>
+      <p class="muted" style="font-size:13px;">Upload a schedule (PDF or image) for this event. Uploading a new one instantly replaces the old link everywhere it's shown &mdash; nothing else about the event needs to change.</p>
+      <div id="schedule-current" class="muted" style="margin-bottom:8px;"></div>
+      <input type="file" id="schedule-file-input" accept="application/pdf,image/png,image/jpeg,image/webp">
+      <div id="schedule-msg" class="form-msg"></div>
+
+      <h3 id="detail-heading" style="margin-top:32px;">Invite a Team</h3>
+      <div class="field" style="max-width:400px;position:relative;">
+        <label for="inv-search">Find or Add a Contact</label>
+        <div class="contact-suggestions">
+          <input type="text" id="inv-search" placeholder="Search by name, org, or email&hellip;" autocomplete="off">
+          <div id="inv-suggestions" class="contact-suggestions-list" style="display:none;"></div>
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:4px;">Pick a saved contact to auto-fill their info, or just type a new one below &mdash; it's saved for next time.</p>
+      </div>
       <div id="invite-form-msg" class="form-msg"></div>
-      <form id="invite-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <form id="invite-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
+        <input type="hidden" id="inv-contact-id">
         <div class="field" style="margin:0;flex:1;min-width:160px;">
-          <label for="inv-team-name">Team Name</label>
+          <label for="inv-team-name">Team / Org Name</label>
           <input type="text" id="inv-team-name" required>
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:140px;">
+          <label for="inv-first-name">First Name</label>
+          <input type="text" id="inv-first-name" required>
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:140px;">
+          <label for="inv-last-name">Last Name</label>
+          <input type="text" id="inv-last-name" required>
         </div>
         <div class="field" style="margin:0;flex:1;min-width:180px;">
           <label for="inv-email">Contact Email</label>
@@ -168,13 +205,52 @@
     if (!iso) return "";
     return new Date(iso + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
+  function formatEventDates(ev) {
+    var extra = (ev.additional_dates || []).slice().sort();
+    if (ev.end_date && ev.end_date !== ev.event_date) return formatDate(ev.event_date) + " – " + formatDate(ev.end_date);
+    if (extra.length) return [ev.event_date].concat(extra).map(formatDate).join(", ");
+    return formatDate(ev.event_date);
+  }
 
   let events = [];
+  let teams = [];
   let currentEventId = null;
 
   function buildInviteUrl(token) {
     return window.location.origin + window.location.pathname.replace("admin-hosted-events.html", "hosted-event-signup.html") + "?token=" + token;
   }
+
+  async function loadTeams() {
+    const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
+    teams = data || [];
+    document.getElementById("ev-level-options").innerHTML =
+      teams.map(function (t) { return '<label><input type="checkbox" value="' + escapeHtml(t.team_label) + '"> ' + escapeHtml(t.team_label) + "</label>"; }).join("") +
+      '<label><input type="checkbox" id="ev-level-other-check" value="__other__"> Other</label>';
+    document.getElementById("ev-level-other-check").addEventListener("change", function () {
+      document.getElementById("ev-level-other-wrap").style.display = this.checked ? "block" : "none";
+    });
+  }
+
+  // ---- Event date mode -----------------------------------------------------
+  function setDateMode(mode) {
+    document.querySelectorAll("[data-datemode]").forEach(function (btn) { btn.classList.toggle("active", btn.dataset.datemode === mode); });
+    document.getElementById("ev-end-date-wrap").style.display = mode === "range" ? "block" : "none";
+    document.getElementById("ev-extra-dates-wrap").style.display = mode === "multiple" ? "block" : "none";
+  }
+  document.querySelectorAll("[data-datemode]").forEach(function (btn) {
+    btn.addEventListener("click", function () { setDateMode(btn.dataset.datemode); });
+  });
+  let extraDatesDraft = [];
+  function renderExtraDates(dates) {
+    const listEl = document.getElementById("ev-extra-dates-list");
+    listEl.innerHTML = dates.map(function (d, i) {
+      return '<div class="extra-dates-row"><input type="date" data-extra-date="' + i + '" value="' + escapeHtml(d) + '"><button type="button" data-remove-date="' + i + '" class="danger" style="border:none;background:none;">Remove</button></div>';
+    }).join("");
+    listEl.querySelectorAll("[data-remove-date]").forEach(function (btn) {
+      btn.addEventListener("click", function () { dates.splice(parseInt(btn.dataset.removeDate, 10), 1); renderExtraDates(dates); });
+    });
+  }
+  document.getElementById("ev-add-date-btn").addEventListener("click", function () { extraDatesDraft.push(""); renderExtraDates(extraDatesDraft); });
 
   async function loadEvents() {
     const { data, error } = await supabaseClient
@@ -196,8 +272,8 @@
     listEl.innerHTML = events.map(function (ev) {
       return '<div class="admin-list-item" style="cursor:pointer;" data-select="' + ev.id + '">' +
         "<div><h4>" + escapeHtml(ev.name) + "</h4>" +
-        '<div class="muted" style="font-size:13px;">' + formatDate(ev.event_date) + " &middot; " + formatAmount(ev.fee_cents) + "/team" +
-        (ev.max_teams ? " &middot; up to " + ev.max_teams + " teams" : "") + "</div></div>" +
+        '<div class="muted" style="font-size:13px;">' + formatEventDates(ev) + " &middot; " + formatAmount(ev.fee_cents) + "/team" +
+        (ev.levels && ev.levels.length ? " &middot; " + escapeHtml(ev.levels.join(", ")) : "") + "</div></div>" +
         '<div class="admin-list-actions"><button data-edit="' + ev.id + '">Edit</button></div>' +
         "</div>";
     }).join("");
@@ -222,13 +298,27 @@
     document.getElementById("ev-id").value = ev.id;
     document.getElementById("ev-name").value = ev.name;
     document.getElementById("ev-date").value = ev.event_date;
-    document.getElementById("ev-level").value = ev.level || "";
     document.getElementById("ev-description").value = ev.description || "";
     document.getElementById("ev-location").value = ev.location || "";
-    document.getElementById("ev-hotel-name").value = ev.hotel_name || "";
-    document.getElementById("ev-hotel-url").value = ev.hotel_url || "";
     document.getElementById("ev-fee").value = (ev.fee_cents / 100).toFixed(2);
-    document.getElementById("ev-max-teams").value = ev.max_teams || "";
+
+    document.getElementById("ev-end-date").value = ev.end_date || "";
+    extraDatesDraft = (ev.additional_dates || []).slice();
+    renderExtraDates(extraDatesDraft);
+    if (ev.end_date) setDateMode("range");
+    else if (extraDatesDraft.length) setDateMode("multiple");
+    else setDateMode("single");
+
+    const knownLabels = teams.map(function (t) { return t.team_label; });
+    const levels = ev.levels || [];
+    document.querySelectorAll('#ev-level-options input[type="checkbox"]:not(#ev-level-other-check)').forEach(function (cb) {
+      cb.checked = levels.indexOf(cb.value) !== -1;
+    });
+    const customLevels = levels.filter(function (l) { return knownLabels.indexOf(l) === -1; });
+    document.getElementById("ev-level-other-check").checked = customLevels.length > 0;
+    document.getElementById("ev-level-other-wrap").style.display = customLevels.length ? "block" : "none";
+    document.getElementById("ev-level-other").value = customLevels.join(", ");
+
     document.getElementById("event-submit-btn").textContent = "Save Changes";
     document.getElementById("event-cancel-btn").style.display = "inline-block";
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -240,6 +330,10 @@
     document.getElementById("event-form-title").textContent = "Add a Hosted Event";
     document.getElementById("event-submit-btn").textContent = "Add Event";
     document.getElementById("event-cancel-btn").style.display = "none";
+    document.getElementById("ev-level-other-wrap").style.display = "none";
+    extraDatesDraft = [];
+    renderExtraDates(extraDatesDraft);
+    setDateMode("single");
   }
   document.getElementById("event-cancel-btn").addEventListener("click", resetEventForm);
 
@@ -255,16 +349,26 @@
       return;
     }
 
+    const levels = Array.from(document.querySelectorAll('#ev-level-options input[type="checkbox"]:checked:not(#ev-level-other-check)')).map(function (cb) { return cb.value; });
+    if (document.getElementById("ev-level-other-check").checked) {
+      const custom = document.getElementById("ev-level-other").value.trim();
+      if (custom) levels.push(custom);
+    }
+
+    const activeMode = document.querySelector("[data-datemode].active").dataset.datemode;
+    const extraDates = activeMode === "multiple"
+      ? Array.from(document.querySelectorAll("[data-extra-date]")).map(function (i) { return i.value; }).filter(Boolean)
+      : [];
+
     const payload = {
       name: document.getElementById("ev-name").value.trim(),
       event_date: document.getElementById("ev-date").value,
-      level: document.getElementById("ev-level").value.trim() || null,
+      end_date: activeMode === "range" ? (document.getElementById("ev-end-date").value || null) : null,
+      additional_dates: extraDates,
+      levels: levels,
       description: document.getElementById("ev-description").value.trim() || null,
       location: document.getElementById("ev-location").value.trim() || null,
-      hotel_name: document.getElementById("ev-hotel-name").value.trim() || null,
-      hotel_url: document.getElementById("ev-hotel-url").value.trim() || null,
       fee_cents: Math.round(dollars * 100),
-      max_teams: document.getElementById("ev-max-teams").value ? parseInt(document.getElementById("ev-max-teams").value, 10) : null,
     };
 
     const id = document.getElementById("ev-id").value;
@@ -287,12 +391,107 @@
   function selectEvent(id) {
     currentEventId = id;
     const ev = events.find(function (x) { return x.id === id; });
-    document.getElementById("detail-heading").textContent = "Invite a Team \u2014 " + (ev ? ev.name : "");
+    document.getElementById("detail-heading").textContent = "Invite a Team — " + (ev ? ev.name : "");
     document.getElementById("event-detail").classList.add("open");
     document.getElementById("new-invite-link").style.display = "none";
+    document.getElementById("inv-search").value = "";
+    document.getElementById("inv-suggestions").style.display = "none";
+    document.getElementById("invite-form").reset();
+    document.getElementById("inv-contact-id").value = "";
+    renderScheduleStatus(ev);
     loadInvites();
     document.getElementById("event-detail").scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  // ---- Schedule upload (item 18) -------------------------------------------
+  function renderScheduleStatus(ev) {
+    const el = document.getElementById("schedule-current");
+    if (ev && ev.schedule_url) {
+      el.innerHTML = 'Current: <a href="' + escapeHtml(ev.schedule_url) + '" target="_blank" rel="noopener">View schedule</a>' +
+        (ev.schedule_updated_at ? ' (updated ' + new Date(ev.schedule_updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + ")" : "");
+    } else {
+      el.textContent = "No schedule uploaded yet.";
+    }
+  }
+
+  document.getElementById("schedule-file-input").addEventListener("change", async function () {
+    const file = this.files[0];
+    this.value = "";
+    if (!file || !currentEventId) return;
+    const msg = document.getElementById("schedule-msg");
+    msg.className = "form-msg";
+    msg.textContent = "Uploading…";
+
+    const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
+    const storagePath = currentEventId + "/" + Date.now() + "." + ext;
+    const { error: uploadError } = await supabaseClient.storage.from("event-schedules").upload(storagePath, file, { upsert: true });
+    if (uploadError) {
+      msg.className = "form-msg error";
+      msg.textContent = "Could not upload: " + uploadError.message;
+      return;
+    }
+    const { data } = supabaseClient.storage.from("event-schedules").getPublicUrl(storagePath);
+    const { error: saveError } = await supabaseClient.from("hosted_events").update({
+      schedule_url: data.publicUrl,
+      schedule_updated_at: new Date().toISOString(),
+    }).eq("id", currentEventId);
+    if (saveError) {
+      msg.className = "form-msg error";
+      msg.textContent = "Uploaded, but could not save: " + saveError.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Schedule updated — attendees will see the new version immediately.";
+    const ev = events.find(function (x) { return x.id === currentEventId; });
+    if (ev) { ev.schedule_url = data.publicUrl; ev.schedule_updated_at = new Date().toISOString(); }
+    renderScheduleStatus(ev);
+  });
+
+  // ---- Team Contact CRM (item 15) + Invite Teams (item 14) -----------------
+  let contactsCache = [];
+  async function searchContacts(q) {
+    // Strip characters that are syntactically meaningful to PostgREST's
+    // .or() filter DSL (commas/parens) rather than let a typed "Smith, J."
+    // silently break the query into something unintended.
+    const safeQ = q.replace(/[,()]/g, "");
+    if (!safeQ) return [];
+    const { data } = await supabaseClient
+      .from("contacts")
+      .select("id, first_name, last_name, email, organization")
+      .or("first_name.ilike.%" + safeQ + "%,last_name.ilike.%" + safeQ + "%,organization.ilike.%" + safeQ + "%,email.ilike.%" + safeQ + "%")
+      .limit(10);
+    return data || [];
+  }
+
+  document.getElementById("inv-search").addEventListener("input", async function () {
+    const q = this.value.trim();
+    const box = document.getElementById("inv-suggestions");
+    if (q.length < 2) { box.style.display = "none"; return; }
+    const matches = await searchContacts(q);
+    if (!matches.length) { box.style.display = "none"; return; }
+    box.innerHTML = matches.map(function (c) {
+      return '<div data-pick-contact="' + c.id + '">' + escapeHtml(c.first_name + " " + c.last_name) +
+        (c.organization ? " — " + escapeHtml(c.organization) : "") + '<div class="muted" style="font-size:11.5px;">' + escapeHtml(c.email) + "</div></div>";
+    }).join("");
+    contactsCache = matches;
+    box.style.display = "block";
+    box.querySelectorAll("[data-pick-contact]").forEach(function (row) {
+      row.addEventListener("click", function () {
+        const c = contactsCache.find(function (x) { return x.id === row.dataset.pickContact; });
+        if (!c) return;
+        document.getElementById("inv-contact-id").value = c.id;
+        document.getElementById("inv-first-name").value = c.first_name;
+        document.getElementById("inv-last-name").value = c.last_name;
+        document.getElementById("inv-email").value = c.email;
+        document.getElementById("inv-team-name").value = c.organization || "";
+        document.getElementById("inv-search").value = c.first_name + " " + c.last_name;
+        box.style.display = "none";
+      });
+    });
+  });
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest(".contact-suggestions")) document.getElementById("inv-suggestions").style.display = "none";
+  });
 
   async function loadInvites() {
     const ev = events.find(function (x) { return x.id === currentEventId; });
@@ -305,9 +504,7 @@
     const listEl = document.getElementById("invite-list");
     const countEl = document.getElementById("team-count");
     const paidCount = (data || []).filter(function (i) { return i.status === "paid"; }).length;
-    countEl.textContent = data && data.length
-      ? "(" + paidCount + " paid of " + data.length + " invited" + (ev && ev.max_teams ? ", cap " + ev.max_teams : "") + ")"
-      : "";
+    countEl.textContent = data && data.length ? "(" + paidCount + " paid of " + data.length + " invited)" : "";
 
     if (!data || data.length === 0) {
       listEl.innerHTML = '<p class="muted">No teams invited yet.</p>';
@@ -338,13 +535,33 @@
     const msg = document.getElementById("invite-form-msg");
     msg.className = "form-msg";
 
+    const firstName = document.getElementById("inv-first-name").value.trim();
+    const lastName = document.getElementById("inv-last-name").value.trim();
+    const email = document.getElementById("inv-email").value.trim().toLowerCase();
+    const teamName = document.getElementById("inv-team-name").value.trim();
+
+    // Save (or update) this contact for reuse next time, deduped by email --
+    // never a duplicate record for the same address.
+    const { data: contact, error: contactError } = await supabaseClient
+      .from("contacts")
+      .upsert({ first_name: firstName, last_name: lastName, email: email, organization: teamName || null }, { onConflict: "email" })
+      .select("id")
+      .single();
+    if (contactError) {
+      msg.className = "form-msg error";
+      msg.textContent = "Could not save contact: " + contactError.message;
+      return;
+    }
+
     const { data, error } = await supabaseClient
       .from("hosted_event_invites")
       .insert({
         event_id: currentEventId,
-        team_name: document.getElementById("inv-team-name").value.trim(),
-        contact_email: document.getElementById("inv-email").value.trim(),
+        team_name: teamName,
+        contact_name: firstName + " " + lastName,
+        contact_email: email,
         contact_phone: document.getElementById("inv-phone").value.trim() || null,
+        contact_id: contact ? contact.id : null,
       })
       .select("token")
       .single();
@@ -359,6 +576,8 @@
     document.getElementById("new-invite-url").value = url;
     document.getElementById("new-invite-link").style.display = "flex";
     document.getElementById("invite-form").reset();
+    document.getElementById("inv-contact-id").value = "";
+    document.getElementById("inv-search").value = "";
     loadInvites();
   });
 
@@ -372,6 +591,7 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+    await loadTeams();
     loadEvents();
   })();
 </script>

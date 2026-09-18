@@ -44,13 +44,14 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from("hosted_events")
-      .select("id, name, event_date, fee_cents")
+      .select("id, name, event_date, end_date, additional_dates, fee_cents")
       .eq("id", invite.event_id)
       .maybeSingle();
     if (eventError || !event) return json({ error: "This event could not be found." }, 404);
 
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-    if (event.event_date && today > event.event_date) {
+    const lastDate = [event.event_date, event.end_date].concat(event.additional_dates || []).filter(Boolean).sort().pop();
+    if (lastDate && today > lastDate) {
       return json({ error: "This event has already taken place." }, 409);
     }
 

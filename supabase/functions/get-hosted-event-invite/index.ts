@@ -41,15 +41,17 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from("hosted_events")
-      .select("id, name, event_date, level, description, location, hotel_name, hotel_url, fee_cents")
+      .select("id, name, event_date, end_date, additional_dates, levels, description, location, fee_cents, schedule_url")
       .eq("id", invite.event_id)
       .maybeSingle();
     if (eventError || !event) return json({ error: "This event could not be found." }, 404);
 
     // Same idea as the tournament payment cutoff: a hosted event that has
-    // already happened should not still be taking payment.
+    // already happened should not still be taking payment. With multi-day
+    // events, "happened" means the LAST day, not just the start date.
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
-    const closedReason = event.event_date && today > event.event_date
+    const lastDate = [event.event_date, event.end_date].concat(event.additional_dates || []).filter(Boolean).sort().pop();
+    const closedReason = lastDate && today > lastDate
       ? "This event has already taken place."
       : null;
 
@@ -60,12 +62,13 @@ Deno.serve(async (req) => {
       event: {
         name: event.name,
         event_date: event.event_date,
-        level: event.level,
+        end_date: event.end_date,
+        additional_dates: event.additional_dates,
+        levels: event.levels,
         description: event.description,
         location: event.location,
-        hotel_name: event.hotel_name,
-        hotel_url: event.hotel_url,
         fee_cents: event.fee_cents,
+        schedule_url: event.schedule_url,
       },
     });
   } catch (err) {

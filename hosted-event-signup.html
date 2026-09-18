@@ -112,14 +112,16 @@
     if (checkoutStatus === "success" || data.status === "paid") {
       cardEl.innerHTML =
         "<h3>You're registered!</h3>" +
-        "<p class=\"muted\">" + escapeHtml(data.team_name) + " is signed up for " + escapeHtml(data.event.name) + ". A receipt was sent to your email.</p>";
+        "<p class=\"muted\">" + escapeHtml(data.team_name) + " is signed up for " + escapeHtml(data.event.name) + ". A receipt was sent to your email.</p>" +
+        (data.event.schedule_url ? '<p class="muted"><a href="' + escapeHtml(data.event.schedule_url) + '" target="_blank" rel="noopener">View the current schedule</a> &mdash; check back, it may be updated closer to the event.</p>' : "");
       return;
     }
     if (data.closed_reason) {
       cardEl.innerHTML =
         "<h3>" + escapeHtml(data.team_name) + "</h3>" +
         '<p class="muted"><strong>Date:</strong> ' + formatDate(data.event.event_date) + "</p>" +
-        '<div class="form-msg error" style="display:block;">' + escapeHtml(data.closed_reason) + "</div>";
+        '<div class="form-msg error" style="display:block;">' + escapeHtml(data.closed_reason) + "</div>" +
+        (data.event.schedule_url ? '<p class="muted" style="margin-top:10px;"><a href="' + escapeHtml(data.event.schedule_url) + '" target="_blank" rel="noopener">View the schedule</a></p>' : "");
       return;
     }
 
@@ -130,18 +132,21 @@
       cardEl.innerHTML = "";
     }
 
+    function formatEventDates(ev) {
+      var extra = (ev.additional_dates || []).slice().sort();
+      if (ev.end_date && ev.end_date !== ev.event_date) return formatDate(ev.event_date) + " – " + formatDate(ev.end_date);
+      if (extra.length) return [ev.event_date].concat(extra).map(formatDate).join(", ");
+      return formatDate(ev.event_date);
+    }
+
     const infoWrap = document.createElement("div");
     infoWrap.innerHTML =
       "<h3>" + escapeHtml(data.team_name) + "</h3>" +
       (data.event.description ? '<p class="muted">' + escapeHtml(data.event.description) + "</p>" : "") +
-      '<p class="muted"><strong>Date:</strong> ' + formatDate(data.event.event_date) + "</p>" +
-      (data.event.level ? '<p class="muted"><strong>Level:</strong> ' + escapeHtml(data.event.level) + "</p>" : "") +
+      '<p class="muted"><strong>Date:</strong> ' + formatEventDates(data.event) + "</p>" +
+      (data.event.levels && data.event.levels.length ? '<p class="muted"><strong>Age / Level:</strong> ' + escapeHtml(data.event.levels.join(", ")) + "</p>" : "") +
       (data.event.location ? '<p class="muted"><strong>Location:</strong> ' + escapeHtml(data.event.location) + "</p>" : "") +
-      (data.event.hotel_name
-        ? '<p class="muted"><strong>Hotel:</strong> ' + (data.event.hotel_url
-            ? '<a href="' + escapeHtml(data.event.hotel_url) + '" target="_blank" rel="noopener">' + escapeHtml(data.event.hotel_name) + "</a>"
-            : escapeHtml(data.event.hotel_name)) + "</p>"
-        : "") +
+      (data.event.schedule_url ? '<p class="muted"><strong>Schedule:</strong> <a href="' + escapeHtml(data.event.schedule_url) + '" target="_blank" rel="noopener">View current schedule</a></p>' : "") +
       '<div class="invite-price">' + formatAmount(data.event.fee_cents) + "</div>" +
       '<p class="muted" style="margin-bottom:20px;">Team registration fee</p>';
     cardEl.appendChild(infoWrap);

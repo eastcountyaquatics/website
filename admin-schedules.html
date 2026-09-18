@@ -29,6 +29,14 @@
   .preview-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a92a8;margin-bottom:10px;}
   .preview-empty{color:#8a92a8;font-style:italic;font-size:14px;}
   @media (max-width: 760px){.sched-editor{grid-template-columns:1fr;} .preview-pane{position:static;}}
+  .entry-card{border:1px solid #e3e6f0;border-radius:8px;padding:12px;margin-bottom:10px;background:#fbfcfe;}
+  .entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .entry-grid label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:2px;}
+  .entry-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+  .pool-directions{display:flex;gap:10px;align-items:center;margin-top:6px;font-size:12.5px;}
+  .pool-directions a{white-space:nowrap;}
+  .add-location-inline{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .add-location-inline input{flex:1;min-width:140px;}
 </style>
 </head>
 <body>
@@ -106,6 +114,186 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
+  var poolLocationsCache = [];
+  async function loadPoolLocations() {
+    const { data } = await supabaseClient.from("pool_locations").select("id, name, address").order("name", { ascending: true });
+    poolLocationsCache = data || [];
+  }
+  function poolById(id) {
+    return poolLocationsCache.find(function (p) { return p.id === id; });
+  }
+  function appleMapsUrl(address) {
+    return "https://maps.apple.com/?q=" + encodeURIComponent(address);
+  }
+  function googleMapsUrl(address) {
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address);
+  }
+  var DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  function formatTime12h(t) {
+    if (!t) return "";
+    var parts = t.split(":");
+    var h = parseInt(parts[0], 10);
+    var m = parts[1];
+    var ampm = h >= 12 ? "pm" : "am";
+    h = h % 12 || 12;
+    return h + ":" + m + ampm;
+  }
+  function formatDateShort(d) {
+    if (!d) return "";
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  // Existing schedules may have plain free-text practice lines saved before
+  // structured fields existed -- those are kept exactly as typed (never
+  // silently reparsed) and stay editable as a single text field; only newly
+  // added entries get the structured day/date/time/pool fields.
+  function normalizeEntry(e) {
+    if (typeof e === "string") return { legacy_text: e };
+    return Object.assign({ day_of_week: null, date: null, start_time: null, end_time: null, pool_location_id: null, pool_name: null, pool_address: null, legacy_text: null }, e);
+  }
+
+  function entryDisplayText(raw) {
+    const e = normalizeEntry(raw);
+    if (e.legacy_text) return e.legacy_text;
+    const when = e.date ? formatDateShort(e.date) : (e.day_of_week || "");
+    const time = (e.start_time && e.end_time) ? formatTime12h(e.start_time) + "–" + formatTime12h(e.end_time) : "";
+    return [when, time, e.pool_name].filter(Boolean).join(", ");
+  }
+
+  function entryRowHtml(entry, index) {
+    const e = normalizeEntry(entry);
+    if (e.legacy_text) {
+      return (
+        '<div class="entry-card" data-entry-row="' + index + '" data-legacy="1">' +
+        '<input type="text" data-entry-field="legacy_text" value="' + escapeHtml(e.legacy_text) + '" style="width:100%;margin-bottom:8px;">' +
+        '<div class="entry-actions"><span class="muted" style="font-size:12px;">Free-text entry from before structured fields</span>' +
+        '<div><button type="button" class="btn btn-outline-dark" data-convert-entry="' + index + '" style="padding:4px 10px;font-size:12px;">Switch to Structured Fields</button> ' +
+        '<button type="button" class="danger" data-remove-entry="' + index + '" style="border:none;background:none;">Remove</button></div></div>' +
+        "</div>"
+      );
+    }
+    const poolOptions = '<option value="">Choose a pool&hellip;</option>' +
+      poolLocationsCache.map(function (p) { return '<option value="' + p.id + '" ' + (e.pool_location_id === p.id ? "selected" : "") + '>' + escapeHtml(p.name) + "</option>"; }).join("") +
+      '<option value="__other__">Other / Add Location</option>';
+    const pool = e.pool_location_id ? poolById(e.pool_location_id) : null;
+    return (
+      '<div class="entry-card" data-entry-row="' + index + '">' +
+      '<div class="entry-grid">' +
+      '<div><label>Repeats On</label><select data-entry-field="day_or_date_mode">' +
+      '<option value="day" ' + (!e.date ? "selected" : "") + '>Day of Week</option>' +
+      '<option value="date" ' + (e.date ? "selected" : "") + '>Specific Date</option>' +
+      "</select></div>" +
+      '<div data-day-field style="display:' + (e.date ? "none" : "block") + ';"><label>Day of Week</label><select data-entry-field="day_of_week">' +
+      DAYS_OF_WEEK.map(function (d) { return '<option ' + (e.day_of_week === d ? "selected" : "") + '>' + d + "</option>"; }).join("") + "</select></div>" +
+      '<div data-date-field style="display:' + (e.date ? "block" : "none") + ';"><label>Date</label><input type="date" data-entry-field="date" value="' + escapeHtml(e.date || "") + '"></div>' +
+      '<div><label>Start Time</label><input type="time" data-entry-field="start_time" value="' + escapeHtml(e.start_time || "") + '"></div>' +
+      '<div><label>End Time</label><input type="time" data-entry-field="end_time" value="' + escapeHtml(e.end_time || "") + '"></div>' +
+      '<div style="grid-column:1 / -1;"><label>Pool Location</label><select data-entry-field="pool_location_id">' + poolOptions + "</select>" +
+      '<div class="add-location-inline" data-add-location-inline style="display:none;">' +
+      '<input type="text" data-new-pool-name placeholder="Pool/location name">' +
+      '<input type="text" data-new-pool-address placeholder="Address">' +
+      '<button type="button" class="btn btn-outline-dark" data-save-new-pool style="padding:6px 12px;font-size:13px;">Save &amp; Use</button>' +
+      "</div>" +
+      (pool ? '<div class="pool-directions" data-pool-directions>' + escapeHtml(pool.address) +
+        ' &middot; <a href="' + appleMapsUrl(pool.address) + '" target="_blank" rel="noopener">Apple Maps</a>' +
+        ' &middot; <a href="' + googleMapsUrl(pool.address) + '" target="_blank" rel="noopener">Google Maps</a></div>' : '<div class="pool-directions" data-pool-directions></div>') +
+      "</div>" +
+      "</div>" +
+      '<div class="entry-actions"><span></span><button type="button" class="danger" data-remove-entry="' + index + '" style="border:none;background:none;">Remove</button></div>' +
+      "</div>"
+    );
+  }
+
+  function wireEntryRow(row, entries, index, onchange) {
+    const daymode = row.querySelector('[data-entry-field="day_or_date_mode"]');
+    if (daymode) {
+      daymode.addEventListener("change", function () {
+        row.querySelector("[data-day-field]").style.display = daymode.value === "day" ? "block" : "none";
+        row.querySelector("[data-date-field]").style.display = daymode.value === "date" ? "block" : "none";
+        onchange();
+      });
+    }
+    const poolSelect = row.querySelector('[data-entry-field="pool_location_id"]');
+    if (poolSelect) {
+      poolSelect.addEventListener("change", function () {
+        const addWrap = row.querySelector("[data-add-location-inline]");
+        if (poolSelect.value === "__other__") {
+          addWrap.style.display = "flex";
+          return;
+        }
+        addWrap.style.display = "none";
+        const pool = poolById(poolSelect.value);
+        const dirEl = row.querySelector("[data-pool-directions]");
+        dirEl.innerHTML = pool
+          ? escapeHtml(pool.address) + ' &middot; <a href="' + appleMapsUrl(pool.address) + '" target="_blank" rel="noopener">Apple Maps</a>' +
+            ' &middot; <a href="' + googleMapsUrl(pool.address) + '" target="_blank" rel="noopener">Google Maps</a>'
+          : "";
+        onchange();
+      });
+    }
+    const saveNewPoolBtn = row.querySelector("[data-save-new-pool]");
+    if (saveNewPoolBtn) {
+      saveNewPoolBtn.addEventListener("click", async function () {
+        const name = row.querySelector("[data-new-pool-name]").value.trim();
+        const address = row.querySelector("[data-new-pool-address]").value.trim();
+        if (!name || !address) { alert("Enter both a name and an address."); return; }
+        const { data, error } = await supabaseClient.from("pool_locations").upsert({ name: name, address: address }, { onConflict: "name" }).select("id, name, address").single();
+        if (error) { alert("Could not save location: " + error.message); return; }
+        poolLocationsCache.push(data);
+        poolLocationsCache = poolLocationsCache.filter(function (p, i, arr) { return arr.findIndex(function (x) { return x.id === p.id; }) === i; });
+        poolSelect.innerHTML = '<option value="">Choose a pool&hellip;</option>' +
+          poolLocationsCache.map(function (p) { return '<option value="' + p.id + '" ' + (p.id === data.id ? "selected" : "") + '>' + escapeHtml(p.name) + "</option>"; }).join("") +
+          '<option value="__other__">Other / Add Location</option>';
+        row.querySelector("[data-add-location-inline]").style.display = "none";
+        row.querySelector("[data-pool-directions]").innerHTML = escapeHtml(data.address) +
+          ' &middot; <a href="' + appleMapsUrl(data.address) + '" target="_blank" rel="noopener">Apple Maps</a>' +
+          ' &middot; <a href="' + googleMapsUrl(data.address) + '" target="_blank" rel="noopener">Google Maps</a>';
+        onchange();
+      });
+    }
+    const convertBtn = row.querySelector("[data-convert-entry]");
+    if (convertBtn) {
+      convertBtn.addEventListener("click", function () {
+        entries[index] = { day_of_week: DAYS_OF_WEEK[0], date: null, start_time: null, end_time: null, pool_location_id: null, pool_name: null, pool_address: null, legacy_text: null };
+        rerenderEntries(row.closest("[data-entry-list]"), entries, onchange);
+        onchange();
+      });
+    }
+  }
+
+  function collectEntry(row) {
+    if (row.dataset.legacy === "1") {
+      return { legacy_text: row.querySelector('[data-entry-field="legacy_text"]').value.trim() };
+    }
+    const mode = row.querySelector('[data-entry-field="day_or_date_mode"]').value;
+    const poolId = row.querySelector('[data-entry-field="pool_location_id"]').value;
+    const pool = poolId && poolId !== "__other__" ? poolById(poolId) : null;
+    return {
+      day_of_week: mode === "day" ? row.querySelector('[data-entry-field="day_of_week"]').value : null,
+      date: mode === "date" ? (row.querySelector('[data-entry-field="date"]').value || null) : null,
+      start_time: row.querySelector('[data-entry-field="start_time"]').value || null,
+      end_time: row.querySelector('[data-entry-field="end_time"]').value || null,
+      pool_location_id: pool ? pool.id : null,
+      pool_name: pool ? pool.name : null,
+      pool_address: pool ? pool.address : null,
+      legacy_text: null,
+    };
+  }
+
+  function rerenderEntries(container, entries, onchange) {
+    container.innerHTML = entries.map(entryRowHtml).join("");
+    container.querySelectorAll("[data-entry-row]").forEach(function (row) {
+      const index = parseInt(row.dataset.entryRow, 10);
+      wireEntryRow(row, entries, index, onchange);
+      const removeBtn = row.querySelector("[data-remove-entry]");
+      removeBtn.addEventListener("click", function () {
+        entries.splice(index, 1);
+        rerenderEntries(container, entries, onchange);
+        onchange();
+      });
+    });
+  }
+
   function addLineRow(container, value) {
     const row = document.createElement("div");
     row.className = "line-row";
@@ -130,6 +318,11 @@
     }
   }
 
+  var entriesByScheduleId = {};
+  function collectEntries(container) {
+    return Array.from(container.querySelectorAll("[data-entry-row]")).map(collectEntry);
+  }
+
   function collectLines(container) {
     return Array.from(container.querySelectorAll("input"))
       .map(function (input) { return input.value.trim(); })
@@ -150,7 +343,8 @@
     const seasonLabel = get("season_label");
     const dateRange = get("date_range");
     const requirements = get("requirements");
-    const practiceLines = collectLines(form.querySelector('[data-line-list="practice_lines"]'));
+    const practiceEntries = collectEntries(form.querySelector('[data-entry-list="' + id + '"]'));
+    const practiceLines = practiceEntries.map(entryDisplayText).filter(Boolean);
     const notes = collectLines(form.querySelector('[data-line-list="notes"]'));
 
     const hasContent = seasonLabel || dateRange || requirements || practiceLines.length || notes.length;
@@ -209,8 +403,8 @@
           '<div class="field"><label>Season Label</label><input type="text" data-field="season_label" value="' + escapeHtml(s.season_label) + '" placeholder="e.g. 2026 Fall Season"></div>' +
           '<div class="field"><label>Date Range</label><input type="text" data-field="date_range" value="' + escapeHtml(s.date_range) + '" placeholder="e.g. August 17 &ndash; October 31"></div>' +
           '<div class="field"><label>Requirements <span class="muted" style="font-weight:400;">(optional)</span></label><textarea data-field="requirements" placeholder="Swim test details, membership level required, etc." style="min-height:60px;">' + escapeHtml(s.requirements) + "</textarea></div>" +
-          '<div class="field"><label>Practice Times</label><div class="line-list" data-line-list="practice_lines"></div>' +
-          '<button type="button" class="btn btn-outline-dark" data-add-line="practice_lines" style="padding:6px 14px;font-size:13px;">+ Add Practice Time</button></div>' +
+          '<div class="field"><label>Practice Times</label><div class="entry-list" data-entry-list="' + s.id + '"></div>' +
+          '<button type="button" class="btn btn-outline-dark" data-add-entry="' + s.id + '" style="padding:6px 14px;font-size:13px;">+ Add Practice Time</button></div>' +
           '<div class="field"><label>Notes <span class="muted" style="font-weight:400;">(optional &mdash; holidays, reminders, etc.)</span></label><div class="line-list" data-line-list="notes"></div>' +
           '<button type="button" class="btn btn-outline-dark" data-add-line="notes" style="padding:6px 14px;font-size:13px;">+ Add Note</button></div>' +
           '<div class="form-msg" data-form-msg="' + s.id + '"></div>' +
@@ -226,12 +420,25 @@
 
     data.forEach(function (s) {
       const form = listEl.querySelector('[data-form="' + s.id + '"]');
-      renderLineList(form.querySelector('[data-line-list="practice_lines"]'), s.practice_lines);
+      entriesByScheduleId[s.id] = (s.practice_lines || []).map(normalizeEntry);
+      const entryContainer = form.querySelector('[data-entry-list="' + s.id + '"]');
+      rerenderEntries(entryContainer, entriesByScheduleId[s.id], function () { updatePreview(s.id); });
       renderLineList(form.querySelector('[data-line-list="notes"]'), s.notes);
       updatePreview(s.id);
       // Any keystroke anywhere in this team's form -- a named field or a
       // practice-time/note row -- refreshes that team's preview pane live.
       form.addEventListener("input", function () { updatePreview(s.id); });
+    });
+
+    listEl.querySelectorAll("[data-add-entry]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const scheduleId = btn.dataset.addEntry;
+        const entries = entriesByScheduleId[scheduleId];
+        entries.push({ day_of_week: DAYS_OF_WEEK[0], date: null, start_time: null, end_time: null, pool_location_id: null, pool_name: null, pool_address: null, legacy_text: null });
+        const container = listEl.querySelector('[data-entry-list="' + scheduleId + '"]');
+        rerenderEntries(container, entries, function () { updatePreview(scheduleId); });
+        updatePreview(scheduleId);
+      });
     });
 
     listEl.querySelectorAll("[data-add-line]").forEach(function (btn) {
@@ -279,7 +486,7 @@
           season_label: get("season_label").trim() || null,
           date_range: get("date_range").trim() || null,
           requirements: get("requirements").trim() || null,
-          practice_lines: collectLines(card.querySelector('[data-line-list="practice_lines"]')),
+          practice_lines: collectEntries(card.querySelector('[data-entry-list="' + id + '"]')),
           notes: collectLines(card.querySelector('[data-line-list="notes"]')),
         };
 
@@ -348,6 +555,7 @@
   (async function () {
     const auth = await requireRole(["owner", "coach"]);
     if (!auth) return;
+    await loadPoolLocations();
     loadSchedules();
   })();
 </script>

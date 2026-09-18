@@ -88,6 +88,11 @@
           </select>
           <p class="field-hint">Linking an account sends this coach's contact-form messages straight to their own inbox. Until then the owner receives them.</p>
         </div>
+        <div class="field" id="invite-email-field">
+          <label for="invite_email">Invite by Email (optional)</label>
+          <input type="email" id="invite_email" placeholder="coach@example.com">
+          <p class="field-hint">If they don't have an account yet, this sends them a signup link and connects their account to this coach record automatically once they sign up &mdash; no manual linking needed.</p>
+        </div>
         <div class="field" id="rate-field" style="display:none;">
           <label for="hourly_rate">Hourly Rate ($)</label>
           <input type="number" id="hourly_rate" step="0.01" min="0" placeholder="e.g. 25.00" style="max-width:160px;">
@@ -311,6 +316,8 @@
     document.getElementById("photo_url").value = coach.photo_url || "";
     document.getElementById("sort_order").value = coach.sort_order || 0;
     document.getElementById("profile_id").value = coach.profile_id || "";
+    document.getElementById("invite_email").value = coach.invite_email || "";
+    document.getElementById("invite-email-field").style.display = coach.profile_id ? "none" : "block";
     if (isOwnerView) {
       const rateCents = coach.profile_id ? rateByProfileId[coach.profile_id] : null;
       document.getElementById("hourly_rate").value = rateCents != null ? (rateCents / 100).toFixed(2) : "";
@@ -325,6 +332,7 @@
     document.getElementById("coach-form").reset();
     document.getElementById("hourly_rate").value = "";
     document.getElementById("coach-id").value = "";
+    document.getElementById("invite-email-field").style.display = "block";
     document.getElementById("form-title").textContent = "Add a Coach";
     document.getElementById("submit-btn").textContent = "Add Coach";
     document.getElementById("cancel-edit-btn").style.display = "none";
@@ -337,6 +345,7 @@
     const select = document.getElementById("profile_id");
     if (!canLink) {
       select.disabled = true;
+      document.getElementById("invite-email-field").style.display = "none";
       return;
     }
     const { data } = await supabaseClient
@@ -381,15 +390,36 @@
     const profileSelect = document.getElementById("profile_id");
     if (!profileSelect.disabled) payload.profile_id = profileSelect.value || null;
 
+    // Same owner-only gate as the account picker -- inviting someone is
+    // effectively granting them coach access, same as profile_id itself.
+    const inviteEmail = !profileSelect.disabled && !payload.profile_id
+      ? document.getElementById("invite_email").value.trim().toLowerCase()
+      : "";
+    if (!profileSelect.disabled) payload.invite_email = inviteEmail || null;
+
     const id = document.getElementById("coach-id").value;
     const result = id
       ? await supabaseClient.from("coaches").update(payload).eq("id", id)
-      : await supabaseClient.from("coaches").insert(payload);
+      : await supabaseClient.from("coaches").insert(payload).select("id").single();
 
     if (result.error) {
       msg.className = "form-msg error";
       msg.textContent = result.error.message;
       return;
+    }
+
+    var inviteNote = "";
+    if (inviteEmail) {
+      // Coach access takes effect on signup either way (pending_role_assignments
+      // is the same mechanism admin-users.html already uses); the email is a
+      // best-effort convenience on top of that, not a requirement for access.
+      await supabaseClient.from("pending_role_assignments").upsert({ email: inviteEmail, role: "coach" }, { onConflict: "email" });
+      const { data: inviteResult } = await supabaseClient.functions.invoke("invite-coach", {
+        body: { email: inviteEmail, coach_name: payload.full_name },
+      });
+      inviteNote = inviteResult && inviteResult.emailed
+        ? " An invite email was sent to " + inviteEmail + "."
+        : " Coach access is set up for " + inviteEmail + ", but the invite email could not be sent" + (inviteResult && inviteResult.reason ? " (" + inviteResult.reason + ")" : "") + " -- let them know to sign up directly.";
     }
 
     // Pay rate is a separate owner-only table, keyed by the linked account --
@@ -422,7 +452,7 @@
     }
 
     msg.className = "form-msg success";
-    msg.textContent = id ? "Coach updated." : "Coach added.";
+    msg.textContent = (id ? "Coach updated." : "Coach added.") + inviteNote;
     resetForm();
     loadCoaches();
   });

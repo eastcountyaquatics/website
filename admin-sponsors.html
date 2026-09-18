@@ -46,7 +46,8 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:780px;">
-    <p class="muted" style="margin-bottom:18px;">Submissions from the public <a href="sponsor.html">sponsor form</a>.</p>
+    <p class="muted" style="margin-bottom:6px;">Submissions from the public <a href="sponsor.html">sponsor form</a>.</p>
+    <p class="muted" id="sp-donate-note" style="margin-bottom:18px;font-size:13px;"></p>
     <div id="sp-list"><p class="muted">Loading&hellip;</p></div>
   </div>
 </section>
@@ -93,6 +94,10 @@
       .from("sponsorships")
       .select("*")
       .order("created_at", { ascending: false });
+    const donationCount = (data || []).filter(function (s) { return s.is_donation; }).length;
+    document.getElementById("sp-donate-note").innerHTML = donationCount
+      ? '<a href="donate.html" target="_blank" rel="noopener">Donate page</a> (not linked in the site nav) &mdash; ' + donationCount + " donation" + (donationCount === 1 ? "" : "s") + " so far."
+      : 'Direct one-time gifts (no sponsorship listing) go through the <a href="donate.html" target="_blank" rel="noopener">Donate page</a>, which isn\'t linked anywhere in the site nav &mdash; share the link directly with a donor.';
 
     if (error) {
       listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
@@ -107,13 +112,16 @@
       return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;">' +
         '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
         "<div><h4>" + escapeHtml(s.company_name) +
+        (s.is_donation ? ' <span class="status-pill" style="background:#eef2ff;color:#3730a3;">Donation</span>' : "") +
         '<span class="status-pill ' + (s.status === "paid" ? "paid" : "pending") + '" style="margin-left:8px;">' + s.status + "</span></h4>" +
         '<div class="muted" style="font-size:13px;">' + fmtDate(s.created_at) +
-        (s.tier ? " &middot; " + escapeHtml(s.tier) : "") + " &middot; " + escapeHtml(s.contact_email) +
+        (s.tier ? " &middot; " + escapeHtml(s.tier) : "") +
+        (s.org_name ? " &middot; " + escapeHtml(s.org_name) : "") +
+        " &middot; " + escapeHtml(s.contact_email) +
         (s.contact_phone ? " &middot; " + escapeHtml(s.contact_phone) : "") + "</div></div>" +
         '<div style="font-size:20px;font-weight:800;color:var(--blue);">' + money(s.amount_cents) + "</div>" +
         "</div>" +
-        (s.contact_name ? '<p class="muted" style="font-size:13px;margin-top:6px;">Contact: ' + escapeHtml(s.contact_name) + "</p>" : "") +
+        (s.contact_name && !s.is_donation ? '<p class="muted" style="font-size:13px;margin-top:6px;">Contact: ' + escapeHtml(s.contact_name) + "</p>" : "") +
         (isHttpUrl(s.website_url) ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.website_url) + '" target="_blank" rel="noopener">' + escapeHtml(s.website_url) + "</a></p>" : "") +
         (isHttpUrl(s.logo_url) ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.logo_url) + '" target="_blank" rel="noopener">Logo image</a></p>' : "") +
         (s.blurb ? '<p style="font-size:13.5px;margin-top:8px;white-space:pre-wrap;">' + escapeHtml(s.blurb) + "</p>" : "") +

@@ -367,14 +367,43 @@ async function handleSponsorshipPayment(
     })
     .eq("id", sponsorshipId)
     .eq("status", "pending") // idempotency: a repeat delivery finds 0 rows and no-ops
-    .select("company_name, contact_email, amount_cents")
+    .select("company_name, contact_name, contact_email, amount_cents, is_donation, org_name, paid_at")
     .maybeSingle();
 
   if (error) {
     console.error("Failed to mark sponsorship paid for session", session.id, error);
     return new Response("db update failed", { status: 500 });
   }
-  if (updated) {
+  if (updated && updated.is_donation) {
+    // A donation receives no goods or services in return, unlike a
+    // sponsorship (which gets marketing exposure) -- that's the actual IRS
+    // distinction for whether a gift is deductible, so the two get
+    // different receipt language rather than one generic "thanks" email.
+    // The EIN is real IRS-issued data this codebase has never been given;
+    // fabricating one on a financial receipt would be worse than omitting
+    // it, so it only appears once ORG_EIN is set as a real secret.
+    const ein = Deno.env.get("ORG_EIN");
+    const paidDate = updated.paid_at
+      ? new Date(updated.paid_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const amount = `$${(updated.amount_cents / 100).toFixed(2)}`;
+    await sendReceiptEmail(
+      updated.contact_email,
+      "Thank you for your donation to East County Aquatics!",
+      `Thank you, ${updated.contact_name}, for your generous donation of ${amount} to San Diego East County Aquatics on ${paidDate}.\n\n` +
+        `San Diego East County Aquatics is a 501(c)(3) non-profit organization` +
+        (ein ? ` (EIN: ${ein})` : "") +
+        `. No goods or services were provided in exchange for this contribution, so it may be tax-deductible to the extent allowed by law. Please consult your tax advisor and retain this email for your records.` +
+        (ein ? "" : " (Contact us if you need our EIN for your records.)") +
+        `\n\nWith gratitude,\nSan Diego East County Aquatics`
+    );
+    await sendReceiptEmail(
+      "eastcountyaquatics@gmail.com",
+      "Donation received: " + updated.contact_name,
+      `${updated.contact_name}${updated.org_name ? " (" + updated.org_name + ")" : ""} just donated ${amount}. ` +
+        `Contact: ${updated.contact_email}.`
+    );
+  } else if (updated) {
     await sendReceiptEmail(
       updated.contact_email,
       "Thank you for sponsoring East County Aquatics!",

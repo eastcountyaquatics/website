@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
 
     const { data: sponsorship, error } = await supabase
       .from("sponsorships")
-      .select("id, company_name, contact_name, contact_email, contact_phone, tier, amount_cents, website_url, logo_url, blurb, status")
+      .select("id, company_name, contact_name, contact_email, contact_phone, tier, amount_cents, website_url, logo_url, blurb, status, is_donation, org_name")
       .eq("id", sponsorshipId)
       .maybeSingle();
     if (error || !sponsorship) {
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     });
 
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
-    const returnUrl = `${siteUrl}/sponsor.html`;
+    const returnUrl = `${siteUrl}/${sponsorship.is_donation ? "donate.html" : "sponsor.html"}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
             currency: "usd",
             unit_amount: sponsorship.amount_cents,
             product_data: {
-              name: `Sponsorship — ${sponsorship.company_name}`,
+              name: sponsorship.is_donation ? "Donation" : `Sponsorship — ${sponsorship.company_name}`,
             },
           },
           quantity: 1,
@@ -88,20 +88,32 @@ Deno.serve(async (req) => {
     // manually checking Admin > Sponsors -- notify as soon as someone
     // submits, not just once they've paid, so an abandoned checkout is
     // still visible instead of disappearing silently.
-    await notifyClub(
-      "New sponsorship submitted: " + sponsorship.company_name,
-      "A new sponsorship was just submitted, checkout in progress.\n\n" +
-        `Company: ${sponsorship.company_name}\n` +
-        `Contact: ${sponsorship.contact_name || "(not given)"}\n` +
-        `Email: ${sponsorship.contact_email}\n` +
-        `Phone: ${sponsorship.contact_phone || "(not given)"}\n` +
-        `Level: ${sponsorship.tier || "(not given)"}\n` +
-        `Amount: $${(sponsorship.amount_cents / 100).toFixed(2)}\n` +
-        `Website: ${sponsorship.website_url || "(not given)"}\n` +
-        `Logo: ${sponsorship.logo_url || "(not given)"}\n` +
-        `Message: ${sponsorship.blurb || "(not given)"}\n\n` +
-        "You'll get a separate note once payment actually completes."
-    );
+    if (sponsorship.is_donation) {
+      await notifyClub(
+        "New donation submitted: " + sponsorship.contact_name,
+        "A new donation was just submitted, checkout in progress.\n\n" +
+          `Name: ${sponsorship.contact_name}\n` +
+          `Organization: ${sponsorship.org_name || "(not given)"}\n` +
+          `Email: ${sponsorship.contact_email}\n` +
+          `Amount: $${(sponsorship.amount_cents / 100).toFixed(2)}\n\n` +
+          "You'll get a separate note once payment actually completes."
+      );
+    } else {
+      await notifyClub(
+        "New sponsorship submitted: " + sponsorship.company_name,
+        "A new sponsorship was just submitted, checkout in progress.\n\n" +
+          `Company: ${sponsorship.company_name}\n` +
+          `Contact: ${sponsorship.contact_name || "(not given)"}\n` +
+          `Email: ${sponsorship.contact_email}\n` +
+          `Phone: ${sponsorship.contact_phone || "(not given)"}\n` +
+          `Level: ${sponsorship.tier || "(not given)"}\n` +
+          `Amount: $${(sponsorship.amount_cents / 100).toFixed(2)}\n` +
+          `Website: ${sponsorship.website_url || "(not given)"}\n` +
+          `Logo: ${sponsorship.logo_url || "(not given)"}\n` +
+          `Message: ${sponsorship.blurb || "(not given)"}\n\n` +
+          "You'll get a separate note once payment actually completes."
+      );
+    }
 
     return json({ url: session.url });
   } catch (err) {

@@ -94,7 +94,9 @@
       </div>
       <div class="card">
         <h3 data-cms="masters-0013">1-Day Pay to Play</h3>
-        <p style="font-size:32px;font-weight:800;color:var(--blue);margin-bottom:4px;" data-cms="masters-0014">$13<span style="font-size:15px;font-weight:600;color:var(--muted);"> / practice</span></p>
+        <div id="masters-dayrate-price-live">
+          <p style="font-size:32px;font-weight:800;color:var(--blue);margin-bottom:4px;" data-cms="masters-0014">$13<span style="font-size:15px;font-weight:600;color:var(--muted);"> / practice</span></p>
+        </div>
         <p class="muted" data-cms="masters-0015">Current USA Water Polo membership required.</p>
         <a href="dashboard.html" class="btn btn-outline-dark">Register Now</a>
       </div>
@@ -254,6 +256,33 @@
         '<span style="font-size:14px;font-weight:600;color:var(--muted);">/ month &middot; ' +
         tierName(t).replace(/[<>]/g, "") + "</span></p>";
     }).join("");
+  })();
+
+  // Same idea as the monthly price above, for the one-time Day Rate: it's
+  // an ordinary registration_option (tagged "masters") that goes through
+  // the normal Register & Pay checkout on the dashboard, rather than a
+  // separate payment system -- so read the real price instead of letting
+  // this card silently disagree with what checkout actually charges.
+  (async function loadMastersDayRatePricing() {
+    const wrap = document.getElementById("masters-dayrate-price-live");
+    if (!wrap) return;
+    const { data, error } = await supabaseClient
+      .from("registration_options")
+      .select("label, amount_cents, team_slugs")
+      .eq("is_open", true)
+      .order("amount_cents", { ascending: true });
+    if (error || !data) return;
+    const dayRateOptions = data.filter(function (o) { return (o.team_slugs || []).indexOf("masters") !== -1; });
+    if (!dayRateOptions.length) return;
+
+    function money(cents) {
+      return "$" + (cents / 100).toFixed(2).replace(/\.00$/, "");
+    }
+    const cheapest = dayRateOptions[0];
+    wrap.innerHTML =
+      '<p style="font-size:32px;font-weight:800;color:var(--blue);margin-bottom:4px;">' +
+      money(cheapest.amount_cents) +
+      '<span style="font-size:15px;font-weight:600;color:var(--muted);"> / practice</span></p>';
   })();
 </script>
 </body>

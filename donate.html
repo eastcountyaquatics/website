@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Donate | San Diego East County Aquatics</title>
+<meta name="description" content="Make a one-time donation to San Diego East County Aquatics, a 501(c)(3) non-profit water polo club.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb">Sponsors &amp; Donors</span>
+    <h1>Make a Donation</h1>
+  </div>
+  <div class="waves">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:560px;">
+    <p class="muted" style="margin-bottom:20px;">A one-time gift to support pool time, equipment, and travel for East County families &mdash; no sponsorship listing or business features, just a straightforward donation.</p>
+
+    <div id="donate-msg" class="form-msg"></div>
+    <div class="card" style="border-top-color:var(--gold);">
+      <form id="donate-form">
+        <div class="field">
+          <label for="dn-name">Your Name</label>
+          <input type="text" id="dn-name" required>
+        </div>
+        <div class="field">
+          <label for="dn-email">Email</label>
+          <input type="email" id="dn-email" required>
+        </div>
+        <div class="field">
+          <label for="dn-org">Organization (optional)</label>
+          <input type="text" id="dn-org">
+        </div>
+        <div class="field">
+          <label for="dn-amount">Amount (USD)</label>
+          <input type="number" id="dn-amount" step="0.01" min="1" placeholder="50.00" required>
+        </div>
+        <button type="submit" id="donate-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
+      </form>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. No goods or services were provided in exchange for this contribution. A receipt will be emailed to you after payment.</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  (function () {
+    const status = new URLSearchParams(window.location.search).get("status");
+    if (status === "success") {
+      document.querySelector(".card").outerHTML =
+        '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
+        "<strong>Thank you for your donation!</strong> A receipt was sent to your email.</div>";
+    } else if (status === "cancelled") {
+      document.getElementById("donate-msg").className = "form-msg error";
+      document.getElementById("donate-msg").textContent = "Checkout was cancelled — no payment was made. You can try again below.";
+    }
+  })();
+
+  document.getElementById("donate-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("donate-msg");
+    const btn = document.getElementById("donate-submit");
+    msg.className = "form-msg";
+
+    const dollars = parseFloat(document.getElementById("dn-amount").value);
+    if (isNaN(dollars) || dollars < 1) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter an amount of at least $1.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    // Same pattern as sponsor.html: insert the pending row first (RLS lets
+    // anyone submit one), then the checkout function looks it up by id so
+    // the charged amount always comes from the database, never the browser.
+    const donorName = document.getElementById("dn-name").value.trim();
+    const { data: row, error } = await supabaseClient
+      .from("sponsorships")
+      .insert({
+        is_donation: true,
+        company_name: donorName,
+        contact_name: donorName,
+        contact_email: document.getElementById("dn-email").value.trim(),
+        org_name: document.getElementById("dn-org").value.trim() || null,
+        amount_cents: Math.round(dollars * 100),
+      })
+      .select("id")
+      .single();
+
+    if (error || !row) {
+      btn.disabled = false;
+      btn.textContent = "Continue to Payment";
+      msg.className = "form-msg error";
+      msg.textContent = "Could not submit: " + (error ? error.message : "unknown error");
+      return;
+    }
+
+    const { data, error: fnError } = await supabaseClient.functions.invoke("create-sponsorship-checkout", {
+      body: { sponsorship_id: row.id },
+    });
+
+    btn.disabled = false;
+    btn.textContent = "Continue to Payment";
+
+    if (fnError || !data || !data.url) {
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(fnError, data, "Your donation was saved, but we could not start checkout. Please contact us to arrange payment.");
+      return;
+    }
+
+    window.location.href = data.url;
+  });
+</script>
+</body>
+</html>

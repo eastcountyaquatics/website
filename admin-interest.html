@@ -171,6 +171,8 @@
         '<div class="muted" style="font-size:13px;">' + escapeHtml(teamLabel(a.team_slug)) +
         (a.deadline ? " &middot; respond by " + formatDate(a.deadline) : "") + "</div></div>" +
         '<div class="admin-list-actions">' +
+        '<button data-mark-yes="' + a.id + '" data-team="' + escapeHtml(a.team_slug) + '">Mark Yes</button>' +
+        '<button data-email-team="' + a.id + '">Send Email to Team</button>' +
         '<button data-archive="' + a.id + '">' + (a.archived ? "Unarchive" : "Archive") + "</button>" +
         '<button data-delete="' + a.id + '" class="danger">Delete</button>' +
         "</div></div>" +
@@ -192,6 +194,78 @@
         if (!confirm("Delete this post and all responses to it?")) return;
         await supabaseClient.from("team_announcements").delete().eq("id", btn.dataset.delete);
         loadAnnouncements();
+      });
+    });
+
+    listEl.querySelectorAll("[data-mark-yes]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const annId = btn.dataset.markYes;
+        const teamSlug = btn.dataset.team;
+        if (!confirm("Mark every athlete on this team who hasn't responded yet as \"interested\"? This is for when you already know the answer (e.g. a verbal yes at practice) and don't need to wait on individual dashboard responses.")) return;
+
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "Marking…";
+        try {
+          const [{ data: teamAthletes }, { data: existingResponses }] = await Promise.all([
+            supabaseClient.from("athletes").select("id").eq("team_slug", teamSlug),
+            supabaseClient.from("team_announcement_responses").select("athlete_id").eq("announcement_id", annId),
+          ]);
+          const alreadyResponded = new Set((existingResponses || []).map(function (r) { return r.athlete_id; }));
+          const toMark = (teamAthletes || []).filter(function (a) { return !alreadyResponded.has(a.id); });
+
+          if (toMark.length === 0) {
+            btn.textContent = "Everyone already responded";
+            setTimeout(function () { btn.textContent = originalText; btn.disabled = false; }, 2000);
+            return;
+          }
+
+          const { error } = await supabaseClient
+            .from("team_announcement_responses")
+            .upsert(
+              toMark.map(function (a) { return { announcement_id: annId, athlete_id: a.id, response: "interested" }; }),
+              { onConflict: "announcement_id,athlete_id" }
+            );
+          if (error) {
+            alert("Could not mark responses: " + error.message);
+            btn.textContent = originalText;
+            btn.disabled = false;
+            return;
+          }
+          loadAnnouncements();
+        } catch (err) {
+          alert("Could not mark responses: " + (err && err.message ? err.message : "unknown error"));
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    listEl.querySelectorAll("[data-email-team]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Email every parent on this team about this post?")) return;
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = "Sending…";
+        try {
+          const { data, error } = await supabaseClient.functions.invoke("send-team-announcement-email", {
+            body: { announcement_id: btn.dataset.emailTeam },
+          });
+          if (error) throw error;
+          if (data && data.message) {
+            btn.textContent = data.message;
+          } else if (data && data.email_configured === false) {
+            btn.textContent = "Sent " + data.notified + " in-app (no email configured)";
+          } else if (data) {
+            btn.textContent = "Emailed " + data.emailed + " of " + data.parent_count + " parents";
+          } else {
+            btn.textContent = "Sent";
+          }
+        } catch (err) {
+          btn.textContent = "Failed — retry";
+          alert("Could not send: " + (err && err.message ? err.message : "unknown error"));
+        }
+        setTimeout(function () { btn.textContent = originalText; btn.disabled = false; }, 4000);
       });
     });
   }

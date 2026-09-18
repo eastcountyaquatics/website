@@ -160,16 +160,21 @@
 <script src="js/main.js"></script>
 <script>
   (async function () {
-    const auth = await requireRole();
+    const auth = await requireRole(["owner", "coach", "head_coach"]);
     if (!auth) return;
     document.getElementById("admin-email").textContent = auth.session.user.email;
     document.getElementById("admin-role").textContent = auth.role;
-    if (auth.role === "owner" || auth.role === "coach") {
+    if (auth.role === "owner" || auth.role === "coach" || auth.role === "head_coach") {
       document.getElementById("schedules-card").style.display = "block";
       document.getElementById("athletes-card").style.display = "block";
       document.getElementById("attendance-card").style.display = "block";
       document.getElementById("tournaments-card").style.display = "block";
       document.getElementById("interest-card").style.display = "block";
+    }
+    // Hosted Events and Coach Hours are club-wide (not scoped to a single
+    // team), so a head coach -- who only has access to their own team's
+    // data -- doesn't get these two even though owner/coach do.
+    if (auth.role === "owner" || auth.role === "coach") {
       document.getElementById("hosted-events-card").style.display = "block";
       document.getElementById("hours-card").style.display = "block";
     }

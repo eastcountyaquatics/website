@@ -553,7 +553,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach"]);
     if (!auth) return;
 
     // Team list comes from the schedules table so it stays in sync with the

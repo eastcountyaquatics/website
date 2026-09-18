@@ -870,7 +870,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach"]);
     if (!auth) return;
     if (!currentTournamentId) {
       document.getElementById("header-card").innerHTML = '<p class="muted">No tournament specified.</p>';

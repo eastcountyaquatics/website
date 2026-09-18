@@ -46,7 +46,7 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
-    <p class="muted"><strong>Owners</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster.</p>
+    <p class="muted"><strong>Owners</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Head Coaches</strong> get Schedules, Attendance, Roster, Tournaments, and Team Interest &mdash; but only for the team(s) they're assigned to below.</p>
 
     <div class="admin-form" style="margin-top:24px;">
       <h3>Assign Access</h3>
@@ -63,7 +63,12 @@
           <select id="assign_role" required>
             <option value="owner">Owner</option>
             <option value="coach" selected>Coach</option>
+            <option value="head_coach">Head Coach</option>
           </select>
+        </div>
+        <div class="field" id="assign-teams-wrap" style="display:none;">
+          <label>Team(s)</label>
+          <div id="assign-teams-options" class="muted" style="font-size:14px;"></div>
         </div>
         <button type="submit" class="btn btn-primary">Assign Access</button>
       </form>
@@ -105,11 +110,41 @@
 
   var knownProfiles = [];
   var currentUserId = null;
+  var allTeams = []; // {team_slug, team_label}
+  var headCoachTeamsByProfile = {}; // profile_id -> [team_slug, ...]
+
+  function teamCheckboxesHtml(checkedSlugs) {
+    checkedSlugs = checkedSlugs || [];
+    return allTeams
+      .map(function (t) {
+        const checked = checkedSlugs.indexOf(t.team_slug) !== -1 ? " checked" : "";
+        return (
+          '<label style="display:inline-flex;align-items:center;gap:4px;margin:0 12px 6px 0;font-weight:normal;">' +
+          '<input type="checkbox" data-team-slug="' + escapeHtml(t.team_slug) + '"' + checked + "> " +
+          escapeHtml(t.team_label) +
+          "</label>"
+        );
+      })
+      .join("");
+  }
+
+  async function loadTeams() {
+    const { data } = await supabaseClient
+      .from("schedules")
+      .select("team_slug, team_label")
+      .order("sort_order", { ascending: true });
+    allTeams = data || [];
+    document.getElementById("assign-teams-options").innerHTML = teamCheckboxesHtml([]);
+  }
+
+  document.getElementById("assign_role").addEventListener("change", function () {
+    document.getElementById("assign-teams-wrap").style.display = this.value === "head_coach" ? "block" : "none";
+  });
 
   async function loadPending() {
     const { data } = await supabaseClient
       .from("pending_role_assignments")
-      .select("email, role")
+      .select("email, role, team_slugs")
       .order("created_at", { ascending: false });
 
     const wrap = document.getElementById("pending-wrap");
@@ -121,11 +156,18 @@
     wrap.style.display = "block";
     listEl.innerHTML = data
       .map(function (p) {
+        const teamNote =
+          p.role === "head_coach" && p.team_slugs && p.team_slugs.length
+            ? " (" + p.team_slugs.map(function (s) {
+                const t = allTeams.find(function (x) { return x.team_slug === s; });
+                return escapeHtml(t ? t.team_label : s);
+              }).join(", ") + ")"
+            : "";
         return (
           '<div class="admin-list-item">' +
           "<div>" +
           "<h4>" + escapeHtml(p.email) + "</h4>" +
-          '<div class="muted" style="font-size:13px;">Will become ' + escapeHtml(p.role) + " on sign-up</div>" +
+          '<div class="muted" style="font-size:13px;">Will become ' + escapeHtml(p.role) + teamNote + " on sign-up</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
           '<button data-cancel="' + escapeHtml(p.email) + '" class="danger">Cancel</button>' +
@@ -158,6 +200,16 @@
     const role = document.getElementById("assign_role").value;
     if (!email) return;
 
+    const selectedTeams = role === "head_coach"
+      ? Array.prototype.slice.call(document.querySelectorAll("#assign-teams-options [data-team-slug]:checked"))
+          .map(function (cb) { return cb.dataset.teamSlug; })
+      : [];
+    if (role === "head_coach" && selectedTeams.length === 0) {
+      msg.className = "form-msg error";
+      msg.textContent = "Pick at least one team for a Head Coach.";
+      return;
+    }
+
     const existing = knownProfiles.find(function (p) {
       return (p.email || "").toLowerCase() === email;
     });
@@ -165,10 +217,16 @@
     let error;
     if (existing) {
       ({ error } = await supabaseClient.from("profiles").update({ role: role }).eq("id", existing.id));
+      if (!error && role === "head_coach") {
+        await supabaseClient.from("head_coach_teams").delete().eq("profile_id", existing.id);
+        ({ error } = await supabaseClient
+          .from("head_coach_teams")
+          .insert(selectedTeams.map(function (slug) { return { profile_id: existing.id, team_slug: slug }; })));
+      }
     } else {
       ({ error } = await supabaseClient
         .from("pending_role_assignments")
-        .upsert({ email: email, role: role }, { onConflict: "email" }));
+        .upsert({ email: email, role: role, team_slugs: selectedTeams }, { onConflict: "email" }));
     }
 
     if (error) {
@@ -189,10 +247,18 @@
   });
 
   async function loadUsers() {
-    const { data, error } = await supabaseClient
-      .from("profiles")
-      .select("id, email, full_name, role, created_at")
-      .order("created_at", { ascending: false });
+    const [{ data, error }, { data: hct }] = await Promise.all([
+      supabaseClient
+        .from("profiles")
+        .select("id, email, full_name, role, created_at")
+        .order("created_at", { ascending: false }),
+      supabaseClient.from("head_coach_teams").select("profile_id, team_slug"),
+    ]);
+
+    headCoachTeamsByProfile = {};
+    (hct || []).forEach(function (row) {
+      (headCoachTeamsByProfile[row.profile_id] = headCoachTeamsByProfile[row.profile_id] || []).push(row.team_slug);
+    });
 
     const listEl = document.getElementById("user-list");
     if (error) {
@@ -211,25 +277,30 @@
 
     listEl.innerHTML = data
       .map(function (u) {
-        const roles = ["", "owner", "coach"];
+        const roles = ["", "owner", "coach", "head_coach"];
+        const roleLabels = { "": "No admin access", owner: "Owner", coach: "Coach", head_coach: "Head Coach" };
         const options = roles
           .map(function (r) {
-            const label = r === "" ? "No admin access" : r.charAt(0).toUpperCase() + r.slice(1);
             const selected = (u.role || "") === r ? " selected" : "";
-            return '<option value="' + r + '"' + selected + ">" + label + "</option>";
+            return '<option value="' + r + '"' + selected + ">" + roleLabels[r] + "</option>";
           })
           .join("");
         return (
-          '<div class="admin-list-item">' +
+          '<div class="admin-list-item" data-user-row="' + u.id + '" style="flex-wrap:wrap;">' +
           "<div>" +
           "<h4>" + escapeHtml(u.full_name || "(no name)") + "</h4>" +
           '<div class="muted" style="font-size:13px;">' + escapeHtml(u.email) + "</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
           (u.id === currentUserId
-            ? '<span class="muted" style="font-size:13px;">You (' + escapeHtml(u.role || "no access") + ")</span>"
+            ? '<span class="muted" style="font-size:13px;">You (' + escapeHtml(roleLabels[u.role || ""] || u.role) + ")</span>"
             : '<select data-user="' + u.id + '" style="padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;">' + options + "</select>") +
           "</div>" +
+          (u.id !== currentUserId
+            ? '<div data-teams-wrap="' + u.id + '" style="flex-basis:100%;margin-top:8px;display:' + (u.role === "head_coach" ? "block" : "none") + ';">' +
+              teamCheckboxesHtml(headCoachTeamsByProfile[u.id] || []) +
+              "</div>"
+            : "") +
           "</div>"
         );
       })
@@ -255,6 +326,45 @@
         sel.dataset.savedRole = sel.value;
         msg.className = "form-msg success";
         msg.textContent = "Role updated.";
+        const teamsWrap = document.querySelector('[data-teams-wrap="' + sel.dataset.user + '"]');
+        if (teamsWrap) {
+          teamsWrap.style.display = newRole === "head_coach" ? "block" : "none";
+          if (newRole === "head_coach") {
+            wireTeamCheckboxes(teamsWrap, sel.dataset.user);
+          } else if (headCoachTeamsByProfile[sel.dataset.user]) {
+            // Role changed away from head_coach -- their team assignments no
+            // longer apply to anything, so drop them rather than leaving
+            // stale rows an owner could reassign them back into silently.
+            await supabaseClient.from("head_coach_teams").delete().eq("profile_id", sel.dataset.user);
+            delete headCoachTeamsByProfile[sel.dataset.user];
+          }
+        }
+      });
+    });
+
+    listEl.querySelectorAll("[data-teams-wrap]").forEach(function (wrap) {
+      wireTeamCheckboxes(wrap, wrap.dataset.teamsWrap);
+    });
+  }
+
+  function wireTeamCheckboxes(wrap, profileId) {
+    wrap.querySelectorAll("[data-team-slug]").forEach(function (cb) {
+      if (cb.dataset.wired) return;
+      cb.dataset.wired = "1";
+      cb.addEventListener("change", async function () {
+        const msg = document.getElementById("assign-msg");
+        const slug = cb.dataset.teamSlug;
+        const error = cb.checked
+          ? (await supabaseClient.from("head_coach_teams").insert({ profile_id: profileId, team_slug: slug })).error
+          : (await supabaseClient.from("head_coach_teams").delete().eq("profile_id", profileId).eq("team_slug", slug)).error;
+        if (error) {
+          cb.checked = !cb.checked;
+          msg.className = "form-msg error";
+          msg.textContent = "Could not update team assignment: " + error.message;
+          return;
+        }
+        msg.className = "form-msg success";
+        msg.textContent = "Team assignment updated.";
       });
     });
   }
@@ -268,6 +378,7 @@
     // for everyone. (The database refuses it too -- see
     // 20260904154852_block_removing_last_owner.)
     currentUserId = auth.session.user.id;
+    await loadTeams();
     loadUsers();
     loadPending();
   })();

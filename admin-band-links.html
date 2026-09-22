@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAND Links | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .band-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;}
+  .band-row label{font-weight:700;min-width:110px;}
+  .band-row input[type="url"]{flex:1;min-width:220px;}
+  .band-row .muted{font-size:12px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>BAND Group Links</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:800px;">
+    <div class="notice" style="margin-bottom:20px;">
+      Each team's BAND invite link is shown on that team's public page. Since BAND groups get recreated each session, update the link here when it changes &mdash; no code changes needed.
+    </div>
+    <div id="list-msg" class="form-msg"></div>
+    <div id="band-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  async function load() {
+    const listEl = document.getElementById("band-list");
+    const { data, error } = await supabaseClient
+      .from("band_links")
+      .select("team_slug, label, url")
+      .order("team_slug", { ascending: true });
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load BAND links.</p>';
+      return;
+    }
+    listEl.innerHTML = (data || [])
+      .map(function (row) {
+        return (
+          '<div class="band-row" data-slug="' + escapeHtml(row.team_slug) + '">' +
+          "<label>" + escapeHtml(row.label) + "</label>" +
+          '<input type="url" placeholder="https://band.us/n/..." value="' + escapeHtml(row.url || "") + '">' +
+          '<button type="button" class="btn btn-outline-dark band-save-btn">Save</button>' +
+          '<span class="muted band-save-status"></span>' +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  document.getElementById("band-list").addEventListener("click", async function (e) {
+    const btn = e.target.closest(".band-save-btn");
+    if (!btn) return;
+    const row = btn.closest(".band-row");
+    const teamSlug = row.getAttribute("data-slug");
+    const input = row.querySelector("input");
+    const statusEl = row.querySelector(".band-save-status");
+    const url = input.value.trim() || null;
+    btn.disabled = true;
+    statusEl.textContent = "Saving…";
+    const { error } = await supabaseClient
+      .from("band_links")
+      .update({ url: url, updated_at: new Date().toISOString() })
+      .eq("team_slug", teamSlug);
+    btn.disabled = false;
+    statusEl.textContent = error ? "Could not save." : "Saved.";
+    setTimeout(function () { statusEl.textContent = ""; }, 2500);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach"]);
+    if (!auth) return;
+    load();
+  })();
+</script>
+</body>
+</html>

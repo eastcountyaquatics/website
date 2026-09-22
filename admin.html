@@ -137,6 +137,12 @@
           <p class="muted">Calculate what each coach is owed and record how/when they were paid.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="band-links-card" style="display:none;">
+        <a href="admin-band-links.html" style="display:block;color:inherit;">
+          <h3>BAND Links</h3>
+          <p class="muted">Update each team's BAND group invite link &mdash; these change every session.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="signups-card" style="display:none;">
         <a href="admin-signups.html" style="display:block;color:inherit;">
           <h3>Sign-Ups</h3>
@@ -186,6 +192,7 @@
       document.getElementById("coaches-card").style.display = "block";
       document.getElementById("hosted-events-card").style.display = "block";
       document.getElementById("hours-card").style.display = "block";
+      document.getElementById("band-links-card").style.display = "block";
     }
     if (auth.role === "owner") {
       document.getElementById("coach-pay-card").style.display = "block";

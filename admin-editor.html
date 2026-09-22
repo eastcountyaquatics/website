@@ -60,16 +60,27 @@
 
   .ed-canvas-wrap { flex: 1; min-height: 0; background: #e9edf3; position: relative; }
   #canvas { width: 100%; height: 100%; border: none; display: block; background: #fff; }
-  .ed-empty { padding: 60px 20px; text-align: center; color: #6b7280; font-size: 15px; }
+  .ed-empty { padding: 60px 20px; display: flex; align-items: center; justify-content: center; height: 100%; }
+  .ed-empty-inner { max-width: 480px; text-align: left; }
+  .ed-empty-inner h2 { text-align: center; margin-bottom: 28px; color: #1a1a4d; }
+  .ed-steps { display: flex; flex-direction: column; gap: 18px; }
+  .ed-step { display: flex; gap: 14px; align-items: flex-start; }
+  .ed-step-num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--gold, #ffd400);
+    color: #1a1a4d; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .ed-step strong { display: block; font-size: 15px; margin-bottom: 2px; color: #1a1a4d; }
+  .ed-step span { display: block; font-size: 13.5px; color: #6b7280; }
   .ed-template-gallery {
     display: none; position: absolute; z-index: 50; background: #fff; border: 1px solid #d7e6ee;
     border-radius: 10px; box-shadow: 0 8px 28px rgba(20,30,50,.18); padding: 10px; flex-wrap: wrap; gap: 8px; max-width: 420px;
   }
   .ed-template-gallery.open { display: flex; }
-  .ed-template-choice { border: 1px solid #d7e6ee; background: #fff; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-family: inherit; text-align: left; max-width: 180px; }
-  .ed-template-choice:hover { background: #eef3f8; }
-  .ed-template-choice strong { display: block; font-size: 13px; margin-bottom: 2px; }
-  .ed-template-choice span { display: block; font-size: 11.5px; color: var(--muted, #6b7280); }
+  .ed-template-choice { display: flex; gap: 10px; align-items: center; border: 1px solid #d7e6ee; background: #fff; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-family: inherit; text-align: left; max-width: 190px; }
+  .ed-template-choice:hover { background: #eef3f8; border-color: var(--blue, #0000ff); }
+  .ed-template-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 7px; background: #f1f4f9; display: flex; align-items: center; justify-content: center; font-size: 16px; letter-spacing: -2px; }
+  .ed-template-text strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .ed-template-text span { display: block; font-size: 11.5px; color: var(--muted, #6b7280); }
 </style>
 </head>
 <body>
@@ -161,11 +172,20 @@
   <button type="button" id="rb-move-down-btn" title="Move this section down">&darr; Move Down</button>
   <button type="button" id="rb-insert-image-btn">Image</button>
   <button type="button" id="rb-delete-section-btn" style="color:#a12626;">Delete Section</button>
-  <span class="hint">Click any text on the page to edit it right there.</span>
+  <span class="hint">&#128161; Click any text or photo below to edit it right there. Use + Add Section to add something new.</span>
 </div>
 
 <div class="ed-canvas-wrap" id="canvas-wrap">
-  <div class="ed-empty" id="canvas-empty">Choose a page above, or start a new one &mdash; you'll edit it right here, exactly as visitors see it.</div>
+  <div class="ed-empty" id="canvas-empty">
+    <div class="ed-empty-inner">
+      <h2>Let's edit your website</h2>
+      <div class="ed-steps">
+        <div class="ed-step"><span class="ed-step-num">1</span><div><strong>Choose a page</strong><span>Pick one from the dropdown above, or start a brand new one.</span></div></div>
+        <div class="ed-step"><span class="ed-step-num">2</span><div><strong>Click any text or photo</strong><span>It opens up right there on the real page &mdash; just start typing.</span></div></div>
+        <div class="ed-step"><span class="ed-step-num">3</span><div><strong>Save when you're happy</strong><span>Nothing goes live until you click Save Changes.</span></div></div>
+      </div>
+    </div>
+  </div>
   <iframe id="canvas" title="Live page editor" style="display:none;"></iframe>
   <div class="ed-template-gallery" id="template-gallery"></div>
 </div>
@@ -199,6 +219,17 @@
   const customGroup = document.getElementById("custom-pages-group");
   const canvas = document.getElementById("canvas");
   const canvasEmpty = document.getElementById("canvas-empty");
+
+  // Plain-English stand-ins for the handful of errors someone editing the
+  // site is actually likely to hit -- nobody using this tool needs to see
+  // raw Postgres/network error text.
+  function friendlyError(e) {
+    const msg = (e && e.message) || String(e || "");
+    if (/duplicate key|already exists|already used/i.test(msg)) return "That web address is already used by another page — try a different one.";
+    if (/permission denied|row-level security|rls/i.test(msg)) return "You don't have permission to do that.";
+    if (/network|fetch|failed to fetch|timeout/i.test(msg)) return "Couldn't reach the server — check your connection and try again.";
+    return "Something went wrong — please try again.";
+  }
   const richBar = document.getElementById("rich-bar");
   const settingsPanel = document.getElementById("settings-panel");
   const settingsToggleBtn = document.getElementById("settings-toggle-btn");
@@ -285,8 +316,13 @@
     const style = doc.createElement("style");
     style.id = "ed-injected-style";
     style.textContent =
-      '[data-cms],#cms-extra-body,#page-body{outline:2px dashed rgba(0,0,255,.25);outline-offset:2px;cursor:text;min-height:1.4em;}' +
-      '[data-cms]:focus,#cms-extra-body:focus,#page-body:focus{outline:2px solid #ffd400;background:rgba(255,212,0,.06);}' +
+      // A faint, barely-there cue by default (so the page still looks like
+      // the real site, not a wireframe) that becomes obvious on hover or
+      // focus -- the same "quiet until you touch it" pattern already used
+      // for the image replace button below.
+      '[data-cms],#cms-extra-body,#page-body{outline:1px dashed rgba(0,0,0,.12);outline-offset:3px;cursor:text;min-height:1.4em;transition:outline-color .1s,background-color .1s;}' +
+      '[data-cms]:hover,#cms-extra-body:hover,#page-body:hover{outline:2px dashed rgba(0,0,255,.35);background:rgba(0,0,255,.03);}' +
+      '[data-cms]:focus,#cms-extra-body:focus,#page-body:focus{outline:2px solid #ffd400;background:rgba(255,212,0,.08);}' +
       '.cms-editable-imgwrap{position:relative;display:inline-block;}' +
       '.cms-editable-imgwrap.cms-bg-wrap{display:block;}' +
       '.cms-replace-btn{position:absolute;top:8px;right:8px;background:rgba(20,30,50,.85);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;opacity:0;transition:opacity .15s;z-index:5;}' +
@@ -406,7 +442,7 @@
     const storagePath = currentPath + "/" + target.key + "-" + Date.now() + "." + ext;
     setStatus("Uploading image…");
     const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file, { upsert: true });
-    if (error) { setStatus("Could not upload: " + error.message, "error"); return; }
+    if (error) { setStatus("Could not upload: " + friendlyError(error), "error"); return; }
     const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
     const url = data.publicUrl;
     if (target.isBg) target.el.style.backgroundImage = "url('" + url.replace(/'/g, "%27") + "')";
@@ -414,24 +450,24 @@
     const { error: dbError } = await supabaseClient
       .from("image_blocks")
       .upsert({ page_path: currentPath, block_key: target.key, image_url: url, alt_text: target.el.getAttribute("alt") || null }, { onConflict: "page_path,block_key" });
-    setStatus(dbError ? "Image uploaded, but could not save: " + dbError.message : "Image updated.");
+    setStatus(dbError ? "Image uploaded, but could not save: " + friendlyError(dbError) : "Image updated.");
   });
 
   // ---- Template gallery ---------------------------------------------------
   const SECTION_TEMPLATES = [
-    { key: "two-col", label: "Two-Column Text", hint: "Side-by-side paragraphs",
+    { key: "two-col", label: "Two-Column Text", hint: "Side-by-side paragraphs", icon: "▤▤",
       html: '<div class="grid grid-2" style="margin:28px 0;"><div><h3>First Topic</h3><p>Write about the first topic here.</p></div><div><h3>Second Topic</h3><p>Write about the second topic here.</p></div></div>' },
-    { key: "feature-cards", label: "Feature Cards", hint: "3 cards in a row",
+    { key: "feature-cards", label: "Feature Cards", hint: "3 cards in a row", icon: "▦▦▦",
       html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card"><h3>Feature One</h3><p class="muted">Describe this feature or benefit.</p></div><div class="card"><h3>Feature Two</h3><p class="muted">Describe this feature or benefit.</p></div><div class="card"><h3>Feature Three</h3><p class="muted">Describe this feature or benefit.</p></div></div>' },
-    { key: "stats", label: "Stats Row", hint: "A few big numbers",
+    { key: "stats", label: "Stats Row", hint: "A few big numbers", icon: "📊",
       html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">100+</h3><p class="muted">Athletes</p></div><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">10+</h3><p class="muted">Years Running</p></div><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">6</h3><p class="muted">Age Groups</p></div></div>' },
-    { key: "quote", label: "Quote / Callout", hint: "A highlighted note",
+    { key: "quote", label: "Quote / Callout", hint: "A highlighted note", icon: "❝",
       html: '<div class="notice" style="margin:28px 0;"><p style="margin:0;">Put an important note, quote, or announcement here.</p></div>' },
-    { key: "photo-text", label: "Photo + Text", hint: "Image on one side",
+    { key: "photo-text", label: "Photo + Text", hint: "Image on one side", icon: "🖼️",
       html: '<div class="grid grid-2" style="margin:28px 0;align-items:center;"><p class="muted">Click the <strong>Image</strong> button above to add a photo here, then delete this placeholder text.</p><div><h3>About This Photo</h3><p>Write a caption or related text here.</p></div></div>' },
-    { key: "cta", label: "Call to Action", hint: "Banner with a button",
+    { key: "cta", label: "Call to Action", hint: "Banner with a button", icon: "📣",
       html: '<div class="cta-band" style="margin:28px 0;"><h2>Ready to Join East County Aquatics?</h2><p>Write a short call to action here.</p><p style="margin-top:16px;"><a href="#" class="btn btn-primary">Button Text</a></p></div>' },
-    { key: "teams", label: "Our Teams", hint: "Auto-filled from your teams",
+    { key: "teams", label: "Our Teams", hint: "Auto-filled from your teams", icon: "🏊",
       async html() {
         const { data } = await supabaseClient.from("schedules").select("team_label").order("sort_order", { ascending: true });
         const teams = (data || []).length ? data : [{ team_label: "8U Coed" }, { team_label: "12U Girls" }, { team_label: "14U Boys" }];
@@ -442,7 +478,7 @@
   ];
 
   galleryEl.innerHTML = SECTION_TEMPLATES.map(function (t) {
-    return '<button type="button" class="ed-template-choice" data-template="' + t.key + '"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.hint) + "</span></button>";
+    return '<button type="button" class="ed-template-choice" data-template="' + t.key + '"><span class="ed-template-icon">' + t.icon + '</span><span class="ed-template-text"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.hint) + "</span></span></button>";
   }).join("");
 
   let galleryInsertBtn = null;
@@ -603,7 +639,7 @@
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const storagePath = (currentPath || "extra") + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
       const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file);
-      if (error) { alert("Could not upload image: " + error.message); return; }
+      if (error) { alert("Could not upload image: " + friendlyError(error)); return; }
       const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
       focusFrameAndRestoreRange();
       const doc = frameDoc();
@@ -848,7 +884,7 @@
     if (currentKind !== "custom" || !currentPageRow) return;
     if (!confirm("Delete this page? This cannot be undone.")) return;
     const { error } = await supabaseClient.from("pages").delete().eq("id", currentPageRow.id);
-    if (error) { alert("Could not delete: " + error.message); return; }
+    if (error) { alert("Could not delete: " + friendlyError(error)); return; }
     currentKind = null;
     currentPath = null;
     currentPageRow = null;
@@ -877,7 +913,7 @@
     const slug = "untitled-" + Date.now().toString(36);
     const payload = { title: "Untitled Page", slug: slug, nav_label: "Untitled Page", body_html: "", show_in_nav: false, sort_order: 0, is_published: false };
     const { data, error } = await supabaseClient.from("pages").insert(payload).select().single();
-    if (error) { alert("Could not create page: " + error.message); pageSelect.value = ""; return; }
+    if (error) { alert("Could not create page: " + friendlyError(error)); pageSelect.value = ""; return; }
     await refreshCustomPageOptions();
     pageSelect.value = "custom:" + data.id;
     loadCustomPage(data);
@@ -975,10 +1011,7 @@
       refreshDirtyChrome();
     } catch (e) {
       saveBtn.disabled = false;
-      const message = e && e.message && e.message.indexOf("duplicate") !== -1
-        ? "That web address is already used by another page."
-        : (e && e.message) || "Something went wrong.";
-      setStatus("Could not save: " + message, "error");
+      setStatus("Could not save: " + friendlyError(e), "error");
     }
   });
 

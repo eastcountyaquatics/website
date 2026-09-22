@@ -5,6 +5,12 @@
 // that block. If Supabase is slow or unreachable the page simply keeps
 // its built-in text, so this can never leave a page blank.
 (function () {
+  // admin-editor.html loads pages with ?edit=1 and applies overrides (and
+  // click-to-edit) itself, authoritatively -- if this ran too, its async
+  // fetch could land after an edit already in progress and silently
+  // clobber it back to the saved value mid-keystroke.
+  if (/[?&]edit=1(&|$)/.test(window.location.search)) return;
+
   const blocks = document.querySelectorAll("[data-cms]");
   if (!blocks.length || typeof supabaseClient === "undefined") return;
 

@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Website | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; font-family: "Roboto", sans-serif; }
+  .ed-topbar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--navy, #0a1f6b); color: #fff; flex-shrink: 0;
+  }
+  .ed-topbar a.back { color: #fff; opacity: .85; font-weight: 700; text-decoration: none; font-size: 13px; }
+  .ed-topbar a.back:hover { opacity: 1; text-decoration: underline; }
+  .ed-topbar select { padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.3); min-width: 220px; font-size: 13px; }
+  .ed-topbar .spacer { flex: 1; }
+  .ed-topbar .status { font-size: 12px; opacity: .9; white-space: nowrap; }
+  .ed-topbar .status.dirty { color: var(--gold); font-weight: 700; opacity: 1; }
+  .ed-topbar .status.error { color: #ff9b9b; font-weight: 700; opacity: 1; }
+  .ed-topbar button, .ed-topbar a.btn-link {
+    padding: 7px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,.35);
+    background: transparent; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none;
+  }
+  .ed-topbar button:hover, .ed-topbar a.btn-link:hover { background: rgba(255,255,255,.12); }
+  .ed-topbar button.primary { background: var(--gold, #ffd400); color: #1a1a4d; border-color: var(--gold, #ffd400); }
+  .ed-topbar button.primary:hover { filter: brightness(0.95); }
+  .ed-topbar button:disabled { opacity: .4; cursor: default; }
+
+  .ed-richbar {
+    display: none; gap: 6px; flex-wrap: wrap; align-items: center;
+    padding: 8px 16px; background: #f1f4f9; border-bottom: 1px solid #dde3ee; flex-shrink: 0;
+  }
+  .ed-richbar.visible { display: flex; }
+  .ed-richbar button {
+    padding: 6px 11px; border: 1px solid #d7e6ee; background: #fff; border-radius: 5px; cursor: pointer; font-size: 12.5px;
+  }
+  .ed-richbar button:hover { background: #eef3f8; }
+  .ed-richbar .divider { width: 1px; height: 22px; background: #d7e6ee; margin: 0 2px; }
+  .ed-richbar .hint { font-size: 11.5px; color: #6b7280; margin-left: auto; }
+
+  .ed-settings {
+    display: none; padding: 14px 16px; background: #fff; border-bottom: 1px solid #dde3ee; flex-shrink: 0;
+  }
+  .ed-settings.open { display: block; }
+  .ed-settings .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+  .ed-settings .field { min-width: 180px; }
+  .ed-settings .field label { display: block; font-size: 11.5px; font-weight: 700; color: #6b7280; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .03em; }
+  .ed-settings .field input[type="text"] { width: 100%; padding: 7px 9px; border: 1px solid #d7e6ee; border-radius: 6px; font-size: 13px; }
+  .ed-settings .checkline { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .ed-settings .checkline input { width: auto; }
+
+  .ed-canvas-wrap { flex: 1; min-height: 0; background: #e9edf3; position: relative; }
+  #canvas { width: 100%; height: 100%; border: none; display: block; background: #fff; }
+  .ed-empty { padding: 60px 20px; text-align: center; color: #6b7280; font-size: 15px; }
+  .ed-template-gallery {
+    display: none; position: absolute; z-index: 50; background: #fff; border: 1px solid #d7e6ee;
+    border-radius: 10px; box-shadow: 0 8px 28px rgba(20,30,50,.18); padding: 10px; flex-wrap: wrap; gap: 8px; max-width: 420px;
+  }
+  .ed-template-gallery.open { display: flex; }
+  .ed-template-choice { border: 1px solid #d7e6ee; background: #fff; border-radius: 6px; padding: 8px 12px; cursor: pointer; font-family: inherit; text-align: left; max-width: 180px; }
+  .ed-template-choice:hover { background: #eef3f8; }
+  .ed-template-choice strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .ed-template-choice span { display: block; font-size: 11.5px; color: var(--muted, #6b7280); }
+</style>
+</head>
+<body>
+
+<div class="ed-topbar">
+  <a href="admin.html" class="back">&larr; Admin</a>
+  <select id="page-select">
+    <option value="">Choose a page&hellip;</option>
+    <optgroup label="Site Pages">
+      <option value="static:index.html">Home</option>
+      <option value="static:dashboard.html">My Account &mdash; Registration Agreement</option>
+      <option value="static:about-us.html">About Us</option>
+      <option value="static:teams.html">Teams</option>
+      <option value="static:masters.html">Masters</option>
+      <option value="static:junior-olympics.html">Junior Olympics</option>
+      <option value="static:support.html">Sponsors &amp; Donors</option>
+      <option value="static:contact.html">Contact</option>
+      <option value="static:faq.html">FAQ</option>
+      <option value="static:guidelines-etiquette.html">Guidelines &amp; Etiquette</option>
+      <option value="static:registration-refund-policy.html">Registration/Refund Policy</option>
+      <option value="static:eca-gear.html">ECA Gear</option>
+      <option value="static:accomplishments.html">Accomplishments</option>
+      <option value="static:projects.html">Athlete Projects</option>
+      <option value="static:summer-league.html">Summer League</option>
+      <option value="static:st-pattys-day-shootout.html">St. Patty's Day Shootout</option>
+      <option value="static:team-splashball.html">Team &mdash; Splashball</option>
+      <option value="static:team-8u-coed.html">Team &mdash; 8U Coed</option>
+      <option value="static:team-10u-coed.html">Team &mdash; 10U Coed</option>
+      <option value="static:team-12u-boys.html">Team &mdash; 12U Boys</option>
+      <option value="static:team-12u-girls.html">Team &mdash; 12U Girls</option>
+      <option value="static:team-14u-boys.html">Team &mdash; 14U Boys</option>
+      <option value="static:team-14u-girls.html">Team &mdash; 14U Girls</option>
+      <option value="static:team-16u-boys.html">Team &mdash; 16U Boys</option>
+      <option value="static:team-16u-girls.html">Team &mdash; 16U Girls</option>
+      <option value="static:team-18u-boys.html">Team &mdash; 18U Boys</option>
+      <option value="static:team-18u-girls.html">Team &mdash; 18U Girls</option>
+    </optgroup>
+    <optgroup label="Custom Pages" id="custom-pages-group"></optgroup>
+    <option value="new">+ New Page&hellip;</option>
+  </select>
+  <a id="view-live-link" class="btn-link" href="#" target="_blank" rel="noopener" style="display:none;">View Live &rarr;</a>
+  <button type="button" id="settings-toggle-btn" style="display:none;">Page Settings</button>
+  <button type="button" id="reset-page-btn" style="display:none;">Reset Page</button>
+  <div class="spacer"></div>
+  <span class="status" id="save-status"></span>
+  <button type="button" id="discard-btn" style="display:none;">Discard Changes</button>
+  <button type="button" id="save-btn" class="primary" style="display:none;">Save Changes</button>
+</div>
+
+<div class="ed-settings" id="settings-panel">
+  <div class="row">
+    <div class="field" style="min-width:240px;">
+      <label for="s-title">Page Title</label>
+      <input type="text" id="s-title" placeholder="e.g. Summer League 2027">
+    </div>
+    <div class="field" style="min-width:240px;">
+      <label for="s-slug">Web Address</label>
+      <input type="text" id="s-slug" placeholder="summer-league-2027" pattern="[a-z0-9\-]+">
+    </div>
+    <div class="field">
+      <label for="s-meta">Search Description</label>
+      <input type="text" id="s-meta" placeholder="One sentence shown in Google results">
+    </div>
+  </div>
+  <div class="row" style="align-items:center;">
+    <label class="checkline"><input type="checkbox" id="s-show-nav"> Show in the top menu</label>
+    <label class="checkline">Menu order <input type="text" id="s-sort" style="width:50px;padding:5px 7px;border:1px solid #d7e6ee;border-radius:5px;" value="0"></label>
+    <label class="checkline"><input type="checkbox" id="s-published"> Published (visible to everyone)</label>
+    <div class="spacer"></div>
+    <button type="button" id="delete-page-btn" style="color:#a12626;border:1px solid #f0c9c9;background:#fff;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">Delete This Page</button>
+  </div>
+</div>
+
+<div class="ed-richbar" id="rich-bar">
+  <button type="button" data-cmd="bold" title="Bold"><strong>B</strong></button>
+  <button type="button" data-cmd="italic" title="Italic"><em>I</em></button>
+  <button type="button" id="rb-link-btn">Link</button>
+  <div class="divider"></div>
+  <button type="button" data-block="H2">Heading</button>
+  <button type="button" data-block="H3">Subheading</button>
+  <button type="button" data-block="P">Normal</button>
+  <div class="divider"></div>
+  <button type="button" data-cmd="insertUnorderedList">&bull; List</button>
+  <button type="button" data-cmd="insertOrderedList">1. List</button>
+  <div class="divider"></div>
+  <button type="button" id="rb-add-section-btn" style="font-weight:700;">+ Add Section</button>
+  <button type="button" id="rb-add-card-btn">+ Add Card</button>
+  <button type="button" id="rb-move-up-btn" title="Move this section up">&uarr; Move Up</button>
+  <button type="button" id="rb-move-down-btn" title="Move this section down">&darr; Move Down</button>
+  <button type="button" id="rb-insert-image-btn">Image</button>
+  <button type="button" id="rb-delete-section-btn" style="color:#a12626;">Delete Section</button>
+  <span class="hint">Click any text on the page to edit it right there.</span>
+</div>
+
+<div class="ed-canvas-wrap" id="canvas-wrap">
+  <div class="ed-empty" id="canvas-empty">Choose a page above, or start a new one &mdash; you'll edit it right here, exactly as visitors see it.</div>
+  <iframe id="canvas" title="Live page editor" style="display:none;"></iframe>
+  <div class="ed-template-gallery" id="template-gallery"></div>
+</div>
+
+<input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+(function () {
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function slugify(str) {
+    return String(str || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+  function bgUrlFromStyle(style) {
+    const m = /background-image\s*:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)/i.exec(style || "");
+    return m ? m[1] : "";
+  }
+
+  const pageSelect = document.getElementById("page-select");
+  const customGroup = document.getElementById("custom-pages-group");
+  const canvas = document.getElementById("canvas");
+  const canvasEmpty = document.getElementById("canvas-empty");
+  const richBar = document.getElementById("rich-bar");
+  const settingsPanel = document.getElementById("settings-panel");
+  const settingsToggleBtn = document.getElementById("settings-toggle-btn");
+  const resetPageBtn = document.getElementById("reset-page-btn");
+  const viewLiveLink = document.getElementById("view-live-link");
+  const saveStatus = document.getElementById("save-status");
+  const saveBtn = document.getElementById("save-btn");
+  const discardBtn = document.getElementById("discard-btn");
+  const galleryEl = document.getElementById("template-gallery");
+  const imageFileInput = document.getElementById("image-file-input");
+
+  let currentKind = null; // 'static' | 'custom'
+  let currentPath = null; // static: file path. custom: slug
+  let currentPageRow = null; // custom pages only
+  let staticDefaults = {}; // block_key -> { tag, original }
+  let pendingBlockChanges = {}; // static block_key -> { content, tag }
+  let extrasOrBodyDirty = false;
+  let settingsDirty = false;
+  let lastRange = null;
+  let customPagesCache = [];
+  let pendingImageUploadTarget = null; // { el, isBg, key }
+
+  function isDirty() {
+    return Object.keys(pendingBlockChanges).length > 0 || extrasOrBodyDirty || settingsDirty;
+  }
+
+  function setStatus(text, kind) {
+    saveStatus.textContent = text || "";
+    saveStatus.className = "status" + (kind ? " " + kind : "");
+  }
+
+  function refreshDirtyChrome() {
+    const dirty = isDirty();
+    saveBtn.style.display = dirty ? "inline-block" : "none";
+    discardBtn.style.display = dirty ? "inline-block" : "none";
+    if (dirty) setStatus("Unsaved changes", "dirty");
+    else if (currentKind) setStatus("All changes saved.");
+  }
+
+  function frameDoc() {
+    try { return canvas.contentDocument; } catch (e) { return null; }
+  }
+
+  function focusFrameAndRestoreRange() {
+    const doc = frameDoc();
+    if (!doc) return;
+    canvas.contentWindow.focus();
+    if (lastRange && doc.contains(lastRange.startContainer)) {
+      const sel = doc.getSelection();
+      sel.removeAllRanges();
+      try { sel.addRange(lastRange); } catch (e) {}
+    }
+  }
+
+  function structuralContainer() {
+    const doc = frameDoc();
+    if (!doc) return null;
+    if (currentKind === "static") return doc.getElementById("cms-extra-body");
+    if (currentKind === "custom") return doc.getElementById("page-body");
+    return null;
+  }
+
+  function currentTopLevelBlock() {
+    const container = structuralContainer();
+    if (!container || !lastRange || !container.contains(lastRange.startContainer)) return null;
+    let node = lastRange.startContainer;
+    if (node === container) node = container.childNodes[lastRange.startOffset] || container.lastChild;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    while (node && node.parentElement !== container && node !== container) node = node.parentElement;
+    return node && node !== container ? node : null;
+  }
+
+  function requireStructuralFocus() {
+    const container = structuralContainer();
+    if (!container || !lastRange || !container.contains(lastRange.startContainer)) {
+      alert("Click inside the page content first (not a fixed heading/photo), then try again.");
+      return null;
+    }
+    return container;
+  }
+
+  // ---- Editing chrome injected into every loaded page -------------------
+  function injectEditingStyles(doc) {
+    const style = doc.createElement("style");
+    style.id = "ed-injected-style";
+    style.textContent =
+      '[data-cms],#cms-extra-body,#page-body{outline:2px dashed rgba(0,0,255,.25);outline-offset:2px;cursor:text;min-height:1.4em;}' +
+      '[data-cms]:focus,#cms-extra-body:focus,#page-body:focus{outline:2px solid #ffd400;background:rgba(255,212,0,.06);}' +
+      '.cms-editable-imgwrap{position:relative;display:inline-block;}' +
+      '.cms-editable-imgwrap.cms-bg-wrap{display:block;}' +
+      '.cms-replace-btn{position:absolute;top:8px;right:8px;background:rgba(20,30,50,.85);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;opacity:0;transition:opacity .15s;z-index:5;}' +
+      '.cms-editable-imgwrap:hover .cms-replace-btn,.cms-replace-btn:focus{opacity:1;}' +
+      '.cms-add-section-btn{display:block;width:100%;margin:18px 0;padding:12px;border:2px dashed rgba(0,0,255,.35);border-radius:8px;background:#f7f9fc;color:#0000ff;font-weight:700;cursor:pointer;font-size:14px;}' +
+      '.cms-add-section-btn:hover{background:#eef3f8;}' +
+      '.cms-figure{position:relative;display:inline-block;max-width:100%;margin:10px 0;}' +
+      '.cms-figure img{display:block;max-width:100%;border-radius:6px;}' +
+      '.cms-figure-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,30,50,.75);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}' +
+      '.cms-figure:hover .cms-figure-remove,.cms-figure-remove:focus{opacity:1;}';
+    doc.head.appendChild(style);
+  }
+
+  function wrapExistingImagesForEditing(container, doc) {
+    container.querySelectorAll("img").forEach(function (img) {
+      if (img.closest(".cms-figure")) return;
+      const figure = doc.createElement("figure");
+      figure.className = "cms-figure";
+      figure.contentEditable = "false";
+      img.replaceWith(figure);
+      figure.appendChild(img);
+      const btn = doc.createElement("button");
+      btn.type = "button";
+      btn.className = "cms-figure-remove";
+      btn.title = "Remove image";
+      btn.setAttribute("aria-label", "Remove image");
+      btn.textContent = "✕";
+      figure.appendChild(btn);
+    });
+  }
+
+  function getCleanHtml(container) {
+    const clone = container.cloneNode(true);
+    clone.querySelectorAll(".cms-figure").forEach(function (fig) {
+      const img = fig.querySelector("img");
+      if (img) fig.replaceWith(img);
+      else fig.remove();
+    });
+    clone.querySelectorAll(".cms-add-section-btn").forEach(function (b) { b.remove(); });
+    return sanitizeHtml(clone.innerHTML);
+  }
+
+  function makeAddSectionButton(doc, label) {
+    const btn = doc.createElement("button");
+    btn.type = "button";
+    btn.className = "cms-add-section-btn";
+    btn.textContent = label || "+ Add Section";
+    // Lives inside a contenteditable region -- without this, a click here
+    // (the ONLY content on a brand new empty page) places the caret inside
+    // the button's own label instead of the page, and anything typed
+    // there is lost when the button is stripped back out before saving.
+    btn.contentEditable = "false";
+    btn.addEventListener("click", function (e) {
+      openTemplateGallery(btn);
+    });
+    return btn;
+  }
+
+  function wireSelectionTracking(doc) {
+    doc.addEventListener("selectionchange", function () {
+      const sel = doc.getSelection();
+      if (sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        const container = structuralContainer();
+        if (container && container.contains(range.startContainer)) {
+          lastRange = range.cloneRange();
+        }
+      }
+    });
+    // The "close gallery on outside click" listener lives on the parent
+    // document (see below) and never sees a click that lands inside the
+    // iframe -- close it here too so clicking back into the page dismisses
+    // a gallery left open.
+    doc.addEventListener("click", function (e) {
+      if (galleryEl.classList.contains("open") && e.target !== galleryInsertBtn) {
+        galleryEl.classList.remove("open");
+      }
+    });
+  }
+
+  function wireDataCmsBlock(el, key, tag) {
+    el.setAttribute("contenteditable", "true");
+    el.addEventListener("input", function () {
+      pendingBlockChanges[key] = { content: el.innerHTML, tag: tag };
+      refreshDirtyChrome();
+    });
+    el.addEventListener("paste", function (e) {
+      e.preventDefault();
+      const text = (e.clipboardData || canvas.contentWindow.clipboardData).getData("text/plain");
+      frameDoc().execCommand("insertText", false, text);
+    });
+  }
+
+  function wireImageReplace(doc, el, key, isBg) {
+    const wrap = doc.createElement(isBg ? "div" : "span");
+    wrap.className = "cms-editable-imgwrap" + (isBg ? " cms-bg-wrap" : "");
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    const btn = doc.createElement("button");
+    btn.type = "button";
+    btn.className = "cms-replace-btn";
+    btn.textContent = "Replace Image";
+    wrap.appendChild(btn);
+    btn.addEventListener("click", function () {
+      pendingImageUploadTarget = { el: el, key: key, isBg: isBg };
+      imageFileInput.click();
+    });
+  }
+
+  imageFileInput.addEventListener("change", async function () {
+    const file = this.files[0];
+    this.value = "";
+    const target = pendingImageUploadTarget;
+    pendingImageUploadTarget = null;
+    if (!file || !target) return;
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const storagePath = currentPath + "/" + target.key + "-" + Date.now() + "." + ext;
+    setStatus("Uploading image…");
+    const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file, { upsert: true });
+    if (error) { setStatus("Could not upload: " + error.message, "error"); return; }
+    const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
+    const url = data.publicUrl;
+    if (target.isBg) target.el.style.backgroundImage = "url('" + url.replace(/'/g, "%27") + "')";
+    else target.el.src = url;
+    const { error: dbError } = await supabaseClient
+      .from("image_blocks")
+      .upsert({ page_path: currentPath, block_key: target.key, image_url: url, alt_text: target.el.getAttribute("alt") || null }, { onConflict: "page_path,block_key" });
+    setStatus(dbError ? "Image uploaded, but could not save: " + dbError.message : "Image updated.");
+  });
+
+  // ---- Template gallery ---------------------------------------------------
+  const SECTION_TEMPLATES = [
+    { key: "two-col", label: "Two-Column Text", hint: "Side-by-side paragraphs",
+      html: '<div class="grid grid-2" style="margin:28px 0;"><div><h3>First Topic</h3><p>Write about the first topic here.</p></div><div><h3>Second Topic</h3><p>Write about the second topic here.</p></div></div>' },
+    { key: "feature-cards", label: "Feature Cards", hint: "3 cards in a row",
+      html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card"><h3>Feature One</h3><p class="muted">Describe this feature or benefit.</p></div><div class="card"><h3>Feature Two</h3><p class="muted">Describe this feature or benefit.</p></div><div class="card"><h3>Feature Three</h3><p class="muted">Describe this feature or benefit.</p></div></div>' },
+    { key: "stats", label: "Stats Row", hint: "A few big numbers",
+      html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">100+</h3><p class="muted">Athletes</p></div><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">10+</h3><p class="muted">Years Running</p></div><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">6</h3><p class="muted">Age Groups</p></div></div>' },
+    { key: "quote", label: "Quote / Callout", hint: "A highlighted note",
+      html: '<div class="notice" style="margin:28px 0;"><p style="margin:0;">Put an important note, quote, or announcement here.</p></div>' },
+    { key: "photo-text", label: "Photo + Text", hint: "Image on one side",
+      html: '<div class="grid grid-2" style="margin:28px 0;align-items:center;"><p class="muted">Click the <strong>Image</strong> button above to add a photo here, then delete this placeholder text.</p><div><h3>About This Photo</h3><p>Write a caption or related text here.</p></div></div>' },
+    { key: "cta", label: "Call to Action", hint: "Banner with a button",
+      html: '<div class="cta-band" style="margin:28px 0;"><h2>Ready to Join East County Aquatics?</h2><p>Write a short call to action here.</p><p style="margin-top:16px;"><a href="#" class="btn btn-primary">Button Text</a></p></div>' },
+    { key: "teams", label: "Our Teams", hint: "Auto-filled from your teams",
+      async html() {
+        const { data } = await supabaseClient.from("schedules").select("team_label").order("sort_order", { ascending: true });
+        const teams = (data || []).length ? data : [{ team_label: "8U Coed" }, { team_label: "12U Girls" }, { team_label: "14U Boys" }];
+        return '<div class="grid grid-3" style="margin:28px 0;">' + teams.map(function (t) {
+          return '<div class="card"><h3>' + escapeHtml(t.team_label) + '</h3><p class="muted">Practice schedule and details for this team.</p></div>';
+        }).join("") + "</div>";
+      } },
+  ];
+
+  galleryEl.innerHTML = SECTION_TEMPLATES.map(function (t) {
+    return '<button type="button" class="ed-template-choice" data-template="' + t.key + '"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.hint) + "</span></button>";
+  }).join("");
+
+  let galleryInsertBtn = null;
+  function openTemplateGallery(anchorBtn) {
+    galleryInsertBtn = anchorBtn;
+    // The anchor (e.g. the "+ Add Section" button near the footer) is
+    // often scrolled out of view inside the iframe on a long page --
+    // bring it into view first, or the popup's position (computed from
+    // its on-screen rect a moment later) ends up off-screen too.
+    anchorBtn.scrollIntoView({ block: "center" });
+    setTimeout(function () {
+      const wrapRect = document.getElementById("canvas-wrap").getBoundingClientRect();
+      const btnRect = anchorBtn.getBoundingClientRect(); // relative to iframe viewport
+      const frameRect = canvas.getBoundingClientRect();
+      galleryEl.style.top = (frameRect.top - wrapRect.top + btnRect.top + btnRect.height + 6) + "px";
+      galleryEl.style.left = (frameRect.left - wrapRect.left + Math.max(0, btnRect.left - 40)) + "px";
+      galleryEl.classList.add("open");
+    }, 50);
+  }
+  document.addEventListener("click", function (e) {
+    if (!galleryEl.classList.contains("open")) return;
+    if (galleryEl.contains(e.target) || e.target === galleryInsertBtn) return;
+    galleryEl.classList.remove("open");
+  });
+  galleryEl.querySelectorAll("[data-template]").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      const tpl = SECTION_TEMPLATES.find(function (t) { return t.key === btn.dataset.template; });
+      if (!tpl) return;
+      const container = structuralContainer();
+      galleryEl.classList.remove("open");
+      if (!container) return;
+      const html = typeof tpl.html === "function" ? await tpl.html() : tpl.html;
+      const doc = frameDoc();
+      const wrapper = doc.createElement("div");
+      wrapper.innerHTML = html;
+      const addBtn = container.querySelector(".cms-add-section-btn");
+      const inserted = Array.prototype.slice.call(wrapper.childNodes);
+      inserted.forEach(function (node) { container.insertBefore(node, addBtn); });
+      wrapExistingImagesForEditing(container, doc);
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+      if (inserted[0] && inserted[0].scrollIntoView) inserted[0].scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  // ---- Rich toolbar ---------------------------------------------------
+  document.querySelectorAll("#rich-bar [data-cmd]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      focusFrameAndRestoreRange();
+      frameDoc().execCommand(btn.dataset.cmd, false, null);
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+    });
+  });
+  document.querySelectorAll("#rich-bar [data-block]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      if (!requireStructuralFocus()) return;
+      focusFrameAndRestoreRange();
+      frameDoc().execCommand("formatBlock", false, btn.dataset.block);
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+    });
+  });
+  document.getElementById("rb-link-btn").addEventListener("click", function () {
+    const url = prompt("Link address (https://... or another page like teams.html)");
+    if (!url) return;
+    focusFrameAndRestoreRange();
+    frameDoc().execCommand("createLink", false, url);
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+  });
+  document.getElementById("rb-add-section-btn").addEventListener("click", function () {
+    const container = structuralContainer();
+    if (!container) return;
+    const addBtn = container.querySelector(".cms-add-section-btn") || container;
+    openTemplateGallery(addBtn === container ? container : addBtn);
+  });
+  document.getElementById("rb-add-card-btn").addEventListener("click", function () {
+    if (!requireStructuralFocus()) return;
+    if (!lastRange) return;
+    let node = lastRange.startContainer;
+    if (node.nodeType === 3) node = node.parentElement;
+    const cell = node.closest ? node.closest(".card") : null;
+    const row = cell ? cell.parentElement : (node.closest ? node.closest(".grid") : null);
+    const container = structuralContainer();
+    if (!row || !row.classList.contains("grid") || !container.contains(row)) {
+      alert("Click inside a card grid (like Feature Cards) first, then Add Card.");
+      return;
+    }
+    const template = row.querySelector(".card");
+    if (!template) { alert("This row doesn't have cards to duplicate."); return; }
+    const clone = template.cloneNode(true);
+    row.appendChild(clone);
+    clone.scrollIntoView({ behavior: "smooth", block: "center" });
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+  });
+  document.getElementById("rb-move-up-btn").addEventListener("click", function () {
+    const node = currentTopLevelBlock();
+    if (!node) { alert("Click inside the section you want to move first."); return; }
+    const prev = node.previousElementSibling;
+    if (!prev) return;
+    node.parentElement.insertBefore(node, prev);
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+  });
+  document.getElementById("rb-move-down-btn").addEventListener("click", function () {
+    const node = currentTopLevelBlock();
+    if (!node) { alert("Click inside the section you want to move first."); return; }
+    const next = node.nextElementSibling;
+    if (!next || next.classList.contains("cms-add-section-btn")) return;
+    node.parentElement.insertBefore(next, node);
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+  });
+  document.getElementById("rb-delete-section-btn").addEventListener("click", function () {
+    const container = requireStructuralFocus();
+    if (!container || !lastRange) return;
+    let node = lastRange.startContainer;
+    if (node === container) node = container.childNodes[lastRange.startOffset] || container.lastChild;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    const cell = node && node.closest ? node.closest(".card") : null;
+    if (cell && container.contains(cell) && cell.parentElement && cell.parentElement.classList.contains("grid")) {
+      if (!confirm("Delete this card? This can't be undone once you save.")) return;
+      cell.remove();
+      lastRange = null;
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+      return;
+    }
+    while (node && node.parentElement !== container && node !== container) node = node.parentElement;
+    if (!node || node === container || !container.contains(node) || node.classList.contains("cms-add-section-btn")) {
+      alert("Click inside the section you want to delete first.");
+      return;
+    }
+    if (!confirm("Delete this section? This can't be undone once you save.")) return;
+    node.remove();
+    lastRange = null;
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+  });
+  document.getElementById("rb-insert-image-btn").addEventListener("click", function () {
+    if (!requireStructuralFocus()) return;
+    pendingImageUploadTarget = { insertInline: true };
+    imageFileInputForInsert();
+  });
+  function imageFileInputForInsert() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp,image/gif";
+    const restoreRange = lastRange;
+    input.addEventListener("change", async function () {
+      const file = input.files[0];
+      if (!file) return;
+      const alt = prompt("Describe the image, for screen readers (optional)") || "";
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const storagePath = (currentPath || "extra") + "/" + Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
+      const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file);
+      if (error) { alert("Could not upload image: " + error.message); return; }
+      const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
+      focusFrameAndRestoreRange();
+      const doc = frameDoc();
+      if (restoreRange && doc.contains(restoreRange.startContainer)) {
+        const sel = doc.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(restoreRange);
+      }
+      doc.execCommand("insertHTML", false,
+        '<figure class="cms-figure" contenteditable="false"><img src="' + escapeHtml(data.publicUrl) + '" alt="' + escapeHtml(alt.trim()) + '"><button type="button" class="cms-figure-remove" title="Remove image" aria-label="Remove image">✕</button></figure>');
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+    });
+    input.click();
+  }
+
+  // ---- Loading a static page -------------------------------------------
+  async function loadStaticPage(path) {
+    currentKind = "static";
+    currentPath = path;
+    currentPageRow = null;
+    pendingBlockChanges = {};
+    extrasOrBodyDirty = false;
+    settingsDirty = false;
+    staticDefaults = {};
+    canvasEmpty.style.display = "none";
+    canvas.style.display = "block";
+    richBar.classList.add("visible");
+    settingsPanel.classList.remove("open");
+    settingsToggleBtn.style.display = "none";
+    resetPageBtn.style.display = "inline-block";
+    viewLiveLink.style.display = "inline-block";
+    viewLiveLink.href = path;
+    setStatus("Loading…");
+
+    let rawHtml = "";
+    try {
+      const res = await fetch(path, { cache: "no-store" });
+      rawHtml = await res.text();
+    } catch (e) {
+      setStatus("Could not load that page.", "error");
+      return;
+    }
+    const parsed = new DOMParser().parseFromString(rawHtml, "text/html");
+    Array.prototype.forEach.call(parsed.querySelectorAll("[data-cms]"), function (el) {
+      staticDefaults[el.getAttribute("data-cms")] = { tag: el.tagName.toLowerCase(), original: el.innerHTML.trim() };
+    });
+
+    const [{ data: contentRows }, { data: imageRows }, { data: extrasRow }] = await Promise.all([
+      supabaseClient.from("content_blocks").select("block_key, content, tag").eq("page_path", path),
+      supabaseClient.from("image_blocks").select("block_key, image_url, alt_text").eq("page_path", path),
+      supabaseClient.from("page_extras").select("body_html").eq("page_path", path).maybeSingle(),
+    ]);
+
+    canvas.onload = function () {
+      canvas.onload = null;
+      const doc = frameDoc();
+      if (!doc) return;
+      injectEditingStyles(doc);
+
+      const contentByKey = {};
+      (contentRows || []).forEach(function (r) { contentByKey[r.block_key] = r; });
+      doc.querySelectorAll("[data-cms]").forEach(function (el) {
+        const key = el.getAttribute("data-cms");
+        const override = contentByKey[key];
+        let target = el;
+        if (override && override.tag && override.tag !== el.tagName.toLowerCase()) {
+          const replacement = doc.createElement(override.tag);
+          Array.prototype.forEach.call(el.attributes, function (attr) { replacement.setAttribute(attr.name, attr.value); });
+          replacement.innerHTML = override && typeof override.content === "string" ? sanitizeHtml(override.content) : el.innerHTML;
+          el.replaceWith(replacement);
+          target = replacement;
+        } else if (override && typeof override.content === "string") {
+          target.innerHTML = sanitizeHtml(override.content);
+        }
+        wireDataCmsBlock(target, key, (override && override.tag) || staticDefaults[key].tag);
+      });
+
+      const imageByKey = {};
+      (imageRows || []).forEach(function (r) { imageByKey[r.block_key] = r; });
+      doc.querySelectorAll("[data-cms-img]").forEach(function (el) {
+        const key = el.getAttribute("data-cms-img");
+        const isBg = el.hasAttribute("data-cms-bg");
+        const override = imageByKey[key];
+        if (override && override.image_url) {
+          if (isBg) el.style.backgroundImage = "url('" + override.image_url.replace(/'/g, "%27") + "')";
+          else el.src = override.image_url;
+          if (override.alt_text) el.setAttribute("alt", override.alt_text);
+        }
+        wireImageReplace(doc, el, key, isBg);
+      });
+
+      let extrasSection = doc.getElementById("cms-extra-content");
+      if (!extrasSection) {
+        extrasSection = doc.createElement("section");
+        extrasSection.id = "cms-extra-content";
+        const container = doc.createElement("div");
+        container.className = "container";
+        container.id = "cms-extra-body";
+        extrasSection.appendChild(container);
+        const footer = doc.querySelector(".site-footer");
+        if (footer && footer.parentNode) footer.parentNode.insertBefore(extrasSection, footer);
+        else doc.body.appendChild(extrasSection);
+      }
+      const extrasBody = doc.getElementById("cms-extra-body");
+      extrasBody.innerHTML = sanitizeHtml((extrasRow && extrasRow.body_html) || "");
+      wrapExistingImagesForEditing(extrasBody, doc);
+      extrasBody.appendChild(makeAddSectionButton(doc));
+      extrasBody.addEventListener("input", function () { extrasOrBodyDirty = true; refreshDirtyChrome(); });
+      extrasBody.addEventListener("click", function (e) {
+        const removeBtn = e.target.closest(".cms-figure-remove");
+        if (!removeBtn) return;
+        e.preventDefault();
+        const figure = removeBtn.closest(".cms-figure");
+        if (figure && confirm("Remove this image?")) { figure.remove(); extrasOrBodyDirty = true; refreshDirtyChrome(); }
+      });
+
+      wireSelectionTracking(doc);
+      setStatus("All changes saved.");
+    };
+    canvas.src = path + (path.indexOf("?") === -1 ? "?" : "&") + "edit=1&_=" + Date.now();
+  }
+
+  // ---- Loading a custom page --------------------------------------------
+  function loadCustomPage(row) {
+    currentKind = "custom";
+    currentPath = row.slug;
+    currentPageRow = row;
+    pendingBlockChanges = {};
+    extrasOrBodyDirty = false;
+    settingsDirty = false;
+    canvasEmpty.style.display = "none";
+    canvas.style.display = "block";
+    richBar.classList.add("visible");
+    settingsToggleBtn.style.display = "inline-block";
+    resetPageBtn.style.display = "none";
+    viewLiveLink.style.display = "inline-block";
+    viewLiveLink.href = "page.html?slug=" + encodeURIComponent(row.slug);
+    fillSettingsFields(row);
+    setStatus("Loading…");
+
+    canvas.onload = function () {
+      canvas.onload = null;
+      const doc = frameDoc();
+      if (!doc) return;
+      injectEditingStyles(doc);
+
+      doc.title = row.title + " | San Diego East County Aquatics";
+      const titleEl = doc.getElementById("page-title");
+      const breadcrumbEl = doc.getElementById("page-breadcrumb");
+      const bodyEl = doc.getElementById("page-body");
+      if (titleEl) titleEl.textContent = row.title || "Untitled Page";
+      if (breadcrumbEl) breadcrumbEl.textContent = row.nav_label || row.title || "";
+      const isEmpty = !row.body_html || !row.body_html.trim();
+      bodyEl.innerHTML = isEmpty
+        ? "<p>Click here and start typing, or use + Add Section below for a ready-made layout.</p>"
+        : sanitizeHtml(row.body_html);
+      bodyEl.setAttribute("contenteditable", "true");
+      bodyEl.id = "page-body";
+      wrapExistingImagesForEditing(bodyEl, doc);
+      bodyEl.appendChild(makeAddSectionButton(doc, isEmpty ? "+ Add Your First Section" : "+ Add Section"));
+      if (isEmpty) {
+        const placeholderP = bodyEl.querySelector("p");
+        // "focusin" fires mid-gesture, before the browser finishes placing
+        // the native caret for this click on mouseup -- clearing the
+        // paragraph's text that early shifts the layout under the mouse,
+        // so the browser's own caret placement (which runs after this)
+        // then lands somewhere else entirely (observed: inside the "+ Add
+        // Section" button below it). "click" fires only once the whole
+        // gesture -- and the browser's own caret placement -- is done, so
+        // there's nothing left to override what's set here.
+        bodyEl.addEventListener("click", function clearPlaceholder() {
+          if (placeholderP && placeholderP.isConnected && placeholderP.textContent.indexOf("Click here and start typing") !== -1) {
+            // Select the placeholder's real text and let the browser's own
+            // "delete selected text" logic clear it, rather than nulling
+            // textContent by hand -- an element left with truly no
+            // children (no even a <br>) after a manual clear is a state
+            // Chromium's editing commands can refuse to type into, right
+            // next to the non-editable "+ Add Section" button.
+            const range = doc.createRange();
+            range.selectNodeContents(placeholderP);
+            const sel = doc.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            doc.execCommand("delete", false, null);
+          }
+          bodyEl.removeEventListener("click", clearPlaceholder);
+        });
+      }
+      bodyEl.addEventListener("input", function () { extrasOrBodyDirty = true; refreshDirtyChrome(); });
+      bodyEl.addEventListener("paste", function (e) {
+        e.preventDefault();
+        const text = (e.clipboardData || canvas.contentWindow.clipboardData).getData("text/plain");
+        doc.execCommand("insertText", false, text);
+      });
+      bodyEl.addEventListener("click", function (e) {
+        const removeBtn = e.target.closest(".cms-figure-remove");
+        if (!removeBtn) return;
+        e.preventDefault();
+        const figure = removeBtn.closest(".cms-figure");
+        if (figure && confirm("Remove this image?")) { figure.remove(); extrasOrBodyDirty = true; refreshDirtyChrome(); }
+      });
+
+      wireSelectionTracking(doc);
+      setStatus("All changes saved.");
+    };
+    canvas.src = "page.html?slug=" + encodeURIComponent(row.slug) + "&edit=1&_=" + Date.now();
+  }
+
+  function fillSettingsFields(row) {
+    document.getElementById("s-title").value = row.title || "";
+    document.getElementById("s-slug").value = row.slug || "";
+    document.getElementById("s-meta").value = row.meta_description || "";
+    document.getElementById("s-show-nav").checked = !!row.show_in_nav;
+    document.getElementById("s-sort").value = row.sort_order || 0;
+    document.getElementById("s-published").checked = !!row.is_published;
+  }
+  ["s-title", "s-slug", "s-meta", "s-show-nav", "s-sort", "s-published"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function () {
+      settingsDirty = true;
+      refreshDirtyChrome();
+    });
+  });
+
+  settingsToggleBtn.addEventListener("click", function () {
+    settingsPanel.classList.toggle("open");
+  });
+
+  resetPageBtn.addEventListener("click", async function () {
+    if (currentKind !== "static") return;
+    if (!confirm("Reset all edited text, images, and added sections on this page back to the original? This can't be undone.")) return;
+    setStatus("Resetting…");
+    await Promise.all([
+      supabaseClient.from("content_blocks").delete().eq("page_path", currentPath),
+      supabaseClient.from("image_blocks").delete().eq("page_path", currentPath),
+      supabaseClient.from("page_extras").delete().eq("page_path", currentPath),
+    ]);
+    loadStaticPage(currentPath);
+  });
+
+  document.getElementById("delete-page-btn").addEventListener("click", async function () {
+    if (currentKind !== "custom" || !currentPageRow) return;
+    if (!confirm("Delete this page? This cannot be undone.")) return;
+    const { error } = await supabaseClient.from("pages").delete().eq("id", currentPageRow.id);
+    if (error) { alert("Could not delete: " + error.message); return; }
+    currentKind = null;
+    currentPath = null;
+    currentPageRow = null;
+    pageSelect.value = "";
+    canvas.src = "about:blank";
+    canvas.style.display = "none";
+    canvasEmpty.style.display = "block";
+    richBar.classList.remove("visible");
+    settingsPanel.classList.remove("open");
+    settingsToggleBtn.style.display = "none";
+    resetPageBtn.style.display = "none";
+    viewLiveLink.style.display = "none";
+    setStatus("");
+    await refreshCustomPageOptions();
+  });
+
+  async function refreshCustomPageOptions() {
+    const { data } = await supabaseClient.from("pages").select("*").order("sort_order", { ascending: true });
+    customPagesCache = data || [];
+    customGroup.innerHTML = customPagesCache.map(function (p) {
+      return '<option value="custom:' + p.id + '">' + escapeHtml(p.title) + (p.is_published ? "" : " (draft)") + "</option>";
+    }).join("");
+  }
+
+  async function createNewPage() {
+    const slug = "untitled-" + Date.now().toString(36);
+    const payload = { title: "Untitled Page", slug: slug, nav_label: "Untitled Page", body_html: "", show_in_nav: false, sort_order: 0, is_published: false };
+    const { data, error } = await supabaseClient.from("pages").insert(payload).select().single();
+    if (error) { alert("Could not create page: " + error.message); pageSelect.value = ""; return; }
+    await refreshCustomPageOptions();
+    pageSelect.value = "custom:" + data.id;
+    loadCustomPage(data);
+    settingsPanel.classList.add("open");
+    setTimeout(function () {
+      const titleInput = document.getElementById("s-title");
+      titleInput.focus();
+      titleInput.select();
+    }, 300);
+  }
+
+  pageSelect.addEventListener("change", async function () {
+    if (isDirty() && !confirm("You have unsaved changes. Discard them and switch pages?")) {
+      pageSelect.value = currentKind === "static" ? "static:" + currentPath : currentKind === "custom" ? "custom:" + currentPageRow.id : "";
+      return;
+    }
+    const value = pageSelect.value;
+    if (!value) {
+      currentKind = null;
+      currentPath = null;
+      currentPageRow = null;
+      canvas.src = "about:blank";
+      canvas.style.display = "none";
+      canvasEmpty.style.display = "block";
+      richBar.classList.remove("visible");
+      settingsPanel.classList.remove("open");
+      settingsToggleBtn.style.display = "none";
+      resetPageBtn.style.display = "none";
+      viewLiveLink.style.display = "none";
+      setStatus("");
+      return;
+    }
+    if (value === "new") { createNewPage(); return; }
+    if (value.indexOf("static:") === 0) { loadStaticPage(value.slice(7)); return; }
+    if (value.indexOf("custom:") === 0) {
+      const id = value.slice(7);
+      const row = customPagesCache.find(function (p) { return p.id === id; });
+      if (row) loadCustomPage(row);
+      return;
+    }
+  });
+
+  discardBtn.addEventListener("click", function () {
+    if (!confirm("Discard your unsaved changes?")) return;
+    if (currentKind === "static") loadStaticPage(currentPath);
+    else if (currentKind === "custom") loadCustomPage(currentPageRow);
+  });
+
+  saveBtn.addEventListener("click", async function () {
+    setStatus("Saving…");
+    saveBtn.disabled = true;
+    try {
+      if (currentKind === "static") {
+        const rows = Object.keys(pendingBlockChanges).map(function (key) {
+          const c = pendingBlockChanges[key];
+          const def = staticDefaults[key];
+          const row = { block_key: key, page_path: currentPath, content: sanitizeHtml(c.content.trim()) };
+          if (def && c.tag !== def.tag) row.tag = c.tag;
+          return row;
+        });
+        if (rows.length) {
+          const { error } = await supabaseClient.from("content_blocks").upsert(rows, { onConflict: "block_key" });
+          if (error) throw error;
+        }
+        if (extrasOrBodyDirty) {
+          const html = getCleanHtml(structuralContainer());
+          const { error } = await supabaseClient.from("page_extras").upsert({ page_path: currentPath, body_html: html }, { onConflict: "page_path" });
+          if (error) throw error;
+        }
+      } else if (currentKind === "custom") {
+        const slug = slugify(document.getElementById("s-slug").value);
+        if (!slug) { setStatus("Enter a valid web address before saving.", "error"); saveBtn.disabled = false; return; }
+        const payload = {
+          title: document.getElementById("s-title").value.trim() || "Untitled Page",
+          slug: slug,
+          nav_label: document.getElementById("s-title").value.trim() || "Untitled Page",
+          meta_description: document.getElementById("s-meta").value.trim() || null,
+          show_in_nav: document.getElementById("s-show-nav").checked,
+          sort_order: parseInt(document.getElementById("s-sort").value, 10) || 0,
+          is_published: document.getElementById("s-published").checked,
+          body_html: getCleanHtml(structuralContainer()),
+        };
+        const { error } = await supabaseClient.from("pages").update(payload).eq("id", currentPageRow.id);
+        if (error) throw error;
+        currentPageRow = Object.assign({}, currentPageRow, payload);
+        currentPath = slug;
+        viewLiveLink.href = "page.html?slug=" + encodeURIComponent(slug);
+        await refreshCustomPageOptions();
+        pageSelect.value = "custom:" + currentPageRow.id;
+      }
+      pendingBlockChanges = {};
+      extrasOrBodyDirty = false;
+      settingsDirty = false;
+      saveBtn.disabled = false;
+      refreshDirtyChrome();
+    } catch (e) {
+      saveBtn.disabled = false;
+      const message = e && e.message && e.message.indexOf("duplicate") !== -1
+        ? "That web address is already used by another page."
+        : (e && e.message) || "Something went wrong.";
+      setStatus("Could not save: " + message, "error");
+    }
+  });
+
+  window.addEventListener("beforeunload", function (e) {
+    if (isDirty()) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    await refreshCustomPageOptions();
+  })();
+})();
+</script>
+</body>
+</html>

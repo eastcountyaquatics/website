@@ -71,16 +71,10 @@
           <p class="muted">See every registered athlete, their parent's contact info, and what they've signed up for.</p>
         </a>
       </div>
-      <div class="admin-nav-card" id="content-card" style="display:none;">
-        <a href="admin-content.html" style="display:block;color:inherit;">
-          <h3>Edit Website Text</h3>
-          <p class="muted">Change the wording on any existing page, without touching its design.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="pages-card" style="display:none;">
-        <a href="admin-pages.html" style="display:block;color:inherit;">
-          <h3>Pages</h3>
-          <p class="muted">Write and publish new pages on the public website.</p>
+      <div class="admin-nav-card" id="editor-card" style="display:none;">
+        <a href="admin-editor.html" style="display:block;color:inherit;">
+          <h3>Edit Website</h3>
+          <p class="muted">Click any text or photo on any page to change it, or add a brand new page.</p>
         </a>
       </div>
       <div class="admin-nav-card" id="registrations-card" style="display:none;">
@@ -201,8 +195,7 @@
       document.getElementById("registrations-card").style.display = "block";
       document.getElementById("coupons-card").style.display = "block";
       document.getElementById("masters-card").style.display = "block";
-      document.getElementById("pages-card").style.display = "block";
-      document.getElementById("content-card").style.display = "block";
+      document.getElementById("editor-card").style.display = "block";
       document.getElementById("users-card").style.display = "block";
     }
   })();

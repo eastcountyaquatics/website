@@ -80,6 +80,12 @@
 <script src="js/nav-pages.js"></script>
 <script>
   (async function () {
+    // admin-editor.html loads this with ?edit=1&slug=... and fetches/
+    // renders/edits the row itself, authoritatively -- including a brand
+    // new page that has no row yet. Skip the normal fetch entirely so
+    // there's no race between this script's own render and the editor's.
+    if (/[?&]edit=1(&|$)/.test(window.location.search)) return;
+
     const slug = new URLSearchParams(window.location.search).get("slug");
     const titleEl = document.getElementById("page-title");
     const bodyEl = document.getElementById("page-body");
@@ -98,11 +104,15 @@
     }
 
     try {
+      // No is_published filter here -- RLS already limits an anonymous
+      // visitor to published rows and an owner to everything, so an owner
+      // following their own "View Live" link on a draft sees it exactly as
+      // the editor left it, while an anonymous visitor gets nothing for
+      // the same URL.
       const { data, error } = await supabaseClient
         .from("pages")
         .select("title, nav_label, body_html, meta_description")
         .eq("slug", slug)
-        .eq("is_published", true)
         .maybeSingle();
 
       if (error || !data) {

@@ -1,9 +1,13 @@
-// Appends any extra content an owner has added via admin-content.html's
-// "Add Content to the Bottom of This Page" editor -- a section, image,
-// or list the static page didn't originally have. Injected right before
-// the footer. If nothing has been saved, or Supabase is slow or
-// unreachable, the page renders exactly as it always did.
+// Appends any extra sections an owner has added via admin-editor.html's
+// "+ Add Section" -- a section, image, or list the static page didn't
+// originally have. Injected right before the footer. If nothing has been
+// saved, or Supabase is slow or unreachable, the page renders exactly as
+// it always did.
 (function () {
+  // See the matching guard in js/content-blocks.js -- admin-editor.html
+  // (?edit=1) builds and edits this zone itself, authoritatively.
+  if (/[?&]edit=1(&|$)/.test(window.location.search)) return;
+
   if (typeof supabaseClient === "undefined") return;
   const pagePath = window.location.pathname.split("/").pop() || "index.html";
 

@@ -9,6 +9,10 @@
 // that image. If Supabase is slow or unreachable the page simply keeps
 // its built-in image, so this can never leave a page broken.
 (function () {
+  // See the matching guard in js/content-blocks.js -- admin-editor.html
+  // (?edit=1) applies image overrides itself, authoritatively.
+  if (/[?&]edit=1(&|$)/.test(window.location.search)) return;
+
   const blocks = document.querySelectorAll("[data-cms-img]");
   if (!blocks.length || typeof supabaseClient === "undefined") return;
 

@@ -130,35 +130,28 @@
             <input type="email" id="athlete_emergency_email" placeholder="grandma@example.com" required>
           </div>
           <div class="field">
-            <label for="athlete_emergency_phone1">Cell Phone 1</label>
+            <label for="athlete_emergency_phone1">Cell Phone</label>
             <input type="tel" id="athlete_emergency_phone1" placeholder="(619) 555-0100" required>
           </div>
-          <div class="field">
-            <label for="athlete_emergency_phone2">Cell Phone 2</label>
-            <input type="tel" id="athlete_emergency_phone2" placeholder="(619) 555-0100">
-          </div>
           <div class="field" style="border-top:1px solid #eef1f7;padding-top:14px;">
-            <label style="font-weight:800;">Emergency Contact 2</label>
+            <label style="font-weight:800;">Emergency Contact 2 <span class="muted" style="font-weight:400;">(optional)</span></label>
           </div>
           <div class="field">
             <label for="athlete_emergency2_name">Name</label>
-            <input type="text" id="athlete_emergency2_name" placeholder="e.g. Uncle Mike" required>
+            <input type="text" id="athlete_emergency2_name" placeholder="e.g. Uncle Mike">
           </div>
           <div class="field">
             <label for="athlete_emergency2_email">Email</label>
-            <input type="email" id="athlete_emergency2_email" placeholder="uncle@example.com" required>
+            <input type="email" id="athlete_emergency2_email" placeholder="uncle@example.com">
           </div>
           <div class="field">
-            <label for="athlete_emergency2_phone1">Cell Phone 1</label>
-            <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100" required>
-          </div>
-          <div class="field">
-            <label for="athlete_emergency2_phone2">Cell Phone 2</label>
-            <input type="tel" id="athlete_emergency2_phone2" placeholder="(619) 555-0100">
+            <label for="athlete_emergency2_phone1">Cell Phone</label>
+            <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100">
           </div>
           <div class="field">
             <label for="athlete_notes">Medical / Allergy Notes</label>
-            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about"></textarea>
+            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about" required></textarea>
+            <p class="muted" style="font-size:12px;margin-top:4px;">Enter N/A if not applicable.</p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button type="submit" id="athlete-submit-btn" class="btn btn-primary">Save Athlete</button>
@@ -338,6 +331,7 @@
 <script src="js/content-blocks.js"></script>
 <script src="js/image-blocks.js"></script>
 <script src="js/page-extras.js"></script>
+<script src="js/team-age.js"></script>
 <script>
   function formatAmount(cents, currency) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: (currency || "usd").toUpperCase() }).format((cents || 0) / 100);
@@ -856,7 +850,10 @@
 
   var myAthletes = [];
 
-  function calcAge(birthdate) {
+  // Plain current age for display next to an athlete's name -- distinct
+  // from js/team-age.js's calcAge(), which computes the domestic-eligibility
+  // age (as of next August 1) used for team placement below.
+  function calcDisplayAge(birthdate) {
     if (!birthdate) return null;
     var dob = new Date(birthdate + "T00:00:00");
     var diff = new Date() - dob;
@@ -904,7 +901,7 @@
     } else {
       listEl.innerHTML = myAthletes
         .map(function (a) {
-          const age = calcAge(a.birthdate);
+          const age = calcDisplayAge(a.birthdate);
           return (
             '<div class="admin-list-item athlete-row" data-athlete-row="' + a.id + '" style="display:block;cursor:pointer;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
@@ -979,11 +976,9 @@
     document.getElementById("athlete_emergency_name").value = a.emergency_contact_name || "";
     document.getElementById("athlete_emergency_email").value = a.emergency_contact_email || "";
     document.getElementById("athlete_emergency_phone1").value = a.emergency_contact_phone1 || "";
-    document.getElementById("athlete_emergency_phone2").value = a.emergency_contact_phone2 || "";
     document.getElementById("athlete_emergency2_name").value = a.emergency_contact2_name || "";
     document.getElementById("athlete_emergency2_email").value = a.emergency_contact2_email || "";
     document.getElementById("athlete_emergency2_phone1").value = a.emergency_contact2_phone1 || "";
-    document.getElementById("athlete_emergency2_phone2").value = a.emergency_contact2_phone2 || "";
     document.getElementById("athlete_notes").value = a.notes || "";
     document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -1005,11 +1000,9 @@
       emergency_contact_name: document.getElementById("athlete_emergency_name").value.trim() || null,
       emergency_contact_email: document.getElementById("athlete_emergency_email").value.trim() || null,
       emergency_contact_phone1: document.getElementById("athlete_emergency_phone1").value.trim() || null,
-      emergency_contact_phone2: document.getElementById("athlete_emergency_phone2").value.trim() || null,
       emergency_contact2_name: document.getElementById("athlete_emergency2_name").value.trim() || null,
       emergency_contact2_email: document.getElementById("athlete_emergency2_email").value.trim() || null,
       emergency_contact2_phone1: document.getElementById("athlete_emergency2_phone1").value.trim() || null,
-      emergency_contact2_phone2: document.getElementById("athlete_emergency2_phone2").value.trim() || null,
       notes: document.getElementById("athlete_notes").value.trim() || null,
     };
 
@@ -1031,7 +1024,7 @@
     const wrap = document.getElementById("registration-options");
     const { data: options, error } = await supabaseClient
       .from("registration_options")
-      .select("id, label, description, amount_cents, season")
+      .select("id, label, description, amount_cents, season, team_slugs")
       .eq("is_open", true)
       .order("sort_order", { ascending: true });
 
@@ -1048,14 +1041,29 @@
       options
         .map(function (o) {
           const amount = formatAmount(o.amount_cents, "usd");
+          // Guides parents to the right program by birthdate: a lot of
+          // sign-ups for the wrong team happen because the age cutoff is
+          // next August 1, not today -- so an athlete can "look" one age
+          // group but actually belong to another. This warns rather than
+          // blocks, since a manual team_slug override or playing up/down
+          // a group are both legitimate reasons the derived team might not
+          // match what's actually right for them.
+          const optionTeams = o.team_slugs || [];
           const athleteChecks = myAthletes.length
             ? myAthletes
                 .map(function (a) {
+                  const athleteTeam = a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
+                  const mismatch = optionTeams.length && athleteTeam && optionTeams.indexOf(athleteTeam) === -1;
+                  const warning = mismatch
+                    ? '<div class="muted" style="font-size:12px;color:#a12626;margin:-2px 0 6px 26px;">Based on their birthdate, ' +
+                      escapeHtml(a.full_name.split(" ")[0]) + " is on the " + escapeHtml(deriveTeamLabel(calcAge(a.birthdate), a.sex)) +
+                      " team &mdash; double-check this is the right program.</div>"
+                    : "";
                   return (
                     '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
                     '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
                     escapeHtml(a.full_name) +
-                    "</label>"
+                    "</label>" + warning
                   );
                 })
                 .join("")

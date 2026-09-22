@@ -48,7 +48,7 @@
   <div class="container" style="max-width:760px;">
 
     <div class="notice" style="margin-bottom:24px;">
-      Masters is billed separately from team registration &mdash; members pay themselves on a monthly subscription they can pause anytime, priced by whether they're 25 &amp; under or 26+. The 1-Day Pay to Play rate on the public Masters page is a plain one-time charge, not a subscription &mdash; set (or change) its price on the <a href="admin-registrations.html" style="color:var(--blue);font-weight:700;">Registrations</a> page by adding/editing an option tagged "Masters". The public page reads that price live, and members pay through the same Register &amp; Pay checkout as any other program.
+      Masters is billed separately from team registration &mdash; members pay themselves on a monthly subscription they can pause anytime, priced by whether they're 25 &amp; under or 26+. The Drop-In rate below is a plain one-time charge, not a subscription; the public Masters page reads its price live, and members pay it through the same Register &amp; Pay checkout as any other program.
     </div>
 
     <h3>Monthly Pricing</h3>
@@ -71,6 +71,28 @@
         <p class="muted" id="price-26-plus-current" style="font-size:13px;margin-top:6px;"></p>
       </div>
     </div>
+
+    <h3 style="margin-top:32px;">Drop-In Rate</h3>
+    <p class="muted" style="font-size:13px;">A one-time, pay-per-visit price (e.g. "1-Day Pay to Play") &mdash; not a subscription. Uses the same registration system as team programs, tagged for Masters, so it shows up automatically on the public Masters page and in the Register &amp; Pay checkout.</p>
+    <div id="dropin-msg" class="form-msg"></div>
+    <div id="dropin-list"></div>
+    <form id="dropin-form" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <input type="hidden" id="dropin-id">
+      <div class="field" style="margin:0;flex:1;min-width:180px;">
+        <label for="dropin-label">Label</label>
+        <input type="text" id="dropin-label" placeholder="e.g. 1-Day Pay to Play" required>
+      </div>
+      <div class="field" style="margin:0;width:120px;">
+        <label for="dropin-amount">Amount ($)</label>
+        <input type="number" id="dropin-amount" step="0.01" min="0" required>
+      </div>
+      <div class="field" style="margin:0;display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="dropin-open" checked style="width:auto;">
+        <label for="dropin-open" style="margin:0;font-weight:400;font-size:13px;">Open for sign-up</label>
+      </div>
+      <button type="submit" id="dropin-submit-btn" class="btn btn-outline-dark">Add Rate</button>
+      <button type="button" id="dropin-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+    </form>
 
     <h3 style="margin-top:32px;">Members</h3>
     <div id="members-list"><p class="muted">Loading&hellip;</p></div>
@@ -158,6 +180,99 @@
     });
   });
 
+  // ---- Drop-In Rate: registration_options tagged for "masters" -----------
+  // Reuses the same manage-registration-options function admin-registrations.html
+  // uses (it creates/archives the underlying Stripe Price), just scoped to a
+  // fixed team_slugs:["masters"] tag so the owner never has to leave this page.
+  let dropInOptions = [];
+
+  async function loadDropIn() {
+    const listEl = document.getElementById("dropin-list");
+    const { data, error } = await supabaseClient
+      .from("registration_options")
+      .select("id, label, amount_cents, is_open, team_slugs")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    dropInOptions = (data || []).filter(function (o) { return (o.team_slugs || []).indexOf("masters") !== -1; });
+
+    if (dropInOptions.length === 0) {
+      listEl.innerHTML = '<p class="muted">No drop-in rate set yet &mdash; add one below.</p>';
+      return;
+    }
+    listEl.innerHTML = dropInOptions.map(function (o) {
+      return '<div class="admin-list-item">' +
+        "<div><h4>" + escapeHtml(o.label) + (o.is_open ? "" : ' <span class="muted" style="font-weight:400;">(closed)</span>') + "</h4>" +
+        '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + "</div></div>" +
+        '<div class="admin-list-actions"><button data-edit-dropin="' + o.id + '">Edit</button></div>' +
+        "</div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-edit-dropin]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const o = dropInOptions.find(function (x) { return x.id === btn.dataset.editDropin; });
+        if (!o) return;
+        document.getElementById("dropin-id").value = o.id;
+        document.getElementById("dropin-label").value = o.label;
+        document.getElementById("dropin-amount").value = (o.amount_cents / 100).toFixed(2);
+        document.getElementById("dropin-open").checked = !!o.is_open;
+        document.getElementById("dropin-submit-btn").textContent = "Save Changes";
+        document.getElementById("dropin-cancel-btn").style.display = "inline-block";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+  }
+
+  function resetDropInForm() {
+    document.getElementById("dropin-form").reset();
+    document.getElementById("dropin-id").value = "";
+    document.getElementById("dropin-open").checked = true;
+    document.getElementById("dropin-submit-btn").textContent = "Add Rate";
+    document.getElementById("dropin-cancel-btn").style.display = "none";
+  }
+  document.getElementById("dropin-cancel-btn").addEventListener("click", resetDropInForm);
+
+  document.getElementById("dropin-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("dropin-msg");
+    msg.className = "form-msg";
+    const dollars = parseFloat(document.getElementById("dropin-amount").value);
+    if (isNaN(dollars) || dollars < 0) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter a valid amount.";
+      return;
+    }
+    const id = document.getElementById("dropin-id").value;
+    const btn = document.getElementById("dropin-submit-btn");
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = "Saving...";
+    const { data, error } = await supabaseClient.functions.invoke("manage-registration-options", {
+      body: {
+        action: "set",
+        id: id || undefined,
+        label: document.getElementById("dropin-label").value.trim(),
+        amount_dollars: dollars,
+        team_slugs: ["masters"],
+        is_open: document.getElementById("dropin-open").checked,
+        sort_order: 0,
+      },
+    });
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    if (error || !data || data.error) {
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(error, data, "Could not save the drop-in rate.");
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Saved.";
+    resetDropInForm();
+    loadDropIn();
+  });
+
   async function loadMembers() {
     const listEl = document.getElementById("members-list");
     const { data: subs, error } = await supabaseClient
@@ -223,6 +338,7 @@
     const auth = await requireRole(["owner"]);
     if (!auth) return;
     loadPricing();
+    loadDropIn();
     loadMembers();
   })();
 </script>

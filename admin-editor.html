@@ -40,10 +40,12 @@
     padding: 8px 16px; background: #f1f4f9; border-bottom: 1px solid #dde3ee; flex-shrink: 0;
   }
   .ed-richbar.visible { display: flex; }
-  .ed-richbar button {
-    padding: 6px 11px; border: 1px solid #d7e6ee; background: #fff; border-radius: 5px; cursor: pointer; font-size: 12.5px;
+  .ed-richbar button, .ed-richbar select {
+    padding: 6px 11px; border: 1px solid #d7e6ee; background: #fff; border-radius: 5px; cursor: pointer; font-size: 12.5px; font-family: inherit;
   }
   .ed-richbar button:hover { background: #eef3f8; }
+  .ed-richbar button.ed-btn-highlight { background: var(--gold, #ffd400); border-color: var(--gold, #ffd400); font-weight: 700; }
+  .ed-richbar button.ed-btn-highlight:hover { filter: brightness(0.95); }
   .ed-richbar .divider { width: 1px; height: 22px; background: #d7e6ee; margin: 0 2px; }
   .ed-richbar .hint { font-size: 11.5px; color: #6b7280; margin-left: auto; }
 
@@ -57,6 +59,19 @@
   .ed-settings .field input[type="text"] { width: 100%; padding: 7px 9px; border: 1px solid #d7e6ee; border-radius: 6px; font-size: 13px; }
   .ed-settings .checkline { display: flex; align-items: center; gap: 6px; font-size: 13px; }
   .ed-settings .checkline input { width: auto; }
+  .ed-publish-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 700; color: #1a1a4d; }
+  .ed-publish-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .ed-publish-slider {
+    position: relative; width: 44px; height: 24px; border-radius: 999px; background: #d7dbe8; flex-shrink: 0; transition: background .15s;
+  }
+  .ed-publish-slider::before {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s;
+  }
+  .ed-publish-toggle input:checked + .ed-publish-slider { background: #2e9e4f; }
+  .ed-publish-toggle input:checked + .ed-publish-slider::before { transform: translateX(20px); }
+  .ed-publish-toggle input:focus-visible + .ed-publish-slider { outline: 2px solid var(--blue, #0000ff); outline-offset: 2px; }
+  #advanced-details { font-size: 13px; }
+  #advanced-details summary { cursor: pointer; color: var(--blue, #0000ff); font-weight: 700; }
 
   .ed-canvas-wrap { flex: 1; min-height: 0; background: #e9edf3; position: relative; }
   #canvas { width: 100%; height: 100%; border: none; display: block; background: #fff; }
@@ -132,47 +147,57 @@
 
 <div class="ed-settings" id="settings-panel">
   <div class="row">
-    <div class="field" style="min-width:240px;">
-      <label for="s-title">Page Title</label>
+    <div class="field" style="min-width:280px;">
+      <label for="s-title">Page Name</label>
       <input type="text" id="s-title" placeholder="e.g. Summer League 2027">
     </div>
-    <div class="field" style="min-width:240px;">
-      <label for="s-slug">Web Address</label>
-      <input type="text" id="s-slug" placeholder="summer-league-2027" pattern="[a-z0-9\-]+">
-    </div>
-    <div class="field">
-      <label for="s-meta">Search Description</label>
-      <input type="text" id="s-meta" placeholder="One sentence shown in Google results">
-    </div>
+    <label class="checkline"><input type="checkbox" id="s-show-nav"> Show in the menu at the top of the site</label>
   </div>
   <div class="row" style="align-items:center;">
-    <label class="checkline"><input type="checkbox" id="s-show-nav"> Show in the top menu</label>
-    <label class="checkline">Menu order <input type="text" id="s-sort" style="width:50px;padding:5px 7px;border:1px solid #d7e6ee;border-radius:5px;" value="0"></label>
-    <label class="checkline"><input type="checkbox" id="s-published"> Published (visible to everyone)</label>
+    <label class="ed-publish-toggle">
+      <input type="checkbox" id="s-published">
+      <span class="ed-publish-slider"></span>
+      <span class="ed-publish-label" id="s-published-label">Not visible to anyone yet</span>
+    </label>
     <div class="spacer"></div>
+    <details id="advanced-details">
+      <summary>Advanced</summary>
+      <div class="row" style="margin-top:10px;">
+        <div class="field" style="min-width:240px;">
+          <label for="s-slug">Page Web Address</label>
+          <input type="text" id="s-slug" placeholder="summer-league-2027" pattern="[a-z0-9\-]+">
+        </div>
+        <div class="field">
+          <label for="s-meta">Search Description</label>
+          <input type="text" id="s-meta" placeholder="One sentence shown in Google results">
+        </div>
+        <label class="checkline">Menu order <input type="text" id="s-sort" style="width:50px;padding:5px 7px;border:1px solid #d7e6ee;border-radius:5px;" value="0"></label>
+      </div>
+    </details>
     <button type="button" id="delete-page-btn" style="color:#a12626;border:1px solid #f0c9c9;background:#fff;border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;">Delete This Page</button>
   </div>
 </div>
 
 <div class="ed-richbar" id="rich-bar">
-  <button type="button" data-cmd="bold" title="Bold"><strong>B</strong></button>
-  <button type="button" data-cmd="italic" title="Italic"><em>I</em></button>
-  <button type="button" id="rb-link-btn">Link</button>
+  <button type="button" data-cmd="bold" title="Make selected text bold"><strong>B</strong></button>
+  <button type="button" data-cmd="italic" title="Make selected text italic"><em>I</em></button>
+  <button type="button" id="rb-link-btn" title="Turn selected text into a clickable link">Link</button>
+  <select id="rb-text-style" title="Change the size of this text">
+    <option value="P">Normal Text</option>
+    <option value="H2">Big Title</option>
+    <option value="H3">Smaller Title</option>
+  </select>
   <div class="divider"></div>
-  <button type="button" data-block="H2">Heading</button>
-  <button type="button" data-block="H3">Subheading</button>
-  <button type="button" data-block="P">Normal</button>
+  <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">&bull; List</button>
+  <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
   <div class="divider"></div>
-  <button type="button" data-cmd="insertUnorderedList">&bull; List</button>
-  <button type="button" data-cmd="insertOrderedList">1. List</button>
-  <div class="divider"></div>
-  <button type="button" id="rb-add-section-btn" style="font-weight:700;">+ Add Section</button>
-  <button type="button" id="rb-add-card-btn">+ Add Card</button>
-  <button type="button" id="rb-move-up-btn" title="Move this section up">&uarr; Move Up</button>
-  <button type="button" id="rb-move-down-btn" title="Move this section down">&darr; Move Down</button>
-  <button type="button" id="rb-insert-image-btn">Image</button>
-  <button type="button" id="rb-delete-section-btn" style="color:#a12626;">Delete Section</button>
-  <span class="hint">&#128161; Click any text or photo below to edit it right there. Use + Add Section to add something new.</span>
+  <button type="button" id="rb-add-section-btn" class="ed-btn-highlight" title="Add a ready-made block (photo, boxes, banner, etc.) below where you clicked">+ Add Section</button>
+  <button type="button" id="rb-add-card-btn" title="Adds one more box next to the ones you already have">+ Add Box</button>
+  <button type="button" id="rb-insert-image-btn" title="Add a photo where your cursor is">+ Add Photo</button>
+  <button type="button" id="rb-move-up-btn" title="Move this whole block up">&uarr; Move Up</button>
+  <button type="button" id="rb-move-down-btn" title="Move this whole block down">&darr; Move Down</button>
+  <button type="button" id="rb-delete-section-btn" style="color:#a12626;" title="Remove this whole block">Delete</button>
+  <span class="hint">&#128161; Click any text or photo below to edit it right there. Hover between sections to add something new.</span>
 </div>
 
 <div class="ed-canvas-wrap" id="canvas-wrap">
@@ -299,6 +324,7 @@
     if (node === container) node = container.childNodes[lastRange.startOffset] || container.lastChild;
     if (node && node.nodeType === 3) node = node.parentElement;
     while (node && node.parentElement !== container && node !== container) node = node.parentElement;
+    if (node && node.classList && node.classList.contains("cms-insert-gap")) return null;
     return node && node !== container ? node : null;
   }
 
@@ -332,7 +358,18 @@
       '.cms-figure{position:relative;display:inline-block;max-width:100%;margin:10px 0;}' +
       '.cms-figure img{display:block;max-width:100%;border-radius:6px;}' +
       '.cms-figure-remove{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(20,30,50,.75);color:#fff;font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;}' +
-      '.cms-figure:hover .cms-figure-remove,.cms-figure-remove:focus{opacity:1;}';
+      '.cms-figure:hover .cms-figure-remove,.cms-figure-remove:focus{opacity:1;}' +
+      // A thin, invisible-until-you-hover strip between every existing
+      // block -- so a new section can be dropped in exactly where it's
+      // wanted, not just appended at the very end.
+      // No negative margin -- overlapping a non-editable gap onto the text
+      // above/below it (however slightly) confused Chromium's click-to-
+      // caret placement right at that seam, landing the caret on the
+      // whole container instead of inside the clicked text.
+      '.cms-insert-gap{position:relative;height:14px;z-index:4;}' +
+      '.cms-insert-gap:hover{background:rgba(0,0,255,.05);}' +
+      '.cms-insert-gap-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;border:none;background:#0000ff;color:#fff;font-size:17px;font-weight:800;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;box-shadow:0 2px 6px rgba(0,0,0,.25);}' +
+      '.cms-insert-gap:hover .cms-insert-gap-btn,.cms-insert-gap-btn:focus{opacity:1;}';
     doc.head.appendChild(style);
   }
 
@@ -361,7 +398,7 @@
       if (img) fig.replaceWith(img);
       else fig.remove();
     });
-    clone.querySelectorAll(".cms-add-section-btn").forEach(function (b) { b.remove(); });
+    clone.querySelectorAll(".cms-add-section-btn, .cms-insert-gap").forEach(function (b) { b.remove(); });
     return sanitizeHtml(clone.innerHTML);
   }
 
@@ -376,9 +413,49 @@
     // there is lost when the button is stripped back out before saving.
     btn.contentEditable = "false";
     btn.addEventListener("click", function (e) {
-      openTemplateGallery(btn);
+      openTemplateGallery(btn, btn);
     });
     return btn;
+  }
+
+  // A real DOM element per gap (rebuilt fresh after every structural
+  // change) rather than tracking positions in JS -- simplest way to keep
+  // "where can I insert" always in sync with whatever's actually on the
+  // page, including after a section gets added, moved, or deleted.
+  function makeInsertGap(doc) {
+    const gap = doc.createElement("div");
+    gap.className = "cms-insert-gap";
+    gap.contentEditable = "false";
+    const btn = doc.createElement("button");
+    btn.type = "button";
+    btn.className = "cms-insert-gap-btn";
+    btn.textContent = "+";
+    btn.title = "Add a new section here";
+    gap.appendChild(btn);
+    btn.addEventListener("click", function () { openTemplateGallery(btn, gap); });
+    return gap;
+  }
+
+  function refreshInsertGaps(container, doc) {
+    container.querySelectorAll(":scope > .cms-insert-gap").forEach(function (g) { g.remove(); });
+    Array.prototype.slice.call(container.children).forEach(function (child) {
+      if (child.classList.contains("cms-add-section-btn")) return;
+      container.insertBefore(makeInsertGap(doc), child);
+    });
+  }
+
+  // Move Up/Down/Delete need "the real block before/after this one,"
+  // skipping the gap markers (and the trailing button) that sit between
+  // every pair of real blocks as ordinary siblings.
+  function prevContentSibling(node) {
+    let s = node.previousElementSibling;
+    while (s && s.classList.contains("cms-insert-gap")) s = s.previousElementSibling;
+    return s;
+  }
+  function nextContentSibling(node) {
+    let s = node.nextElementSibling;
+    while (s && (s.classList.contains("cms-insert-gap") || s.classList.contains("cms-add-section-btn"))) s = s.nextElementSibling;
+    return s;
   }
 
   function wireSelectionTracking(doc) {
@@ -482,12 +559,15 @@
   }).join("");
 
   let galleryInsertBtn = null;
-  function openTemplateGallery(anchorBtn) {
+  let galleryInsertAnchor = null; // the node new content gets inserted BEFORE
+  function openTemplateGallery(anchorBtn, insertBeforeNode) {
     galleryInsertBtn = anchorBtn;
-    // The anchor (e.g. the "+ Add Section" button near the footer) is
-    // often scrolled out of view inside the iframe on a long page --
-    // bring it into view first, or the popup's position (computed from
-    // its on-screen rect a moment later) ends up off-screen too.
+    galleryInsertAnchor = insertBeforeNode || anchorBtn;
+    // The anchor (e.g. the "+ Add Section" button near the footer, or a
+    // hover gap between two sections) is often scrolled out of view inside
+    // the iframe on a long page -- bring it into view first, or the
+    // popup's position (computed from its on-screen rect a moment later)
+    // ends up off-screen too.
     anchorBtn.scrollIntoView({ block: "center" });
     setTimeout(function () {
       const wrapRect = document.getElementById("canvas-wrap").getBoundingClientRect();
@@ -514,13 +594,17 @@
       const doc = frameDoc();
       const wrapper = doc.createElement("div");
       wrapper.innerHTML = html;
-      const addBtn = container.querySelector(".cms-add-section-btn");
+      // Insert right where they asked -- at a specific gap between two
+      // existing sections, or (from the bottom "+ Add Section" button)
+      // at the very end.
+      const anchor = (galleryInsertAnchor && container.contains(galleryInsertAnchor)) ? galleryInsertAnchor : container.querySelector(".cms-add-section-btn");
       const inserted = Array.prototype.slice.call(wrapper.childNodes);
-      inserted.forEach(function (node) { container.insertBefore(node, addBtn); });
+      inserted.forEach(function (node) { container.insertBefore(node, anchor); });
       wrapExistingImagesForEditing(container, doc);
+      refreshInsertGaps(container, doc);
       extrasOrBodyDirty = true;
       refreshDirtyChrome();
-      if (inserted[0] && inserted[0].scrollIntoView) inserted[0].scrollIntoView({ behavior: "smooth", block: "center" });
+      if (inserted[0] && inserted[0].scrollIntoView) inserted[0].scrollIntoView({ block: "center" });
     });
   });
 
@@ -533,14 +617,13 @@
       refreshDirtyChrome();
     });
   });
-  document.querySelectorAll("#rich-bar [data-block]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      if (!requireStructuralFocus()) return;
-      focusFrameAndRestoreRange();
-      frameDoc().execCommand("formatBlock", false, btn.dataset.block);
-      extrasOrBodyDirty = true;
-      refreshDirtyChrome();
-    });
+  document.getElementById("rb-text-style").addEventListener("change", function () {
+    if (!requireStructuralFocus()) { this.value = "P"; return; }
+    focusFrameAndRestoreRange();
+    frameDoc().execCommand("formatBlock", false, this.value);
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+    this.value = "P";
   });
   document.getElementById("rb-link-btn").addEventListener("click", function () {
     const url = prompt("Link address (https://... or another page like teams.html)");
@@ -554,7 +637,7 @@
     const container = structuralContainer();
     if (!container) return;
     const addBtn = container.querySelector(".cms-add-section-btn") || container;
-    openTemplateGallery(addBtn === container ? container : addBtn);
+    openTemplateGallery(addBtn === container ? container : addBtn, addBtn);
   });
   document.getElementById("rb-add-card-btn").addEventListener("click", function () {
     if (!requireStructuralFocus()) return;
@@ -572,27 +655,42 @@
     if (!template) { alert("This row doesn't have cards to duplicate."); return; }
     const clone = template.cloneNode(true);
     row.appendChild(clone);
-    clone.scrollIntoView({ behavior: "smooth", block: "center" });
+    clone.scrollIntoView({ block: "center" });
     extrasOrBodyDirty = true;
     refreshDirtyChrome();
   });
+  // Moving the node that currently anchors the selection leaves Chromium's
+  // own click-to-caret placement confused about that exact node until
+  // something else gets clicked first (observed: re-clicking the
+  // just-moved block right after resolved the caret to the whole
+  // container instead of its text) -- force a clean slate immediately
+  // after the move so the very next click, on anything, starts fresh.
+  function resetSelectionAfterMove() {
+    const doc = frameDoc();
+    if (doc) doc.getSelection().removeAllRanges();
+    lastRange = null;
+  }
   document.getElementById("rb-move-up-btn").addEventListener("click", function () {
     const node = currentTopLevelBlock();
     if (!node) { alert("Click inside the section you want to move first."); return; }
-    const prev = node.previousElementSibling;
+    const prev = prevContentSibling(node);
     if (!prev) return;
     node.parentElement.insertBefore(node, prev);
-    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    refreshInsertGaps(node.parentElement, frameDoc());
+    node.scrollIntoView({ block: "center" });
+    resetSelectionAfterMove();
     extrasOrBodyDirty = true;
     refreshDirtyChrome();
   });
   document.getElementById("rb-move-down-btn").addEventListener("click", function () {
     const node = currentTopLevelBlock();
     if (!node) { alert("Click inside the section you want to move first."); return; }
-    const next = node.nextElementSibling;
-    if (!next || next.classList.contains("cms-add-section-btn")) return;
+    const next = nextContentSibling(node);
+    if (!next) return;
     node.parentElement.insertBefore(next, node);
-    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    refreshInsertGaps(node.parentElement, frameDoc());
+    node.scrollIntoView({ block: "center" });
+    resetSelectionAfterMove();
     extrasOrBodyDirty = true;
     refreshDirtyChrome();
   });
@@ -618,6 +716,7 @@
     }
     if (!confirm("Delete this section? This can't be undone once you save.")) return;
     node.remove();
+    refreshInsertGaps(container, frameDoc());
     lastRange = null;
     extrasOrBodyDirty = true;
     refreshDirtyChrome();
@@ -748,6 +847,7 @@
       extrasBody.innerHTML = sanitizeHtml((extrasRow && extrasRow.body_html) || "");
       wrapExistingImagesForEditing(extrasBody, doc);
       extrasBody.appendChild(makeAddSectionButton(doc));
+      refreshInsertGaps(extrasBody, doc);
       extrasBody.addEventListener("input", function () { extrasOrBodyDirty = true; refreshDirtyChrome(); });
       extrasBody.addEventListener("click", function (e) {
         const removeBtn = e.target.closest(".cms-figure-remove");
@@ -801,6 +901,7 @@
       bodyEl.id = "page-body";
       wrapExistingImagesForEditing(bodyEl, doc);
       bodyEl.appendChild(makeAddSectionButton(doc, isEmpty ? "+ Add Your First Section" : "+ Add Section"));
+      refreshInsertGaps(bodyEl, doc);
       if (isEmpty) {
         const placeholderP = bodyEl.querySelector("p");
         // "focusin" fires mid-gesture, before the browser finishes placing
@@ -849,14 +950,35 @@
     canvas.src = "page.html?slug=" + encodeURIComponent(row.slug) + "&edit=1&_=" + Date.now();
   }
 
+  // Nobody editing this needs to think about a "web address" -- it's
+  // derived from the page name automatically, unless someone deliberately
+  // opens Advanced and types their own. slugTouched flips permanently once
+  // that happens, for THIS page-load, so a page someone deliberately
+  // renamed the URL for doesn't get silently overwritten again just from
+  // editing the title afterward.
+  let slugTouched = false;
+  function updatePublishLabel() {
+    const label = document.getElementById("s-published-label");
+    label.textContent = document.getElementById("s-published").checked
+      ? "Anyone can see this page right now"
+      : "Not visible to anyone yet";
+  }
   function fillSettingsFields(row) {
+    slugTouched = false;
     document.getElementById("s-title").value = row.title || "";
     document.getElementById("s-slug").value = row.slug || "";
     document.getElementById("s-meta").value = row.meta_description || "";
     document.getElementById("s-show-nav").checked = !!row.show_in_nav;
     document.getElementById("s-sort").value = row.sort_order || 0;
     document.getElementById("s-published").checked = !!row.is_published;
+    document.getElementById("advanced-details").open = false;
+    updatePublishLabel();
   }
+  document.getElementById("s-title").addEventListener("input", function () {
+    if (!slugTouched) document.getElementById("s-slug").value = slugify(this.value);
+  });
+  document.getElementById("s-slug").addEventListener("input", function () { slugTouched = true; });
+  document.getElementById("s-published").addEventListener("change", updatePublishLabel);
   ["s-title", "s-slug", "s-meta", "s-show-nav", "s-sort", "s-published"].forEach(function (id) {
     document.getElementById(id).addEventListener("input", function () {
       settingsDirty = true;

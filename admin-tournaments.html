@@ -70,7 +70,7 @@
             <option value="live" selected>Live Tournament &mdash; open for RSVP/registration</option>
             <option value="interest">Interest Form &mdash; the club is only considering this one</option>
           </select>
-          <p class="muted" style="font-size:12px;margin-top:4px;">An interest form collects who'd want to go, with no payment involved. You can make it live later from its management page once it's confirmed &mdash; everyone who said they were interested carries over automatically.</p>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Choose Interest Form to gauge who'd want to go before committing to anything &mdash; families can say yes, but nobody pays yet. Once it's confirmed, open the tournament's management page and switch it to Live; everyone who said they were interested carries over automatically, so they won't need to sign up again.</p>
         </div>
         <div class="field">
           <label for="t-name">Tournament Name</label>
@@ -94,23 +94,23 @@
           </div>
         </div>
         <div class="field">
-          <label for="t-team-slug">Team (optional)</label>
-          <select id="t-team-slug">
-            <option value="">Not tied to a specific team</option>
+          <label for="t-team-slug">Team</label>
+          <select id="t-team-slug" required>
+            <option value="" disabled selected>Choose a team&hellip;</option>
           </select>
-          <p class="muted" style="font-size:12px;margin-top:4px;">Set this to let that team's families RSVP and to build a roster below. Leave blank for a standalone invite-only tournament.</p>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Lets that team's families RSVP and builds a roster below.</p>
         </div>
         <div class="field">
-          <label for="t-rsvp-deadline">RSVP Deadline (optional)</label>
-          <input type="date" id="t-rsvp-deadline">
+          <label for="t-rsvp-deadline">RSVP Deadline</label>
+          <input type="date" id="t-rsvp-deadline" required>
         </div>
         <div class="field">
-          <label for="t-location">Location (optional)</label>
-          <input type="text" id="t-location" placeholder="e.g. Riverside Aquatics Complex, Riverside, CA">
+          <label for="t-location">Location</label>
+          <input type="text" id="t-location" placeholder="e.g. Riverside Aquatics Complex, Riverside, CA" required>
         </div>
         <div class="field">
-          <label for="t-cost-note">Estimated Cost of Tournament (optional)</label>
-          <input type="text" id="t-cost-note" placeholder="e.g. $250">
+          <label for="t-cost-note">Estimated Cost of Tournament</label>
+          <input type="text" id="t-cost-note" placeholder="e.g. $250" required>
           <p class="muted" style="font-size:12px;margin-top:4px;">Does not include lodging and travel, if applicable. Shown to families before they RSVP &mdash; the real charge is whatever the price tiers add up to.</p>
         </div>
         <div class="field">
@@ -185,7 +185,7 @@
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
     teams = data || [];
     const select = document.getElementById("t-team-slug");
-    select.innerHTML = '<option value="">Not tied to a specific team</option>' +
+    select.innerHTML = '<option value="" disabled' + (document.getElementById("t-id").value ? "" : " selected") + '>Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
   }
   function teamLabel(slug) {

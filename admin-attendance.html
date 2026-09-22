@@ -28,7 +28,7 @@
 </style>
 <style>
   /* Neutral by default -- nothing here should look like anyone is marked
-     absent just because roll call was opened. Marking someone present is
+     absent just because attendance was opened. Marking someone present is
      the only state with a visual treatment: bold name, dark gray row. */
   .attendance-row.present{background:#e9e9ec;border-color:#c7c7cd;}
   .attendance-row.present .att-name{font-weight:800;}
@@ -84,7 +84,7 @@
 
     <div class="field" id="hours-field" style="display:none;">
       <label>Coach Hours for This Session</label>
-      <p class="field-hint" style="margin-top:0;">Log hours for any coach who was here &mdash; not just yourself. Saved with the roll call below.</p>
+      <p class="field-hint" style="margin-top:0;">Log hours for any coach who was here &mdash; not just yourself. Saved with attendance below.</p>
       <div id="coach-hours-list"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
         <div class="field" style="margin:0;flex:1;min-width:180px;">
@@ -101,11 +101,55 @@
 
     <div id="attendance-summary" class="attendance-summary"></div>
     <div id="roll-status" class="form-msg"></div>
-    <div id="attendance-list"><p class="muted">Choose a team and date to take roll call.</p></div>
+    <div id="attendance-list"><p class="muted">Choose a team and date to take attendance.</p></div>
 
     <div id="roll-save-bar" style="display:none;position:sticky;bottom:0;background:#fff;padding:14px 0;border-top:1px solid #e3edf3;margin-top:8px;">
-      <button type="button" id="save-roll-btn" class="btn btn-primary" style="width:100%;">Save Roll Call</button>
+      <button type="button" id="save-roll-btn" class="btn btn-primary" style="width:100%;">Save Attendance</button>
     </div>
+
+    <details class="collapsible" style="margin-top:28px;">
+      <summary>Tournament Coach Hours</summary>
+      <p class="muted" style="font-size:13px;">Coaches are paid 2 hours per game worked at a tournament, plus $75/day for travel if the tournament is outside the county.</p>
+      <div id="tourn-hours-msg" class="form-msg"></div>
+      <div id="tourn-hours-list"><p class="muted">Loading&hellip;</p></div>
+      <form id="tourn-hours-form" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <input type="hidden" id="th-id">
+        <div class="field" style="margin:0;flex:1;min-width:150px;">
+          <label for="th-team">Team</label>
+          <select id="th-team" required><option value="">Choose a team&hellip;</option></select>
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:170px;">
+          <label for="th-tournament-name">Tournament Name</label>
+          <input type="text" id="th-tournament-name" placeholder="e.g. Rocktober Classic" required>
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:160px;">
+          <label for="th-coach">Coach</label>
+          <select id="th-coach" required><option value="">Choose a coach&hellip;</option></select>
+        </div>
+        <div class="field" style="margin:0;width:135px;">
+          <label for="th-date">Date</label>
+          <input type="date" id="th-date" required>
+        </div>
+        <div class="field" style="margin:0;width:85px;">
+          <label for="th-games">Games</label>
+          <input type="number" id="th-games" min="0" step="1" placeholder="3">
+        </div>
+        <div class="field" style="margin:0;width:100px;">
+          <label for="th-hours">Hours</label>
+          <input type="number" id="th-hours" min="0.25" max="24" step="0.25" required>
+        </div>
+        <div class="field" style="margin:0;display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="th-travel" style="width:auto;">
+          <label for="th-travel" style="margin:0;font-weight:400;font-size:13px;">Out of county</label>
+        </div>
+        <div class="field" id="th-travel-days-wrap" style="margin:0;width:110px;display:none;">
+          <label for="th-travel-days" style="font-size:13px;">Travel Days</label>
+          <input type="number" id="th-travel-days" min="1" step="1" value="1">
+        </div>
+        <button type="submit" id="th-submit-btn" class="btn btn-outline-dark">Add</button>
+        <button type="button" id="th-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+      </form>
+    </details>
   </div>
 </section>
 
@@ -145,7 +189,7 @@
   let allAthletes = [];
   let currentUserId = null;
   // Athlete ids marked PRESENT so far. Everyone not in here stays in the
-  // plain default look -- roll call should never visually suggest someone
+  // plain default look -- attendance should never visually suggest someone
   // is absent just because nobody has tapped them in yet.
   let presentIds = new Set();
   let rollExists = false;
@@ -190,6 +234,15 @@
     dateInput.addEventListener("change", loadRollCall);
     document.getElementById("save-roll-btn").addEventListener("click", saveRollCall);
     document.getElementById("add-coach-hours-btn").addEventListener("click", addCoachHoursEntry);
+
+    const thTeamSelect = document.getElementById("th-team");
+    thTeamSelect.innerHTML = '<option value="">Choose a team&hellip;</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+    const thCoachSelect = document.getElementById("th-coach");
+    thCoachSelect.innerHTML = '<option value="">Choose a coach&hellip;</option>' +
+      coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    document.getElementById("th-date").value = new Date().toISOString().slice(0, 10);
+    initTournamentHours();
   }
 
   function coachName(profileId) {
@@ -290,7 +343,7 @@
   function markUnsaved() {
     const status = document.getElementById("roll-status");
     status.className = "form-msg error";
-    status.textContent = "Not saved yet \u2014 tap Save Roll Call below.";
+    status.textContent = "Not saved yet \u2014 tap Save Attendance below.";
   }
 
   async function loadRollCall() {
@@ -303,7 +356,7 @@
     status.textContent = "";
 
     if (!teamSlug || !date) {
-      listEl.innerHTML = '<p class="muted">Choose a team and date to take roll call.</p>';
+      listEl.innerHTML = '<p class="muted">Choose a team and date to take attendance.</p>';
       summaryEl.textContent = "";
       document.getElementById("roll-save-bar").style.display = "none";
       document.getElementById("hours-field").style.display = "none";
@@ -334,7 +387,8 @@
         .from("coach_hours")
         .select("coach_id, hours")
         .eq("team_slug", teamSlug)
-        .eq("session_date", date),
+        .eq("session_date", date)
+        .eq("session_type", "practice"),
     ]);
 
     // No saved rows means roll was never taken for this date -- which is not
@@ -358,11 +412,11 @@
       status.className = "form-msg success";
       status.textContent = "Roll saved" + (last ? " " + new Date(last).toLocaleString("en-US", {
         month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "") + ". Change anything and save again.";
-      document.getElementById("save-roll-btn").textContent = "Update Roll Call";
+      document.getElementById("save-roll-btn").textContent = "Update Attendance";
     } else {
       status.className = "form-msg";
       status.textContent = "";
-      document.getElementById("save-roll-btn").textContent = "Save Roll Call";
+      document.getElementById("save-roll-btn").textContent = "Save Attendance";
     }
 
     renderRows();
@@ -397,18 +451,20 @@
 
     let hoursError = null;
     if (!error) {
-      // Replace this session's coach-hours entries wholesale: delete what
-      // was there for this team+date, then write exactly what's staged now.
-      // Simpler and safer than diffing adds/removes against what loaded.
+      // Replace this session's PRACTICE coach-hours entries wholesale:
+      // delete what was there for this team+date, then write exactly what's
+      // staged now. Simpler and safer than diffing adds/removes against
+      // what loaded. Scoped to session_type=practice so this never touches
+      // a coach's separately-logged tournament hours for the same team/date.
       const del = await supabaseClient.from("coach_hours").delete()
-        .eq("team_slug", teamSlug).eq("session_date", date);
+        .eq("team_slug", teamSlug).eq("session_date", date).eq("session_type", "practice");
       if (del.error) {
         hoursError = del.error;
       } else {
         const hoursCoachIds = Object.keys(coachHoursEntries);
         if (hoursCoachIds.length) {
           const hoursRows = hoursCoachIds.map(function (coachId) {
-            return { coach_id: coachId, team_slug: teamSlug, session_date: date, hours: coachHoursEntries[coachId] };
+            return { coach_id: coachId, team_slug: teamSlug, session_date: date, hours: coachHoursEntries[coachId], session_type: "practice" };
           });
           const res = await supabaseClient.from("coach_hours").insert(hoursRows);
           hoursError = res.error;
@@ -417,7 +473,7 @@
     }
 
     btn.disabled = false;
-    btn.textContent = "Update Roll Call";
+    btn.textContent = "Update Attendance";
 
     if (error || hoursError) {
       status.className = "form-msg error";
@@ -429,8 +485,143 @@
     const hoursCount = Object.keys(coachHoursEntries).length;
     status.className = "form-msg success";
     status.textContent = "Saved" + (hoursCount
-      ? " \u2014 roll call and hours for " + hoursCount + " coach" + (hoursCount === 1 ? "" : "es") + "."
+      ? " \u2014 attendance and hours for " + hoursCount + " coach" + (hoursCount === 1 ? "" : "es") + "."
       : ".");
+  }
+
+  // ---- Tournament Coach Hours ---------------------------------------------
+  // Separate from the practice roll-call above: a coach is paid 2 hrs/game
+  // for tournament work, plus $75/day travel pay when it's out of county.
+  // Each entry is its own row (session_type='tournament'), not tied to the
+  // team+date picker above, so a coach can log these any time regardless of
+  // what's selected for practice attendance.
+  let tournamentHoursRows = [];
+
+  function formatShortDate(d) {
+    if (!d) return "";
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  async function loadTournamentHours() {
+    const listEl = document.getElementById("tourn-hours-list");
+    const { data, error } = await supabaseClient
+      .from("coach_hours")
+      .select("id, coach_id, team_slug, session_date, hours, tournament_name, travel_days")
+      .eq("session_type", "tournament")
+      .order("session_date", { ascending: false });
+
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    tournamentHoursRows = data || [];
+    if (tournamentHoursRows.length === 0) {
+      listEl.innerHTML = '<p class="muted">No tournament hours logged yet.</p>';
+      return;
+    }
+
+    listEl.innerHTML = tournamentHoursRows.map(function (r) {
+      const travelBit = r.travel_days ? " &middot; " + r.travel_days + " travel day" + (r.travel_days === 1 ? "" : "s") + " ($" + (r.travel_days * 75).toFixed(2) + ")" : "";
+      return '<div class="coach-hours-row">' +
+        "<span><strong>" + escapeHtml(coachName(r.coach_id)) + "</strong> — " + escapeHtml(r.tournament_name || "Tournament") +
+        " (" + escapeHtml((teams.find(function (t) { return t.team_slug === r.team_slug; }) || {}).team_label || r.team_slug) + ")" +
+        " &middot; " + formatShortDate(r.session_date) + " &middot; " + parseFloat(r.hours).toFixed(2) + " hrs" + travelBit + "</span>" +
+        '<div class="actions">' +
+        '<button type="button" class="edit" data-edit-th="' + r.id + '">Edit</button>' +
+        '<button type="button" class="remove" data-remove-th="' + r.id + '">Remove</button>' +
+        "</div></div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-edit-th]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const r = tournamentHoursRows.find(function (x) { return x.id === btn.dataset.editTh; });
+        if (!r) return;
+        document.getElementById("th-id").value = r.id;
+        document.getElementById("th-team").value = r.team_slug;
+        document.getElementById("th-tournament-name").value = r.tournament_name || "";
+        document.getElementById("th-coach").value = r.coach_id;
+        document.getElementById("th-date").value = r.session_date;
+        document.getElementById("th-games").value = "";
+        document.getElementById("th-hours").value = parseFloat(r.hours);
+        document.getElementById("th-travel").checked = !!r.travel_days;
+        document.getElementById("th-travel-days-wrap").style.display = r.travel_days ? "block" : "none";
+        document.getElementById("th-travel-days").value = r.travel_days || 1;
+        document.getElementById("th-submit-btn").textContent = "Save Changes";
+        document.getElementById("th-cancel-btn").style.display = "inline-block";
+      });
+    });
+    listEl.querySelectorAll("[data-remove-th]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Remove this tournament hours entry?")) return;
+        const { error } = await supabaseClient.from("coach_hours").delete().eq("id", btn.dataset.removeTh);
+        if (error) { alert("Could not remove: " + error.message); return; }
+        loadTournamentHours();
+      });
+    });
+  }
+
+  function resetTournamentHoursForm() {
+    document.getElementById("tourn-hours-form").reset();
+    document.getElementById("th-id").value = "";
+    document.getElementById("th-date").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("th-travel-days-wrap").style.display = "none";
+    document.getElementById("th-submit-btn").textContent = "Add";
+    document.getElementById("th-cancel-btn").style.display = "none";
+  }
+
+  function initTournamentHours() {
+    document.getElementById("th-games").addEventListener("input", function () {
+      const games = parseInt(this.value, 10);
+      if (!isNaN(games) && games >= 0) {
+        document.getElementById("th-hours").value = games * 2;
+      }
+    });
+    document.getElementById("th-travel").addEventListener("change", function () {
+      document.getElementById("th-travel-days-wrap").style.display = this.checked ? "block" : "none";
+    });
+    document.getElementById("th-cancel-btn").addEventListener("click", resetTournamentHoursForm);
+
+    document.getElementById("tourn-hours-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const msg = document.getElementById("tourn-hours-msg");
+      msg.className = "form-msg";
+
+      const hours = parseFloat(document.getElementById("th-hours").value);
+      if (isNaN(hours) || hours <= 0 || hours > 24) {
+        msg.className = "form-msg error";
+        msg.textContent = "Enter hours between 0.25 and 24 (or fill in Games to calculate it automatically).";
+        return;
+      }
+      const travelChecked = document.getElementById("th-travel").checked;
+      const travelDays = travelChecked ? (parseInt(document.getElementById("th-travel-days").value, 10) || 1) : null;
+
+      const payload = {
+        coach_id: document.getElementById("th-coach").value,
+        team_slug: document.getElementById("th-team").value,
+        tournament_name: document.getElementById("th-tournament-name").value.trim(),
+        session_date: document.getElementById("th-date").value,
+        hours: hours,
+        travel_days: travelDays,
+        session_type: "tournament",
+      };
+
+      const id = document.getElementById("th-id").value;
+      const result = id
+        ? await supabaseClient.from("coach_hours").update(payload).eq("id", id)
+        : await supabaseClient.from("coach_hours").insert(payload);
+
+      if (result.error) {
+        msg.className = "form-msg error";
+        msg.textContent = result.error.message;
+        return;
+      }
+      msg.className = "form-msg success";
+      msg.textContent = id ? "Updated." : "Added.";
+      resetTournamentHoursForm();
+      loadTournamentHours();
+    });
+
+    loadTournamentHours();
   }
 
   (async function () {

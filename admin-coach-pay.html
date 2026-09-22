@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach Pay | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .pay-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;}
+  .coach-pay-card{border:1px solid #e3edf3;border-radius:10px;padding:16px 18px;margin-bottom:14px;background:#fff;}
+  .coach-pay-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .coach-pay-head h3{margin:0;}
+  .coach-pay-total{font-size:22px;font-weight:800;color:var(--blue);}
+  .coach-pay-detail{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.6;}
+  .coach-pay-detail .paid{color:#1c7a3a;font-weight:700;}
+  .coach-pay-detail .owed{color:#a12626;font-weight:700;}
+  .record-payment-form{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #eef1f7;gap:8px;flex-wrap:wrap;align-items:flex-end;}
+  .record-payment-form.open{display:flex;}
+  .payment-history{margin-top:10px;}
+  .payment-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f0f4f7;}
+  .payment-row button{border:none;background:none;color:#a12626;cursor:pointer;font-size:12px;font-weight:700;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Coach Pay</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:800px;">
+    <div class="notice" style="margin-bottom:20px;">
+      Pay is calculated from hours logged on the <a href="admin-attendance.html">Attendance</a> page (practice + tournament hours) times each coach's hourly rate (set on the <a href="admin-coaches.html">Coaches</a> page), plus $75 per travel day for out-of-county tournaments. Recording a payment here just logs that it happened &mdash; it doesn't change what's shown as owed for a different date range.
+    </div>
+
+    <div class="pay-filters">
+      <div class="field" style="margin:0;">
+        <label for="from-date">From</label>
+        <input type="date" id="from-date">
+      </div>
+      <div class="field" style="margin:0;">
+        <label for="to-date">To</label>
+        <input type="date" id="to-date">
+      </div>
+      <button type="button" id="this-month-btn" class="btn btn-outline-dark">This Month</button>
+      <button type="button" id="export-btn" class="btn btn-outline-dark">Export CSV</button>
+    </div>
+
+    <div id="list-msg" class="form-msg"></div>
+    <div id="pay-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function money(cents) {
+    return "$" + (cents / 100).toFixed(2);
+  }
+  function csvField(value) {
+    let str = String(value == null ? "" : value);
+    if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  }
+  function fmtDate(d) {
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  const METHOD_LABELS = { zelle: "Zelle", venmo: "Venmo", check: "Check" };
+
+  var nameById = {};
+  var rateByCoachId = {};
+  var coachSummaries = []; // built fresh on every load()
+
+  function monthStart() {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  }
+
+  async function load() {
+    const listEl = document.getElementById("pay-list");
+    const msgEl = document.getElementById("list-msg");
+    msgEl.className = "form-msg";
+
+    const from = document.getElementById("from-date").value;
+    const to = document.getElementById("to-date").value;
+
+    let hoursQuery = supabaseClient
+      .from("coach_hours")
+      .select("id, coach_id, team_slug, session_date, hours, session_type, tournament_name, travel_days")
+      .order("session_date", { ascending: false });
+    if (from) hoursQuery = hoursQuery.gte("session_date", from);
+    if (to) hoursQuery = hoursQuery.lte("session_date", to);
+
+    let paymentsQuery = supabaseClient
+      .from("coach_payments")
+      .select("id, coach_id, amount_cents, paid_date, method, note")
+      .order("paid_date", { ascending: false });
+    if (from) paymentsQuery = paymentsQuery.gte("paid_date", from);
+    if (to) paymentsQuery = paymentsQuery.lte("paid_date", to);
+
+    const [{ data: hoursRows, error: hoursError }, { data: paymentRows, error: paymentsError }] =
+      await Promise.all([hoursQuery, paymentsQuery]);
+
+    if (hoursError || paymentsError) {
+      msgEl.className = "form-msg error";
+      msgEl.textContent = "Could not load: " + ((hoursError || paymentsError).message);
+      listEl.innerHTML = "";
+      return;
+    }
+
+    const byCoach = {};
+    function bucket(coachId) {
+      return (byCoach[coachId] = byCoach[coachId] || {
+        practiceHours: 0, tournamentHours: 0, travelDays: 0, tournamentSessions: 0, payments: [],
+      });
+    }
+    (hoursRows || []).forEach(function (r) {
+      const b = bucket(r.coach_id);
+      const hrs = parseFloat(r.hours) || 0;
+      if (r.session_type === "tournament") {
+        b.tournamentHours += hrs;
+        b.tournamentSessions += 1;
+        b.travelDays += r.travel_days || 0;
+      } else {
+        b.practiceHours += hrs;
+      }
+    });
+    (paymentRows || []).forEach(function (p) {
+      bucket(p.coach_id).payments.push(p);
+    });
+
+    const coachIds = Object.keys(byCoach);
+    if (coachIds.length === 0) {
+      listEl.innerHTML = '<p class="muted">No hours or payments in this date range.</p>';
+      coachSummaries = [];
+      return;
+    }
+
+    coachSummaries = coachIds.map(function (coachId) {
+      const b = byCoach[coachId];
+      const rateCents = rateByCoachId[coachId] || 0;
+      const hoursPayCents = Math.round((b.practiceHours + b.tournamentHours) * rateCents);
+      const travelPayCents = b.travelDays * 7500;
+      const totalOwedCents = hoursPayCents + travelPayCents;
+      const totalPaidCents = b.payments.reduce(function (s, p) { return s + p.amount_cents; }, 0);
+      return {
+        coachId: coachId,
+        name: nameById[coachId] || "Coach",
+        rateCents: rateCents,
+        practiceHours: b.practiceHours,
+        tournamentHours: b.tournamentHours,
+        tournamentSessions: b.tournamentSessions,
+        travelDays: b.travelDays,
+        totalOwedCents: totalOwedCents,
+        totalPaidCents: totalPaidCents,
+        payments: b.payments.sort(function (x, y) { return y.paid_date.localeCompare(x.paid_date); }),
+      };
+    }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+    renderList();
+  }
+
+  function renderList() {
+    const listEl = document.getElementById("pay-list");
+    if (coachSummaries.length === 0) {
+      listEl.innerHTML = '<p class="muted">No hours or payments in this date range.</p>';
+      return;
+    }
+
+    listEl.innerHTML = coachSummaries.map(function (c) {
+      const rateNote = c.rateCents ? money(c.rateCents) + "/hr" : "no hourly rate set";
+      const balance = c.totalOwedCents - c.totalPaidCents;
+      const paymentsHtml = c.payments.length
+        ? '<div class="payment-history">' + c.payments.map(function (p) {
+            return '<div class="payment-row"><span>' + fmtDate(p.paid_date) + " &middot; " + METHOD_LABELS[p.method] +
+              (p.note ? " &middot; " + escapeHtml(p.note) : "") + "</span><span>" + money(p.amount_cents) +
+              ' <button type="button" data-delete-payment="' + p.id + '">Remove</button></span></div>';
+          }).join("") + "</div>"
+        : "";
+      return (
+        '<div class="coach-pay-card" data-coach-card="' + c.coachId + '">' +
+        '<div class="coach-pay-head"><h3>' + escapeHtml(c.name) + '</h3><div class="coach-pay-total">' + money(c.totalOwedCents) + "</div></div>" +
+        '<div class="coach-pay-detail">' +
+          (c.practiceHours ? c.practiceHours.toFixed(2) + " practice hrs" : "") +
+          (c.practiceHours && c.tournamentHours ? " + " : "") +
+          (c.tournamentHours ? c.tournamentHours.toFixed(2) + " tournament hrs (" + c.tournamentSessions + " session" + (c.tournamentSessions === 1 ? "" : "s") + ")" : "") +
+          (!c.practiceHours && !c.tournamentHours ? "No hours logged" : "") +
+          " &middot; " + rateNote +
+          (c.travelDays ? " &middot; " + c.travelDays + " travel day" + (c.travelDays === 1 ? "" : "s") + " (" + money(c.travelDays * 7500) + ")" : "") +
+          "<br>" +
+          '<span class="paid">' + money(c.totalPaidCents) + " paid</span>" + " &middot; " +
+          '<span class="' + (balance > 0 ? "owed" : "paid") + '">' + (balance > 0 ? money(balance) + " still owed" : balance < 0 ? money(-balance) + " overpaid" : "fully paid") + "</span>" +
+        "</div>" +
+        paymentsHtml +
+        '<button type="button" class="btn btn-outline-dark" data-toggle-payment="' + c.coachId + '" style="margin-top:10px;padding:6px 12px;font-size:13px;">Record Payment</button>' +
+        '<form class="record-payment-form" data-payment-form="' + c.coachId + '">' +
+          '<div class="field" style="margin:0;">' +
+            '<label style="font-size:12px;">Amount ($)</label>' +
+            '<input type="number" step="0.01" min="0.01" data-pay-amount value="' + (balance > 0 ? (balance / 100).toFixed(2) : (c.totalOwedCents / 100).toFixed(2)) + '" required>' +
+          "</div>" +
+          '<div class="field" style="margin:0;">' +
+            '<label style="font-size:12px;">Date Paid</label>' +
+            '<input type="date" data-pay-date value="' + new Date().toISOString().slice(0, 10) + '" required>' +
+          "</div>" +
+          '<div class="field" style="margin:0;">' +
+            '<label style="font-size:12px;">How Paid</label>' +
+            '<select data-pay-method required><option value="zelle">Zelle</option><option value="venmo">Venmo</option><option value="check">Check</option></select>' +
+          "</div>" +
+          '<div class="field" style="margin:0;flex:1;min-width:140px;">' +
+            '<label style="font-size:12px;">Note (optional)</label>' +
+            '<input type="text" data-pay-note maxlength="500">' +
+          "</div>" +
+          '<button type="submit" class="btn btn-primary">Save Payment</button>' +
+        "</form>" +
+        "</div>"
+      );
+    }).join("");
+
+    listEl.querySelectorAll("[data-toggle-payment]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const form = listEl.querySelector('[data-payment-form="' + btn.dataset.togglePayment + '"]');
+        form.classList.toggle("open");
+      });
+    });
+
+    listEl.querySelectorAll("[data-payment-form]").forEach(function (form) {
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const coachId = form.dataset.paymentForm;
+        const dollars = parseFloat(form.querySelector("[data-pay-amount]").value);
+        if (isNaN(dollars) || dollars <= 0) return;
+        const { error } = await supabaseClient.from("coach_payments").insert({
+          coach_id: coachId,
+          amount_cents: Math.round(dollars * 100),
+          paid_date: form.querySelector("[data-pay-date]").value,
+          method: form.querySelector("[data-pay-method]").value,
+          note: form.querySelector("[data-pay-note]").value.trim() || null,
+        });
+        if (error) {
+          alert("Could not save payment: " + error.message);
+          return;
+        }
+        load();
+      });
+    });
+
+    listEl.querySelectorAll("[data-delete-payment]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Remove this payment record?")) return;
+        const { error } = await supabaseClient.from("coach_payments").delete().eq("id", btn.dataset.deletePayment);
+        if (error) { alert("Could not remove: " + error.message); return; }
+        load();
+      });
+    });
+  }
+
+  document.getElementById("export-btn").addEventListener("click", function () {
+    if (!coachSummaries.length) return;
+    const header = ["Coach", "Rate/hr", "Practice Hours", "Tournament Hours", "Tournament Sessions", "Travel Days", "Travel Pay", "Total Owed", "Total Paid", "Balance"];
+    const lines = [header.map(csvField).join(",")];
+    coachSummaries.forEach(function (c) {
+      lines.push([
+        c.name,
+        (c.rateCents / 100).toFixed(2),
+        c.practiceHours.toFixed(2),
+        c.tournamentHours.toFixed(2),
+        c.tournamentSessions,
+        c.travelDays,
+        (c.travelDays * 75).toFixed(2),
+        (c.totalOwedCents / 100).toFixed(2),
+        (c.totalPaidCents / 100).toFixed(2),
+        ((c.totalOwedCents - c.totalPaidCents) / 100).toFixed(2),
+      ].map(csvField).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "eca-coach-pay-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById("this-month-btn").addEventListener("click", function () {
+    document.getElementById("from-date").value = monthStart();
+    document.getElementById("to-date").value = new Date().toISOString().slice(0, 10);
+    load();
+  });
+
+  ["from-date", "to-date"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", load);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+
+    document.getElementById("from-date").value = monthStart();
+    document.getElementById("to-date").value = new Date().toISOString().slice(0, 10);
+
+    const [{ data: profiles }, { data: rates }] = await Promise.all([
+      supabaseClient.from("profiles").select("id, full_name, email"),
+      supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
+    ]);
+    (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
+    (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
+
+    load();
+  })();
+</script>
+</body>
+</html>

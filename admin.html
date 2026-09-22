@@ -62,7 +62,7 @@
       <div class="admin-nav-card" id="attendance-card" style="display:none;">
         <a href="admin-attendance.html" style="display:block;color:inherit;">
           <h3>Attendance</h3>
-          <p class="muted">Take roll call for practice &mdash; check off who's present, saves automatically.</p>
+          <p class="muted">Take attendance for practice &mdash; check off who's present, saves automatically.</p>
         </a>
       </div>
       <div class="admin-nav-card" id="athletes-card" style="display:none;">
@@ -128,7 +128,13 @@
       <div class="admin-nav-card" id="hours-card" style="display:none;">
         <a href="admin-hours.html" style="display:block;color:inherit;">
           <h3>Coach Hours</h3>
-          <p class="muted">Hours logged at roll call, totalled per coach for payroll.</p>
+          <p class="muted">Hours logged at attendance, totalled per coach for payroll.</p>
+        </a>
+      </div>
+      <div class="admin-nav-card" id="coach-pay-card" style="display:none;">
+        <a href="admin-coach-pay.html" style="display:block;color:inherit;">
+          <h3>Coach Pay</h3>
+          <p class="muted">Calculate what each coach is owed and record how/when they were paid.</p>
         </a>
       </div>
       <div class="admin-nav-card" id="signups-card" style="display:none;">
@@ -182,6 +188,7 @@
       document.getElementById("hours-card").style.display = "block";
     }
     if (auth.role === "owner") {
+      document.getElementById("coach-pay-card").style.display = "block";
       document.getElementById("signups-card").style.display = "block";
       document.getElementById("sponsors-card").style.display = "block";
       document.getElementById("registrations-card").style.display = "block";

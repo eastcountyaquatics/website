@@ -97,29 +97,13 @@
 
     <details class="collapsible">
       <summary>Price Tiers</summary>
-      <p class="muted" style="font-size:13px;">Leave Min/Max Age or Gender blank to match anyone. The first matching tier (by display order) is used.</p>
+      <p class="muted" style="font-size:13px;">Since a tournament is tied to one team, price tiers are usually just one flat price for that team &mdash; add more than one only if you have a genuine reason (e.g. a sibling discount) and are comfortable that whichever tier is listed first applies to everyone.</p>
       <div id="tier-list"></div>
       <form id="tier-form" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
         <input type="hidden" id="tier-id">
         <div class="field" style="margin:0;flex:1;min-width:140px;">
           <label for="tier-label">Label</label>
-          <input type="text" id="tier-label" placeholder="e.g. 10U & Under" required>
-        </div>
-        <div class="field" style="margin:0;width:90px;">
-          <label for="tier-min-age">Min Age</label>
-          <input type="number" id="tier-min-age" min="0">
-        </div>
-        <div class="field" style="margin:0;width:90px;">
-          <label for="tier-max-age">Max Age</label>
-          <input type="number" id="tier-max-age" min="0">
-        </div>
-        <div class="field" style="margin:0;width:120px;">
-          <label for="tier-gender">Gender</label>
-          <select id="tier-gender">
-            <option value="">Any</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
+          <input type="text" id="tier-label" placeholder="e.g. Team Fee" required>
         </div>
         <div class="field" style="margin:0;width:110px;">
           <label for="tier-amount">Amount ($)</label>
@@ -405,12 +389,9 @@
     }
     listEl.innerHTML = data
       .map(function (t) {
-        const ageRange = t.min_age != null || t.max_age != null
-          ? "Age " + (t.min_age != null ? t.min_age : "0") + "–" + (t.max_age != null ? t.max_age : "+")
-          : "Any age";
         return (
           '<div class="tier-row">' +
-          "<div><strong>" + escapeHtml(t.label) + "</strong> &middot; " + ageRange + (t.gender ? " &middot; " + escapeHtml(t.gender) : "") + "</div>" +
+          "<div><strong>" + escapeHtml(t.label) + "</strong></div>" +
           "<div style=\"display:flex;align-items:center;gap:10px;\">" + formatAmount(t.amount_cents) +
           ' <button data-edit-tier="' + t.id + '">Edit</button>' +
           ' <button data-delete-tier="' + t.id + '" class="danger">Delete</button></div>' +
@@ -425,9 +406,6 @@
         if (!t) return;
         document.getElementById("tier-id").value = t.id;
         document.getElementById("tier-label").value = t.label;
-        document.getElementById("tier-min-age").value = t.min_age == null ? "" : t.min_age;
-        document.getElementById("tier-max-age").value = t.max_age == null ? "" : t.max_age;
-        document.getElementById("tier-gender").value = t.gender || "";
         document.getElementById("tier-amount").value = (t.amount_cents / 100).toFixed(2);
         document.getElementById("tier-submit-btn").textContent = "Save Changes";
         document.getElementById("tier-cancel-btn").style.display = "inline-block";
@@ -461,9 +439,6 @@
     const payload = {
       tournament_id: currentTournamentId,
       label: document.getElementById("tier-label").value.trim(),
-      min_age: document.getElementById("tier-min-age").value ? parseInt(document.getElementById("tier-min-age").value, 10) : null,
-      max_age: document.getElementById("tier-max-age").value ? parseInt(document.getElementById("tier-max-age").value, 10) : null,
-      gender: document.getElementById("tier-gender").value || null,
       amount_cents: Math.round(dollars * 100),
     };
     let error;

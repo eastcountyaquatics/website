@@ -96,6 +96,16 @@
   .ed-template-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 7px; background: #f1f4f9; display: flex; align-items: center; justify-content: center; font-size: 16px; letter-spacing: -2px; }
   .ed-template-text strong { display: block; font-size: 13px; margin-bottom: 2px; }
   .ed-template-text span { display: block; font-size: 11.5px; color: var(--muted, #6b7280); }
+
+  .ed-undo-toast {
+    display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200;
+    background: #1a1a4d; color: #fff; padding: 12px 18px; border-radius: 8px; align-items: center; gap: 16px;
+    font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  }
+  .ed-undo-toast.visible { display: flex; }
+  .ed-undo-toast button {
+    background: var(--gold, #ffd400); color: #1a1a4d; border: none; border-radius: 5px; padding: 6px 14px; font-weight: 700; cursor: pointer; font-size: 13px;
+  }
 </style>
 </head>
 <body>
@@ -217,6 +227,11 @@
 
 <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
 
+<div class="ed-undo-toast" id="undo-toast">
+  <span id="undo-toast-text"></span>
+  <button type="button" id="undo-toast-btn">Undo</button>
+</div>
+
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/sanitize-html.js"></script>
@@ -265,6 +280,33 @@
   const discardBtn = document.getElementById("discard-btn");
   const galleryEl = document.getElementById("template-gallery");
   const imageFileInput = document.getElementById("image-file-input");
+  const undoToast = document.getElementById("undo-toast");
+  const undoToastText = document.getElementById("undo-toast-text");
+  const undoToastBtn = document.getElementById("undo-toast-btn");
+
+  // A friendlier stand-in for "are you sure?" on anything easily undoable:
+  // the action just happens, and a brief toast offers to put it right back
+  // rather than blocking with a popup first. Used for removing a section,
+  // a box, or a photo -- not for deleting a whole page, which is a real,
+  // permanent database delete and still asks first.
+  let undoToastTimer = null;
+  let pendingUndo = null;
+  function showUndoToast(text, undoFn) {
+    clearTimeout(undoToastTimer);
+    undoToastText.textContent = text;
+    pendingUndo = undoFn;
+    undoToast.classList.add("visible");
+    undoToastTimer = setTimeout(hideUndoToast, 6000);
+  }
+  function hideUndoToast() {
+    undoToast.classList.remove("visible");
+    pendingUndo = null;
+    clearTimeout(undoToastTimer);
+  }
+  undoToastBtn.addEventListener("click", function () {
+    if (pendingUndo) pendingUndo();
+    hideUndoToast();
+  });
 
   let currentKind = null; // 'static' | 'custom'
   let currentPath = null; // static: file path. custom: slug
@@ -286,12 +328,28 @@
     saveStatus.className = "status" + (kind ? " " + kind : "");
   }
 
+  // Nobody should have to remember to click Save -- it still exists for
+  // anyone who wants instant certainty, but a few seconds after the last
+  // edit, changes save themselves in the background.
+  let autosaveTimer = null;
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(function () {
+      autosaveTimer = null;
+      if (isDirty()) saveAll();
+    }, 2000);
+  }
+
   function refreshDirtyChrome() {
     const dirty = isDirty();
     saveBtn.style.display = dirty ? "inline-block" : "none";
     discardBtn.style.display = dirty ? "inline-block" : "none";
-    if (dirty) setStatus("Unsaved changes", "dirty");
-    else if (currentKind) setStatus("All changes saved.");
+    if (dirty) {
+      setStatus("Unsaved changes", "dirty");
+      scheduleAutosave();
+    } else if (currentKind) {
+      setStatus("All changes saved.");
+    }
   }
 
   function frameDoc() {
@@ -375,7 +433,11 @@
       '.cms-insert-gap{position:relative;height:14px;z-index:4;}' +
       '.cms-insert-gap:hover{background:rgba(0,0,255,.05);}' +
       '.cms-insert-gap-btn{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;border:none;background:#0000ff;color:#fff;font-size:17px;font-weight:800;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s;box-shadow:0 2px 6px rgba(0,0,0,.25);}' +
-      '.cms-insert-gap:hover .cms-insert-gap-btn,.cms-insert-gap-btn:focus{opacity:1;}';
+      '.cms-insert-gap:hover .cms-insert-gap-btn,.cms-insert-gap-btn:focus{opacity:1;}' +
+      // Hover-to-reveal doesn't exist on a touchscreen -- on a device with
+      // no hover at all (tablet, phone), show these plainly instead of
+      // leaving them permanently invisible and undiscoverable.
+      '@media (hover: none){.cms-replace-btn,.cms-figure-remove,.cms-insert-gap-btn{opacity:.85;}}';
     doc.head.appendChild(style);
   }
 
@@ -406,6 +468,19 @@
       btn.setAttribute("aria-label", "Remove image");
       btn.textContent = "✕";
       figure.appendChild(btn);
+    });
+  }
+
+  function removeFigureWithUndo(figure) {
+    const parent = figure.parentElement;
+    const nextSib = figure.nextSibling;
+    figure.remove();
+    extrasOrBodyDirty = true;
+    refreshDirtyChrome();
+    showUndoToast("Photo removed.", function () {
+      parent.insertBefore(figure, nextSib && nextSib.isConnected ? nextSib : null);
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
     });
   }
 
@@ -720,11 +795,17 @@
     if (node && node.nodeType === 3) node = node.parentElement;
     const cell = node && node.closest ? node.closest(".card") : null;
     if (cell && container.contains(cell) && cell.parentElement && cell.parentElement.classList.contains("grid")) {
-      if (!confirm("Delete this card? This can't be undone once you save.")) return;
+      const row = cell.parentElement;
+      const nextSib = cell.nextElementSibling;
       cell.remove();
       lastRange = null;
       extrasOrBodyDirty = true;
       refreshDirtyChrome();
+      showUndoToast("Box removed.", function () {
+        row.insertBefore(cell, nextSib && nextSib.isConnected ? nextSib : null);
+        extrasOrBodyDirty = true;
+        refreshDirtyChrome();
+      });
       return;
     }
     while (node && node.parentElement !== container && node !== container) node = node.parentElement;
@@ -732,12 +813,18 @@
       alert("Click inside the section you want to delete first.");
       return;
     }
-    if (!confirm("Delete this section? This can't be undone once you save.")) return;
+    const reinsertBefore = nextContentSibling(node) || container.querySelector(".cms-add-section-btn");
     node.remove();
     refreshInsertGaps(container, frameDoc());
     lastRange = null;
     extrasOrBodyDirty = true;
     refreshDirtyChrome();
+    showUndoToast("Section removed.", function () {
+      container.insertBefore(node, reinsertBefore && reinsertBefore.isConnected ? reinsertBefore : null);
+      refreshInsertGaps(container, frameDoc());
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+    });
   });
   document.getElementById("rb-insert-image-btn").addEventListener("click", function () {
     if (!requireStructuralFocus()) return;
@@ -872,7 +959,7 @@
         if (!removeBtn) return;
         e.preventDefault();
         const figure = removeBtn.closest(".cms-figure");
-        if (figure && confirm("Remove this image?")) { figure.remove(); extrasOrBodyDirty = true; refreshDirtyChrome(); }
+        if (figure) removeFigureWithUndo(figure);
       });
 
       wireSelectionTracking(doc);
@@ -960,7 +1047,7 @@
         if (!removeBtn) return;
         e.preventDefault();
         const figure = removeBtn.closest(".cms-figure");
-        if (figure && confirm("Remove this image?")) { figure.remove(); extrasOrBodyDirty = true; refreshDirtyChrome(); }
+        if (figure) removeFigureWithUndo(figure);
       });
 
       wireSelectionTracking(doc);
@@ -1104,7 +1191,11 @@
     else if (currentKind === "custom") loadCustomPage(currentPageRow);
   });
 
-  saveBtn.addEventListener("click", async function () {
+  saveBtn.addEventListener("click", function () { saveAll(); });
+
+  async function saveAll() {
+    if (!currentKind) return;
+    if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
     setStatus("Saving…");
     saveBtn.disabled = true;
     try {
@@ -1155,7 +1246,7 @@
       saveBtn.disabled = false;
       setStatus("Could not save: " + friendlyError(e), "error");
     }
-  });
+  }
 
   window.addEventListener("beforeunload", function (e) {
     if (isDirty()) { e.preventDefault(); e.returnValue = ""; }

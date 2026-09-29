@@ -6,8 +6,10 @@
 // Two ways in:
 //   1. The monthly pg_cron job (see the monthly_hours_signoff_cron
 //      migration) calls this on the evening of the last day of each month
-//      with header x-cron-secret = HOURS_SIGNOFF_CRON_SECRET and no body,
-//      meaning "the month that's ending".
+//      with header x-cron-secret and no body, meaning "the month that's
+//      ending". The secret lives only in the database's Vault; this
+//      function checks it with the check_hours_signoff_cron_secret() RPC
+//      (service role only), so there's no separate function secret to set.
 //   2. An owner clicks "Send sign-off emails" on Coach Pay, with their own
 //      JWT and an explicit { month: "YYYY-MM" }.
 //
@@ -19,7 +21,7 @@
 // (the cron job has no user JWT; the shared secret or an owner JWT is
 // checked below instead)
 // Secrets required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
-//   SITE_URL, HOURS_SIGNOFF_CRON_SECRET, RESEND_API_KEY
+//   SITE_URL, RESEND_API_KEY
 // Optional: RECEIPT_EMAIL_FROM
 
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -35,8 +37,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const cronSecret = Deno.env.get("HOURS_SIGNOFF_CRON_SECRET");
-    const isCron = !!cronSecret && req.headers.get("x-cron-secret") === cronSecret;
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const cronHeader = req.headers.get("x-cron-secret");
+    let isCron = false;
+    if (cronHeader) {
+      const { data: ok } = await supabase.rpc("check_hours_signoff_cron_secret", { candidate: cronHeader });
+      isCron = ok === true;
+    }
 
     if (!isCron) {
       const authHeader = req.headers.get("Authorization");
@@ -61,11 +72,6 @@ Deno.serve(async (req) => {
     const lastDay = new Date(Date.UTC(year, mon, 0)).getUTCDate();
     const periodEnd = `${month}-${String(lastDay).padStart(2, "0")}`;
     const monthLabel = new Date(Date.UTC(year, mon - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const { data: hoursRows, error: hoursError } = await supabase
       .from("coach_hours")

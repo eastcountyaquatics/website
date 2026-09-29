@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Become a Sponsor | San Diego East County Aquatics</title>
+<title>Donate or Sponsor | San Diego East County Aquatics</title>
 <meta name="description" content="Sponsor San Diego East County Aquatics water polo club and put your business in front of East County families.">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
@@ -24,9 +24,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   .contact-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
-  #contact-form textarea{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;}
-  #contact-form textarea:focus{outline:2px solid var(--aqua);outline-offset:1px;border-color:var(--blue);}
-  #contact-form select{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;}
+  #sponsor-form textarea{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;}
+  #sponsor-form textarea:focus,#sponsor-form select:focus{outline:2px solid var(--aqua);outline-offset:1px;border-color:var(--blue);}
+  #sponsor-form select{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;}
 </style>
 </head>
 <body>
@@ -56,7 +56,7 @@
 <section class="page-hero">
   <div class="container">
     <span class="breadcrumb">Sponsors &amp; Donors</span>
-    <h1>Become a Sponsor</h1>
+    <h1>Donate or Become a Sponsor</h1>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
@@ -65,52 +65,104 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:640px;">
-    <p class="muted" style="margin-bottom:20px;">Sponsorship supports pool time, equipment, and travel for tournaments while putting your business in front of East County families. Tell us about your business and what you'd like us to feature, then pay securely by card below.</p>
+    <p class="muted" style="margin-bottom:14px;">Your support pays for pool time, equipment, athlete scholarships, and tournament travel for East County families. Give a one-time donation, or become a sponsor and we'll feature your business.</p>
+    <div class="notice" style="margin-bottom:20px;"><strong>Your gift is tax-deductible.</strong> San Diego East County Aquatics is a 501(c)(3) non-profit organization, and donations and sponsorships are tax-deductible to the extent allowed by law. A receipt is emailed to you after payment.</div>
 
     <div id="sponsor-msg" class="form-msg"></div>
     <div class="card" style="border-top-color:var(--gold);">
       <form id="sponsor-form">
         <div class="field">
-          <label for="sp-company">Company / Individual Name</label>
-          <input type="text" id="sp-company" required>
+          <label for="sp-type">How would you like to give?</label>
+          <select id="sp-type" required>
+            <option value="donate">Make a Donation</option>
+            <option value="sponsor">Become a Sponsor</option>
+          </select>
         </div>
-        <div class="field">
-          <label for="sp-contact-name">Contact Name</label>
-          <input type="text" id="sp-contact-name" required>
+
+        <!-- Donation -->
+        <div id="donate-fields">
+          <div class="field">
+            <label for="dn-name">Your Name</label>
+            <input type="text" id="dn-name">
+          </div>
+          <div class="field">
+            <label for="dn-email">Email</label>
+            <input type="email" id="dn-email">
+          </div>
+          <div class="field">
+            <label for="dn-org">Organization (optional)</label>
+            <input type="text" id="dn-org">
+          </div>
+          <div class="field">
+            <label for="dn-amount-choice">Donation Amount</label>
+            <select id="dn-amount-choice">
+              <option value="25">$25</option>
+              <option value="50" selected>$50</option>
+              <option value="100">$100</option>
+              <option value="250">$250</option>
+              <option value="500">$500</option>
+              <option value="other">Other amount</option>
+            </select>
+          </div>
+          <div class="field" id="dn-other-wrap" style="display:none;">
+            <label for="dn-amount-other">Other Amount (USD)</label>
+            <input type="number" id="dn-amount-other" step="0.01" min="1" placeholder="75.00">
+          </div>
         </div>
-        <div class="field">
-          <label for="sp-email">Contact Email</label>
-          <input type="email" id="sp-email" required>
+
+        <!-- Sponsorship -->
+        <div id="sponsor-fields" style="display:none;">
+          <div class="field">
+            <label for="sp-company">Company / Individual Name</label>
+            <input type="text" id="sp-company">
+          </div>
+          <div class="field">
+            <label for="sp-contact-name">Contact Name</label>
+            <input type="text" id="sp-contact-name">
+          </div>
+          <div class="field">
+            <label for="sp-email">Contact Email</label>
+            <input type="email" id="sp-email">
+          </div>
+          <div class="field">
+            <label for="sp-phone">Contact Phone</label>
+            <input type="tel" id="sp-phone">
+          </div>
+          <div class="field">
+            <label for="sp-tier">Sponsorship Level</label>
+            <select id="sp-tier">
+              <option value="Bronze" data-min="500">Bronze &mdash; $500+</option>
+              <option value="Silver" data-min="1250">Silver &mdash; $1,250+</option>
+              <option value="Gold" data-min="2500">Gold &mdash; $2,500+</option>
+              <option value="Platinum" data-min="4000">Platinum &mdash; $4,000+</option>
+              <option value="Other" data-min="1">Other</option>
+            </select>
+            <p class="field-hint"><a href="support.html">Compare what each level includes</a>.</p>
+          </div>
+          <div class="field">
+            <label for="sp-amount">Amount (USD)</label>
+            <input type="number" id="sp-amount" step="0.01" min="1" value="500">
+            <p class="field-hint" id="sp-amount-hint">Minimum $500 for Bronze. You're welcome to give more.</p>
+          </div>
+          <div class="field">
+            <label for="sp-website">Your Website</label>
+            <input type="url" id="sp-website" placeholder="https://...">
+          </div>
+          <div class="field">
+            <label for="sp-logo">Logo Image URL</label>
+            <input type="url" id="sp-logo" placeholder="https://...">
+            <p class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
+          </div>
+          <div class="field">
+            <label for="sp-blurb">What would you like us to say about your business?</label>
+            <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured."></textarea>
+          </div>
         </div>
-        <div class="field">
-          <label for="sp-phone">Contact Phone</label>
-          <input type="tel" id="sp-phone" required>
-        </div>
-        <div class="field">
-          <label for="sp-tier">Sponsorship Level</label>
-          <input type="text" id="sp-tier" placeholder="e.g. Gold, Silver, Bronze, or describe your own" required>
-        </div>
-        <div class="field">
-          <label for="sp-amount">Amount (USD)</label>
-          <input type="number" id="sp-amount" step="0.01" min="1" placeholder="500.00" required>
-        </div>
-        <div class="field">
-          <label for="sp-website">Your Website</label>
-          <input type="url" id="sp-website" placeholder="https://..." required>
-        </div>
-        <div class="field">
-          <label for="sp-logo">Logo Image URL</label>
-          <input type="url" id="sp-logo" placeholder="https://..." required>
-          <p class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
-        </div>
-        <div class="field">
-          <label for="sp-blurb">What would you like us to say about your business?</label>
-          <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured." required></textarea>
-        </div>
+
         <button type="submit" id="sponsor-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
     </div>
-    <p class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit. Prefer to pay another way, or have questions first? <a href="contact.html">Contact us</a>.</p>
+    <p class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. Contributions are tax-deductible to the extent allowed by law; for sponsorships, the deductible amount may be reduced by the value of any advertising or benefits received &mdash; please consult your tax advisor. Prefer to pay another way, or have questions first? <a href="contact.html">Contact us</a>.</p>
   </div>
 </section>
 
@@ -129,62 +181,143 @@
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
+  const typeSelect = document.getElementById("sp-type");
+  const donateFields = document.getElementById("donate-fields");
+  const sponsorFields = document.getElementById("sponsor-fields");
+  const DONATE_REQUIRED = ["dn-name", "dn-email"];
+  const SPONSOR_REQUIRED = ["sp-company", "sp-contact-name", "sp-email", "sp-phone", "sp-amount", "sp-website", "sp-logo", "sp-blurb"];
+
+  // Only the visible half of the form is required -- hidden required inputs
+  // would otherwise block submission with a browser error nobody can see.
+  function applyType() {
+    const isSponsor = typeSelect.value === "sponsor";
+    donateFields.style.display = isSponsor ? "none" : "block";
+    sponsorFields.style.display = isSponsor ? "block" : "none";
+    DONATE_REQUIRED.forEach(function (id) { document.getElementById(id).required = !isSponsor; });
+    SPONSOR_REQUIRED.forEach(function (id) { document.getElementById(id).required = isSponsor; });
+    applyDonationChoice();
+  }
+
+  function applyDonationChoice() {
+    const isOther = document.getElementById("dn-amount-choice").value === "other";
+    document.getElementById("dn-other-wrap").style.display = isOther ? "block" : "none";
+    document.getElementById("dn-amount-other").required = isOther && typeSelect.value === "donate";
+  }
+
+  function tierMin() {
+    const opt = document.getElementById("sp-tier").selectedOptions[0];
+    return parseFloat(opt.dataset.min) || 1;
+  }
+
+  // Picking a level fills in its starting amount; "Other" lets the sponsor
+  // name any amount they'd like.
+  document.getElementById("sp-tier").addEventListener("change", function () {
+    const min = tierMin();
+    const amountInput = document.getElementById("sp-amount");
+    amountInput.min = min;
+    if (this.value === "Other") {
+      amountInput.value = "";
+      amountInput.placeholder = "Enter any amount";
+      document.getElementById("sp-amount-hint").textContent = "Enter the amount you'd like to sponsor.";
+    } else {
+      amountInput.value = min;
+      document.getElementById("sp-amount-hint").textContent =
+        "Minimum $" + min.toLocaleString("en-US") + " for " + this.value + ". You're welcome to give more.";
+    }
+  });
+
+  typeSelect.addEventListener("change", applyType);
+  document.getElementById("dn-amount-choice").addEventListener("change", applyDonationChoice);
+
   (function () {
-    const status = new URLSearchParams(window.location.search).get("status");
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type");
+    if (type === "sponsor" || type === "donate") typeSelect.value = type;
+    applyType();
+
+    const status = params.get("status");
     if (status === "success") {
       document.querySelector(".card").outerHTML =
         '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
-        "<strong>Thank you for your sponsorship!</strong> A receipt was sent to your email. We'll be in touch about featuring your business.</div>";
+        "<strong>Thank you for your support!</strong> A receipt was sent to your email &mdash; please keep it for your tax records.</div>";
     } else if (status === "cancelled") {
       document.getElementById("sponsor-msg").className = "form-msg error";
-      document.getElementById("sponsor-msg").textContent = "Checkout was cancelled — no payment was made. You can try again below.";
+      document.getElementById("sponsor-msg").textContent = "Checkout was cancelled \u2014 no payment was made. You can try again below.";
     }
   })();
+
+  // The database only accepts http(s) URLs here (an owner reviewing
+  // submissions clicks these links, so anything else is a real risk, not
+  // just a validation nicety). A sponsor typing "www.company.com" without
+  // a scheme is normal, not an attack -- default it to https:// rather
+  // than bouncing them with a confusing database error.
+  function normalizeUrl(raw) {
+    const value = raw.trim();
+    if (!value) return null;
+    return /^https?:\/\//i.test(value) ? value : "https://" + value;
+  }
 
   document.getElementById("sponsor-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const msg = document.getElementById("sponsor-msg");
     const btn = document.getElementById("sponsor-submit");
     msg.className = "form-msg";
+    const isSponsor = typeSelect.value === "sponsor";
 
-    const dollars = parseFloat(document.getElementById("sp-amount").value);
-    if (isNaN(dollars) || dollars < 1) {
-      msg.className = "form-msg error";
-      msg.textContent = "Enter an amount of at least $1.";
-      return;
+    let dollars;
+    if (isSponsor) {
+      dollars = parseFloat(document.getElementById("sp-amount").value);
+      const min = tierMin();
+      if (isNaN(dollars) || dollars < min) {
+        msg.className = "form-msg error";
+        msg.textContent = "Enter an amount of at least $" + min.toLocaleString("en-US") + ".";
+        return;
+      }
+    } else {
+      const choice = document.getElementById("dn-amount-choice").value;
+      dollars = parseFloat(choice === "other" ? document.getElementById("dn-amount-other").value : choice);
+      if (isNaN(dollars) || dollars < 1) {
+        msg.className = "form-msg error";
+        msg.textContent = "Enter an amount of at least $1.";
+        return;
+      }
     }
 
     btn.disabled = true;
     btn.textContent = "Submitting...";
 
-    // The database only accepts http(s) URLs here (an owner reviewing
-    // submissions clicks these links, so anything else is a real risk, not
-    // just a validation nicety). A sponsor typing "www.company.com" without
-    // a scheme is normal, not an attack -- default it to https:// rather
-    // than bouncing them with a confusing database error.
-    function normalizeUrl(raw) {
-      const value = raw.trim();
-      if (!value) return null;
-      return /^https?:\/\//i.test(value) ? value : "https://" + value;
-    }
-
     // Inserted directly (RLS lets anyone submit a pending sponsorship), then
     // the checkout function looks it up by id to build the Stripe session --
     // this keeps the amount and company info authoritative in the database
     // rather than trusting whatever the browser sends at checkout time.
-    const { data: row, error } = await supabaseClient
-      .from("sponsorships")
-      .insert({
+    let insertRow;
+    if (isSponsor) {
+      insertRow = {
         company_name: document.getElementById("sp-company").value.trim(),
         contact_name: document.getElementById("sp-contact-name").value.trim() || null,
         contact_email: document.getElementById("sp-email").value.trim(),
         contact_phone: document.getElementById("sp-phone").value.trim() || null,
-        tier: document.getElementById("sp-tier").value.trim() || null,
+        tier: document.getElementById("sp-tier").value,
         amount_cents: Math.round(dollars * 100),
         website_url: normalizeUrl(document.getElementById("sp-website").value),
         logo_url: normalizeUrl(document.getElementById("sp-logo").value),
         blurb: document.getElementById("sp-blurb").value.trim() || null,
-      })
+      };
+    } else {
+      const donorName = document.getElementById("dn-name").value.trim();
+      insertRow = {
+        is_donation: true,
+        company_name: donorName,
+        contact_name: donorName,
+        contact_email: document.getElementById("dn-email").value.trim(),
+        org_name: document.getElementById("dn-org").value.trim() || null,
+        amount_cents: Math.round(dollars * 100),
+      };
+    }
+
+    const { data: row, error } = await supabaseClient
+      .from("sponsorships")
+      .insert(insertRow)
       .select("id")
       .single();
 
@@ -197,7 +330,7 @@
     }
 
     const { data, error: fnError } = await supabaseClient.functions.invoke("create-sponsorship-checkout", {
-      body: { sponsorship_id: row.id },
+      body: { sponsorship_id: row.id, return_page: "sponsor" },
     });
 
     btn.disabled = false;
@@ -205,7 +338,8 @@
 
     if (fnError || !data || !data.url) {
       msg.className = "form-msg error";
-      msg.textContent = await functionErrorMessage(fnError, data, "Your sponsorship was saved, but we could not start checkout. Please contact us to arrange payment.");
+      msg.textContent = await functionErrorMessage(fnError, data,
+        (isSponsor ? "Your sponsorship" : "Your donation") + " was saved, but we could not start checkout. Please contact us to arrange payment.");
       return;
     }
 

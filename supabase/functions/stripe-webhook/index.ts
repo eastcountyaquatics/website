@@ -407,8 +407,13 @@ async function handleSponsorshipPayment(
     await sendReceiptEmail(
       updated.contact_email,
       "Thank you for sponsoring East County Aquatics!",
-      `Thank you for sponsoring San Diego East County Aquatics on behalf of ${updated.company_name}. ` +
-        `We truly appreciate your support -- we'll be in touch about featuring your business.`
+      `Thank you for sponsoring San Diego East County Aquatics on behalf of ${updated.company_name} ` +
+        `with a contribution of $${(updated.amount_cents / 100).toFixed(2)}. ` +
+        `We truly appreciate your support -- we'll be in touch about featuring your business.\n\n` +
+        `San Diego East County Aquatics is a 501(c)(3) non-profit organization` +
+        (Deno.env.get("ORG_EIN") ? ` (EIN: ${Deno.env.get("ORG_EIN")})` : "") +
+        `. Your sponsorship is tax-deductible to the extent allowed by law; the deductible amount may be reduced ` +
+        `by the fair market value of any advertising or benefits received. Please consult your tax advisor and retain this email for your records.`
     );
     await sendReceiptEmail(
       "eastcountyaquatics@gmail.com",

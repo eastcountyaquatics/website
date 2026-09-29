@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm Your Hours | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .signoff-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #e3edf3;font-size:14px;}
+  .signoff-row:last-child{border-bottom:none;}
+  .signoff-total{display:flex;justify-content:space-between;font-weight:800;font-size:16px;padding-top:12px;margin-top:4px;border-top:2px solid #d7e6ee;}
+  .signoff-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
+  #signoff-note{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb">Coaches</span>
+    <h1>Confirm Your Hours</h1>
+  </div>
+  <div class="waves">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:620px;">
+    <div id="signoff-msg" class="form-msg"></div>
+    <div id="signoff-root"><p class="muted">Loading your hours&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function fmtDate(d) {
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  const token = new URLSearchParams(window.location.search).get("token") || "";
+  const root = document.getElementById("signoff-root");
+  const msg = document.getElementById("signoff-msg");
+
+  function statusBanner(data) {
+    if (data.status === "signed_off") {
+      return '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;margin-bottom:16px;"><strong>Signed off.</strong> Thanks! Clint &amp; Marcy have been notified. If something changes, you can request edits below.</div>';
+    }
+    if (data.status === "edits_requested") {
+      return '<div class="notice" style="margin-bottom:16px;"><strong>Edits requested.</strong> Clint &amp; Marcy have your note and will follow up.' +
+        (data.coach_note ? '<br><em>&ldquo;' + escapeHtml(data.coach_note) + '&rdquo;</em>' : "") + "</div>";
+    }
+    return "";
+  }
+
+  function render(data) {
+    const rows = data.entries.map(function (e) {
+      const dates = fmtDate(e.date) + (e.end_date ? " \u2013 " + fmtDate(e.end_date) : "");
+      const what = e.type === "tournament"
+        ? escapeHtml(e.tournament_name || "Tournament") + " &middot; " + escapeHtml(e.team)
+        : "Practice &middot; " + escapeHtml(e.team);
+      const travel = e.travel_days ? '<div class="muted" style="font-size:12.5px;">' + e.travel_days + " travel day" + (e.travel_days === 1 ? "" : "s") + "</div>" : "";
+      return '<div class="signoff-row"><div><strong>' + dates + '</strong><div class="muted" style="font-size:13px;">' + what + "</div>" + travel + "</div>" +
+        '<div style="white-space:nowrap;font-weight:700;">' + e.hours.toFixed(2) + " hrs</div></div>";
+    }).join("");
+
+    root.innerHTML =
+      statusBanner(data) +
+      '<p>Hi ' + escapeHtml(data.coach_name) + ', here are the hours logged for you in <strong>' + escapeHtml(data.month_label) + "</strong>. " +
+      "Please check them and sign off, or tell us what needs to change.</p>" +
+      '<div class="card">' +
+        (rows || '<p class="muted">No sessions logged.</p>') +
+        '<div class="signoff-total"><span>Total</span><span>' + data.total_hours.toFixed(2) + " hrs" +
+          (data.total_travel_days ? " &middot; " + data.total_travel_days + " travel day" + (data.total_travel_days === 1 ? "" : "s") : "") + "</span></div>" +
+      "</div>" +
+      '<div class="field" style="margin-top:18px;">' +
+        '<label for="signoff-note">Note (required if requesting edits)</label>' +
+        '<textarea id="signoff-note" rows="3" maxlength="2000" placeholder="e.g. I also coached 10U on the 14th for 2 hours."></textarea>' +
+      "</div>" +
+      '<p class="muted" style="font-size:13px;margin:0;">By signing off, I certify that my hours are complete and accurate for this month.</p>' +
+      '<div class="signoff-actions">' +
+        '<button type="button" class="btn btn-primary" data-decision="signed_off">\u2713 Sign Off</button>' +
+        '<button type="button" class="btn btn-outline-dark" data-decision="edits_requested">Request Edits</button>' +
+      "</div>";
+
+    root.querySelectorAll("[data-decision]").forEach(function (btn) {
+      btn.addEventListener("click", function () { respond(btn.dataset.decision); });
+    });
+  }
+
+  async function load() {
+    if (!token) {
+      root.innerHTML = '<p class="muted">This page needs the link from your hours email. Please use the link in that email.</p>';
+      return;
+    }
+    const { data, error } = await supabaseClient.functions.invoke("hours-signoff", { body: { token: token, action: "get" } });
+    if (error || !data || data.error) {
+      root.innerHTML = "";
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(error, data, "We couldn't load your hours. Please contact the club.");
+      return;
+    }
+    render(data);
+  }
+
+  async function respond(decision) {
+    const note = document.getElementById("signoff-note").value.trim();
+    msg.className = "form-msg";
+    if (decision === "edits_requested" && !note) {
+      msg.className = "form-msg error";
+      msg.textContent = "Please describe what needs to change in the note box.";
+      document.getElementById("signoff-note").focus();
+      return;
+    }
+    root.querySelectorAll("[data-decision]").forEach(function (b) { b.disabled = true; });
+    const { data, error } = await supabaseClient.functions.invoke("hours-signoff", {
+      body: { token: token, action: "respond", decision: decision, note: note },
+    });
+    if (error || !data || data.error) {
+      root.querySelectorAll("[data-decision]").forEach(function (b) { b.disabled = false; });
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(error, data, "Could not send your response. Please try again.");
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = decision === "signed_off"
+      ? "Thanks! Your hours are signed off and Clint & Marcy have been notified."
+      : "Thanks! Your edit request was sent to Clint & Marcy.";
+    load();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  load();
+</script>
+</body>
+</html>

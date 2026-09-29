@@ -51,7 +51,11 @@ Deno.serve(async (req) => {
     });
 
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
-    const returnUrl = `${siteUrl}/${sponsorship.is_donation ? "donate.html" : "sponsor.html"}`;
+    // sponsor.html now offers both donating and sponsoring from one form, so
+    // it asks to come back to itself; the standalone donate.html still gets
+    // its own page back when it doesn't ask.
+    const returnPage = body.return_page === "sponsor" || !sponsorship.is_donation ? "sponsor.html" : "donate.html";
+    const returnUrl = `${siteUrl}/${returnPage}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",

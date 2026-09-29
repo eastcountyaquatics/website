@@ -62,7 +62,7 @@
 <section class="section-tight">
   <div class="container" style="max-width:800px;">
     <div class="notice" style="margin-bottom:20px;">
-      Pay is calculated from hours logged on the <a href="admin-attendance.html">Attendance</a> page (practice + tournament hours) times each coach's hourly rate (set on the <a href="admin-coaches.html">Coaches</a> page), plus $75 per travel day for out-of-county tournaments. Recording a payment here just logs that it happened &mdash; it doesn't change what's shown as owed for a different date range.
+      Pay is calculated from practice hours logged on the <a href="admin-attendance.html">Attendance</a> page plus hours on the <a href="admin-tournament-hours.html">Tournament Coach Hours</a> page times each coach's hourly rate (set on the <a href="admin-coaches.html">Coaches</a> page), plus $75 per travel day for out-of-county tournaments. Recording a payment here just logs that it happened &mdash; it doesn't change what's shown as owed for a different date range.
     </div>
 
     <div class="pay-filters">
@@ -80,6 +80,20 @@
 
     <div id="list-msg" class="form-msg"></div>
     <div id="pay-list"><p class="muted">Loading&hellip;</p></div>
+
+    <div class="card" style="margin-top:28px;">
+      <h3 style="margin-top:0;">Month-End Hours Sign-Off</h3>
+      <p class="muted" style="font-size:13.5px;">On the last evening of each month, every coach with logged hours is emailed a link to review them and either <strong>sign off</strong> or <strong>request edits</strong>. Their answer is emailed to Clint &amp; Marcy and shows up here. Fixed someone's hours after they asked for edits? Send again and they'll get the same link to confirm the corrected numbers.</p>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+        <div class="field" style="margin:0;">
+          <label for="signoff-month">Month</label>
+          <input type="month" id="signoff-month">
+        </div>
+        <button type="button" id="send-signoff-btn" class="btn btn-outline-dark">Send Sign-Off Emails Now</button>
+      </div>
+      <div id="signoff-msg" class="form-msg"></div>
+      <div id="signoff-list"><p class="muted">Loading&hellip;</p></div>
+    </div>
   </div>
 </section>
 
@@ -94,6 +108,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -341,6 +356,66 @@
     document.getElementById(id).addEventListener("change", load);
   });
 
+  // ---- Month-end sign-off -------------------------------------------------
+  const SIGNOFF_LABELS = {
+    pending: '<span style="color:#8a6d00;font-weight:700;">Waiting on coach</span>',
+    signed_off: '<span style="color:#1c7a3a;font-weight:700;">\u2713 Signed off</span>',
+    edits_requested: '<span style="color:#a12626;font-weight:700;">Edits requested</span>',
+  };
+
+  async function loadSignoffs() {
+    const listEl = document.getElementById("signoff-list");
+    const month = document.getElementById("signoff-month").value;
+    if (!month) { listEl.innerHTML = ""; return; }
+    const { data, error } = await supabaseClient
+      .from("coach_hours_signoffs")
+      .select("coach_id, status, total_hours, coach_note, sent_at, responded_at")
+      .eq("period_month", month + "-01");
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    if (!data || !data.length) {
+      listEl.innerHTML = '<p class="muted">No sign-off emails sent for this month yet.</p>';
+      return;
+    }
+    listEl.innerHTML = data
+      .sort(function (a, b) { return (nameById[a.coach_id] || "").localeCompare(nameById[b.coach_id] || ""); })
+      .map(function (r) {
+        return '<div class="pay-row" style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e3edf3;font-size:14px;">' +
+          "<div><strong>" + escapeHtml(nameById[r.coach_id] || "Coach") + "</strong>" +
+          (r.total_hours != null ? " &middot; " + parseFloat(r.total_hours).toFixed(2) + " hrs" : "") +
+          (r.coach_note ? '<div class="muted" style="font-size:13px;">&ldquo;' + escapeHtml(r.coach_note) + "&rdquo;</div>" : "") +
+          "</div><div style=\"text-align:right;white-space:nowrap;\">" + (SIGNOFF_LABELS[r.status] || escapeHtml(r.status)) +
+          (r.responded_at ? '<div class="muted" style="font-size:12px;">' + new Date(r.responded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</div>" : "") +
+          "</div></div>";
+      }).join("");
+  }
+
+  document.getElementById("signoff-month").addEventListener("change", loadSignoffs);
+  document.getElementById("send-signoff-btn").addEventListener("click", async function () {
+    const btn = this;
+    const month = document.getElementById("signoff-month").value;
+    const msg = document.getElementById("signoff-msg");
+    if (!month) return;
+    if (!confirm("Email every coach with hours in " + month + " a link to confirm them? Coaches who already signed off won't be emailed again.")) return;
+    btn.disabled = true;
+    msg.className = "form-msg";
+    msg.textContent = "Sending\u2026";
+    const { data, error } = await supabaseClient.functions.invoke("send-monthly-hours-signoff", { body: { month: month } });
+    btn.disabled = false;
+    if (error || !data || data.error) {
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(error, data, "Could not send sign-off emails.");
+      return;
+    }
+    msg.className = (data.errors && data.errors.length) ? "form-msg error" : "form-msg success";
+    msg.textContent = data.message || ("Sent " + data.sent + " email" + (data.sent === 1 ? "" : "s") +
+      (data.skipped ? ", skipped " + data.skipped + " already signed off" : "") + "." +
+      (data.errors && data.errors.length ? " Problems: " + data.errors.join("; ") : ""));
+    loadSignoffs();
+  });
+
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
@@ -355,7 +430,14 @@
     (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
     (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
 
+    // Default to last month early in the month (that's the one being
+    // signed off), otherwise this month.
+    const now = new Date();
+    const ref = now.getDate() < 20 ? new Date(now.getFullYear(), now.getMonth() - 1, 1) : now;
+    document.getElementById("signoff-month").value = ref.getFullYear() + "-" + String(ref.getMonth() + 1).padStart(2, "0");
+
     load();
+    loadSignoffs();
   })();
 </script>
 </body>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach Registrations | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .reg-item{background:#fff;border:1px solid #e3e6f0;border-radius:8px;margin-bottom:10px;}
+  .reg-item summary{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 16px;cursor:pointer;list-style:none;}
+  .reg-item summary::-webkit-details-marker{display:none;}
+  .reg-body{padding:4px 16px 16px;border-top:1px solid #eef2f6;}
+  .reg-dl{display:grid;grid-template-columns:200px 1fr;gap:6px 14px;font-size:14px;margin:12px 0;}
+  .reg-dl dt{color:var(--muted,#6b7280);}
+  .reg-dl dd{margin:0;white-space:pre-wrap;word-break:break-word;}
+  @media (max-width:560px){.reg-dl{grid-template-columns:1fr;}.reg-dl dd{margin-bottom:6px;}}
+  .reg-flag{display:inline-block;font-size:12px;font-weight:700;border-radius:4px;padding:2px 6px;margin-left:6px;}
+  .reg-flag.warn{background:#fff4d6;color:#8a6d00;}
+  .reg-flag.bad{background:#fde8e8;color:#a12626;}
+  .reg-flag.ok{background:#e9f8ee;color:#1c7a3a;}
+  .reg-owner{display:grid;grid-template-columns:160px 1fr auto;gap:10px;align-items:end;}
+  @media (max-width:560px){.reg-owner{grid-template-columns:1fr;}}
+  .reg-owner textarea{width:100%;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font-family:inherit;font-size:14px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Coach Registrations</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:860px;">
+    <div class="notice" style="margin-bottom:18px;">
+      Coaches fill out the <a href="coach-registration.html" target="_blank" rel="noopener">Coach Registration form</a> (replaces the Google Form) &mdash; send them this link:
+      <code id="form-link" style="word-break:break-all;"></code>
+      <button type="button" id="copy-link-btn" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12.5px;margin-left:6px;">Copy</button>
+      <br>Only owners can see these. The <strong>hourly rate</strong> is never on the coach's form &mdash; set it here once the coach has a website account (same rate as on the <a href="admin-coaches.html">Coaches</a> page).
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;">
+      <div class="field" style="margin:0;flex:1;min-width:200px;">
+        <label for="reg-search">Search</label>
+        <input type="search" id="reg-search" placeholder="Name or email">
+      </div>
+      <button type="button" id="export-btn" class="btn btn-outline-dark">Export CSV</button>
+    </div>
+
+    <div id="list-msg" class="form-msg"></div>
+    <div id="reg-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function csvField(value) {
+    let str = String(value == null ? "" : value);
+    if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  }
+  function fmtDate(d) {
+    if (!d) return "";
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  const ZELLE_LABELS = { yes: "Yes", can_set_up: "Can set one up", no: "No" };
+
+  let registrations = [];
+  let profileByEmail = {};
+  let rateByProfileId = {};
+
+  // Flags an expired / soon-expiring certification so the owner doesn't
+  // have to eyeball every date.
+  function expiryFlag(label, dateStr) {
+    if (!dateStr) return "";
+    const days = Math.floor((new Date(dateStr + "T00:00:00") - new Date()) / 86400000);
+    if (days < 0) return '<span class="reg-flag bad">' + label + " expired</span>";
+    if (days <= 60) return '<span class="reg-flag warn">' + label + " expires soon</span>";
+    return "";
+  }
+
+  // A coach who re-submits (renewed cert, new phone) creates a new row;
+  // only the newest per email is shown, with older ones noted.
+  function latestPerEmail(rows) {
+    const seen = {};
+    const out = [];
+    rows.forEach(function (r) {
+      const key = r.email.toLowerCase();
+      if (seen[key]) { seen[key].olderCount++; return; }
+      r.olderCount = 0;
+      seen[key] = r;
+      out.push(r);
+    });
+    return out;
+  }
+
+  function render() {
+    const listEl = document.getElementById("reg-list");
+    const q = document.getElementById("reg-search").value.trim().toLowerCase();
+    const rows = latestPerEmail(registrations).filter(function (r) {
+      return !q || r.full_name.toLowerCase().indexOf(q) !== -1 || r.email.toLowerCase().indexOf(q) !== -1;
+    });
+    if (!rows.length) {
+      listEl.innerHTML = '<p class="muted">' + (registrations.length ? "No matches." : "No coach registrations yet. Share the form link above.") + "</p>";
+      return;
+    }
+
+    listEl.innerHTML = rows.map(function (r) {
+      const profile = profileByEmail[r.email.toLowerCase()];
+      const rate = profile ? rateByProfileId[profile.id] : null;
+      const flags =
+        (r.lifeguard_certified ? expiryFlag("Lifeguard", r.lifeguard_expiration) : "") +
+        (r.uswp_member ? expiryFlag("USAWP", r.uswp_expiration) : '<span class="reg-flag warn">No USAWP</span>') +
+        (r.w9_path ? "" : '<span class="reg-flag bad">No W-9</span>') +
+        (profile ? "" : '<span class="reg-flag warn">No account</span>');
+
+      const dl = [
+        ["Email", '<a href="mailto:' + escapeHtml(r.email) + '">' + escapeHtml(r.email) + "</a>"],
+        ["Phone", escapeHtml(r.phone)],
+        ["Date of Birth", fmtDate(r.date_of_birth)],
+        ["Shirt Size", escapeHtml(r.shirt_size)],
+        ["Mailing Address", escapeHtml(r.mailing_address || "\u2014")],
+        ["Emergency Contact", escapeHtml(r.emergency_contact_name) + " (" + escapeHtml(r.emergency_contact_relationship) + ") &middot; " + escapeHtml(r.emergency_contact_phone)],
+        ["Certified Lifeguard", r.lifeguard_certified ? "Yes &middot; expires " + fmtDate(r.lifeguard_expiration) : "No"],
+        ["USA Water Polo Coach", r.uswp_member ? "#" + escapeHtml(r.uswp_member_number) + " &middot; expires " + fmtDate(r.uswp_expiration) : "No"],
+        ["Zelle", (ZELLE_LABELS[r.zelle_status] || escapeHtml(r.zelle_status)) + (r.zelle_contact ? " &middot; " + escapeHtml(r.zelle_contact) : "")],
+        ["Venmo", escapeHtml(r.venmo_username || "\u2014")],
+        ["Availability", escapeHtml(r.availability || "\u2014")],
+        ["W-9", r.w9_path ? '<button type="button" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12.5px;" data-w9="' + escapeHtml(r.w9_path) + '">View W-9</button>' : "Not uploaded"],
+        ["Submitted", new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+          (r.olderCount ? ' <span class="muted">(' + r.olderCount + " earlier submission" + (r.olderCount === 1 ? "" : "s") + ")</span>" : "")],
+      ].map(function (pair) { return "<dt>" + pair[0] + "</dt><dd>" + pair[1] + "</dd>"; }).join("");
+
+      return '<details class="reg-item"><summary><span><strong>' + escapeHtml(r.full_name) + "</strong>" + flags + "</span>" +
+        '<span class="muted" style="font-size:13px;white-space:nowrap;">' + (rate != null ? "$" + (rate / 100).toFixed(2) + "/hr" : "No rate set") + "</span></summary>" +
+        '<div class="reg-body"><dl class="reg-dl">' + dl + "</dl>" +
+        '<div class="reg-owner">' +
+          '<div class="field" style="margin:0;"><label style="font-size:13px;">Hourly Rate ($)</label>' +
+            (profile
+              ? '<input type="number" min="0" step="0.25" data-rate-for="' + r.id + '" value="' + (rate != null ? (rate / 100).toFixed(2) : "") + '" placeholder="22.00">'
+              : '<p class="muted" style="font-size:12.5px;margin:4px 0 0;">Coach needs a website account with ' + escapeHtml(r.email) + " first.</p>") +
+          "</div>" +
+          '<div class="field" style="margin:0;"><label style="font-size:13px;">Owner Notes (coach never sees)</label>' +
+            '<textarea rows="2" maxlength="2000" data-notes-for="' + r.id + '">' + escapeHtml(r.owner_notes || "") + "</textarea></div>" +
+          '<button type="button" class="btn btn-primary" data-save="' + r.id + '">Save</button>' +
+        "</div>" +
+        '<div class="form-msg" data-msg-for="' + r.id + '" style="margin-top:8px;"></div>' +
+        "</div></details>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-w9]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        // Short-lived signed link -- the bucket is private because W-9s
+        // carry SSNs.
+        const { data, error } = await supabaseClient.storage.from("coach-documents").createSignedUrl(btn.dataset.w9, 120);
+        if (error || !data) { alert("Could not open W-9: " + (error ? error.message : "unknown error")); return; }
+        window.open(data.signedUrl, "_blank", "noopener");
+      });
+    });
+
+    listEl.querySelectorAll("[data-save]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const id = btn.dataset.save;
+        const r = registrations.find(function (x) { return x.id === id; });
+        const msg = listEl.querySelector('[data-msg-for="' + id + '"]');
+        msg.className = "form-msg";
+        btn.disabled = true;
+
+        const notes = listEl.querySelector('[data-notes-for="' + id + '"]').value.trim() || null;
+        const { error } = await supabaseClient.from("coach_registrations").update({ owner_notes: notes }).eq("id", id);
+        let rateError = null;
+        const rateInput = listEl.querySelector('[data-rate-for="' + id + '"]');
+        const profile = profileByEmail[r.email.toLowerCase()];
+        if (!error && rateInput && profile) {
+          const raw = rateInput.value.trim();
+          if (raw) {
+            const dollars = parseFloat(raw);
+            if (isNaN(dollars) || dollars < 0) {
+              rateError = { message: "Enter a valid hourly rate." };
+            } else {
+              const res = await supabaseClient.from("coach_pay_rates").upsert(
+                { coach_id: profile.id, hourly_rate_cents: Math.round(dollars * 100) },
+                { onConflict: "coach_id" }
+              );
+              rateError = res.error;
+              if (!rateError) rateByProfileId[profile.id] = Math.round(dollars * 100);
+            }
+          } else if (rateByProfileId[profile.id] != null) {
+            const res = await supabaseClient.from("coach_pay_rates").delete().eq("coach_id", profile.id);
+            rateError = res.error;
+            if (!rateError) delete rateByProfileId[profile.id];
+          }
+        }
+        btn.disabled = false;
+        if (error || rateError) {
+          msg.className = "form-msg error";
+          msg.textContent = "Could not save: " + (error || rateError).message;
+          return;
+        }
+        r.owner_notes = notes;
+        msg.className = "form-msg success";
+        msg.textContent = "Saved.";
+      });
+    });
+  }
+
+  async function load() {
+    const [{ data, error }, { data: profiles }, { data: rates }] = await Promise.all([
+      supabaseClient.from("coach_registrations").select("*").order("created_at", { ascending: false }),
+      supabaseClient.from("profiles").select("id, email, role"),
+      supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
+    ]);
+    if (error) {
+      document.getElementById("list-msg").className = "form-msg error";
+      document.getElementById("list-msg").textContent = "Could not load registrations: " + error.message;
+      document.getElementById("reg-list").innerHTML = "";
+      return;
+    }
+    registrations = data || [];
+    profileByEmail = {};
+    (profiles || []).forEach(function (p) { if (p.email) profileByEmail[p.email.toLowerCase()] = p; });
+    rateByProfileId = {};
+    (rates || []).forEach(function (r) { rateByProfileId[r.coach_id] = r.hourly_rate_cents; });
+    render();
+  }
+
+  document.getElementById("reg-search").addEventListener("input", render);
+
+  document.getElementById("export-btn").addEventListener("click", function () {
+    const rows = latestPerEmail(registrations);
+    if (!rows.length) return;
+    const header = ["Name", "Email", "Phone", "Date of Birth", "Shirt Size", "Mailing Address", "Emergency Contact", "Relationship",
+      "Emergency Phone", "Certified Lifeguard", "Lifeguard Expiration", "USAWP Member", "USAWP Number", "USAWP Expiration",
+      "Zelle", "Zelle Contact", "Venmo", "Availability", "W-9 Uploaded", "Hourly Rate", "Owner Notes", "Submitted"];
+    const lines = [header.join(",")];
+    rows.forEach(function (r) {
+      const profile = profileByEmail[r.email.toLowerCase()];
+      const rate = profile ? rateByProfileId[profile.id] : null;
+      lines.push([
+        r.full_name, r.email, r.phone, r.date_of_birth, r.shirt_size, r.mailing_address, r.emergency_contact_name,
+        r.emergency_contact_relationship, r.emergency_contact_phone, r.lifeguard_certified ? "Yes" : "No", r.lifeguard_expiration,
+        r.uswp_member ? "Yes" : "No", r.uswp_member_number, r.uswp_expiration, ZELLE_LABELS[r.zelle_status] || r.zelle_status,
+        r.zelle_contact, r.venmo_username, r.availability, r.w9_path ? "Yes" : "No", rate != null ? (rate / 100).toFixed(2) : "",
+        r.owner_notes, r.created_at.slice(0, 10),
+      ].map(csvField).join(","));
+    });
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "eca-coach-registrations-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    const formUrl = new URL("coach-registration.html", window.location.href).href;
+    document.getElementById("form-link").textContent = formUrl;
+    document.getElementById("copy-link-btn").addEventListener("click", function () {
+      navigator.clipboard.writeText(formUrl).then(function () {
+        document.getElementById("copy-link-btn").textContent = "Copied!";
+      });
+    });
+    load();
+  })();
+</script>
+</body>
+</html>

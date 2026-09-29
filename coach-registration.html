@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach Registration | San Diego East County Aquatics</title>
+<meta name="description" content="New and returning coach information form for San Diego East County Aquatics.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  #coach-reg-form textarea{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;resize:vertical;}
+  #coach-reg-form select{width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;}
+  .reg-section{font-family:'Bitter',serif;font-size:17px;margin:26px 0 10px;padding-top:18px;border-top:1px solid #e3edf3;}
+  .reg-section:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .reg-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;}
+  @media (max-width:560px){.reg-grid{grid-template-columns:1fr;}}
+  .radio-row{display:flex;gap:18px;flex-wrap:wrap;}
+  .radio-row label{display:flex;align-items:center;gap:6px;font-weight:400;margin:0;}
+  .radio-row input{width:auto;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb">Coaches</span>
+    <h1>Coach Registration</h1>
+  </div>
+  <div class="waves">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:680px;">
+    <p class="muted" style="margin-bottom:20px;">Welcome to the ECA coaching staff! Please fill this out when you start, and again whenever something changes (new phone, renewed certification, etc.). Only the club owners can see what you submit.</p>
+
+    <div id="reg-msg" class="form-msg"></div>
+    <div class="card" id="reg-card">
+      <form id="coach-reg-form">
+        <h3 class="reg-section">About You</h3>
+        <div class="field">
+          <label for="cr-name">Name (First and Last)</label>
+          <input type="text" id="cr-name" autocomplete="name" maxlength="200" required>
+        </div>
+        <div class="reg-grid">
+          <div class="field">
+            <label for="cr-email">Email Address</label>
+            <input type="email" id="cr-email" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="cr-phone">Phone Number</label>
+            <input type="tel" id="cr-phone" autocomplete="tel" maxlength="40" required>
+          </div>
+          <div class="field">
+            <label for="cr-dob">Date of Birth</label>
+            <input type="date" id="cr-dob" required>
+          </div>
+          <div class="field">
+            <label for="cr-shirt">Shirt Size</label>
+            <select id="cr-shirt" required>
+              <option value="">Choose&hellip;</option>
+              <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="cr-address">Mailing Address</label>
+          <input type="text" id="cr-address" autocomplete="street-address" maxlength="500" placeholder="Street, City, ZIP">
+        </div>
+
+        <h3 class="reg-section">Emergency Contact</h3>
+        <div class="field">
+          <label for="cr-ec-name">Emergency Contact Name</label>
+          <input type="text" id="cr-ec-name" maxlength="200" required>
+        </div>
+        <div class="reg-grid">
+          <div class="field">
+            <label for="cr-ec-rel">Relationship</label>
+            <input type="text" id="cr-ec-rel" maxlength="100" placeholder="e.g. Parent" required>
+          </div>
+          <div class="field">
+            <label for="cr-ec-phone">Emergency Contact Phone</label>
+            <input type="tel" id="cr-ec-phone" maxlength="40" required>
+          </div>
+        </div>
+
+        <h3 class="reg-section">Certifications</h3>
+        <div class="field">
+          <label>Are you a Certified Lifeguard?</label>
+          <div class="radio-row">
+            <label><input type="radio" name="cr-lifeguard" value="yes" required> Yes</label>
+            <label><input type="radio" name="cr-lifeguard" value="no"> No</label>
+          </div>
+        </div>
+        <div class="field" id="cr-lg-exp-wrap" style="display:none;">
+          <label for="cr-lg-exp">Lifeguard Certification Expiration Date</label>
+          <input type="date" id="cr-lg-exp">
+        </div>
+        <div class="field">
+          <label>Do you have a USA Water Polo Coaches Membership?</label>
+          <div class="radio-row">
+            <label><input type="radio" name="cr-uswp" value="yes" required> Yes</label>
+            <label><input type="radio" name="cr-uswp" value="no"> No</label>
+          </div>
+        </div>
+        <div class="reg-grid" id="cr-uswp-wrap" style="display:none;">
+          <div class="field">
+            <label for="cr-uswp-num">Membership Number</label>
+            <input type="text" id="cr-uswp-num" maxlength="50">
+          </div>
+          <div class="field">
+            <label for="cr-uswp-exp">Membership Expiration</label>
+            <input type="date" id="cr-uswp-exp">
+          </div>
+        </div>
+
+        <h3 class="reg-section">Getting Paid</h3>
+        <div class="field">
+          <label for="cr-w9">W-9 Tax Form</label>
+          <p class="field-hint" style="margin-top:0;"><a href="https://drive.google.com/file/d/1fEqCCmD4WZk9DjrXE_XFffzdBZ4pxdsf/view?usp=sharing" target="_blank" rel="noopener">Download the blank W-9</a>, fill it out and sign it, then upload a PDF or a clear photo here.</p>
+          <input type="file" id="cr-w9" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp" required>
+        </div>
+        <div class="field">
+          <label for="cr-zelle">We prefer to pay through Zelle. Do you have a Zelle account set up?</label>
+          <select id="cr-zelle" required>
+            <option value="">Choose&hellip;</option>
+            <option value="yes">Yes</option>
+            <option value="can_set_up">I can set one up</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div class="field" id="cr-zelle-contact-wrap" style="display:none;">
+          <label for="cr-zelle-contact">Zelle account phone number or email</label>
+          <input type="text" id="cr-zelle-contact" maxlength="200">
+        </div>
+        <div class="field">
+          <label for="cr-venmo">Venmo Username (optional)</label>
+          <input type="text" id="cr-venmo" maxlength="100" placeholder="@username">
+        </div>
+
+        <h3 class="reg-section">Availability</h3>
+        <div class="field">
+          <label for="cr-availability">Basic availability, days and times</label>
+          <textarea id="cr-availability" rows="4" maxlength="4000" placeholder="e.g. Mon/Wed/Fri after 4pm and Saturdays. Not available Oct 10&ndash;12." required></textarea>
+        </div>
+
+        <button type="submit" id="reg-submit" class="btn btn-primary" style="width:100%;margin-top:6px;">Submit Registration</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function radioValue(name) {
+    const checked = document.querySelector('input[name="' + name + '"]:checked');
+    return checked ? checked.value : "";
+  }
+
+  function toggle(id, show) {
+    document.getElementById(id).style.display = show ? (id === "cr-uswp-wrap" ? "grid" : "block") : "none";
+  }
+
+  document.querySelectorAll('input[name="cr-lifeguard"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      const yes = radioValue("cr-lifeguard") === "yes";
+      toggle("cr-lg-exp-wrap", yes);
+      document.getElementById("cr-lg-exp").required = yes;
+    });
+  });
+  document.querySelectorAll('input[name="cr-uswp"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      const yes = radioValue("cr-uswp") === "yes";
+      toggle("cr-uswp-wrap", yes);
+      document.getElementById("cr-uswp-num").required = yes;
+      document.getElementById("cr-uswp-exp").required = yes;
+    });
+  });
+  document.getElementById("cr-zelle").addEventListener("change", function () {
+    const yes = this.value === "yes";
+    toggle("cr-zelle-contact-wrap", yes);
+    document.getElementById("cr-zelle-contact").required = yes;
+  });
+
+  function val(id) {
+    const v = document.getElementById(id).value.trim();
+    return v || null;
+  }
+
+  document.getElementById("coach-reg-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("reg-msg");
+    const btn = document.getElementById("reg-submit");
+    msg.className = "form-msg";
+
+    const file = document.getElementById("cr-w9").files[0];
+    if (file && file.size > 10 * 1024 * 1024) {
+      msg.className = "form-msg error";
+      msg.textContent = "That W-9 file is over 10MB. Please upload a smaller PDF or photo.";
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    // Upload the W-9 first under a random folder (nobody but the owner can
+    // read the bucket, and there's no overwrite policy), then save the
+    // registration pointing at it.
+    let w9Path = null;
+    if (file) {
+      const ext = (file.name.split(".").pop() || "pdf").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "pdf";
+      w9Path = "w9/" + crypto.randomUUID() + "/w9." + ext;
+      const { error: uploadError } = await supabaseClient.storage.from("coach-documents").upload(w9Path, file, {
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (uploadError) {
+        btn.disabled = false;
+        btn.textContent = "Submit Registration";
+        msg.className = "form-msg error";
+        msg.textContent = "Could not upload your W-9: " + uploadError.message;
+        return;
+      }
+    }
+
+    const lifeguard = radioValue("cr-lifeguard") === "yes";
+    const uswp = radioValue("cr-uswp") === "yes";
+    const zelle = document.getElementById("cr-zelle").value;
+
+    // Plain insert with no .select(): the public can submit but never read
+    // rows back (see the coach_registrations RLS policies).
+    const { error } = await supabaseClient.from("coach_registrations").insert({
+      full_name: val("cr-name"),
+      email: val("cr-email"),
+      phone: val("cr-phone"),
+      date_of_birth: val("cr-dob"),
+      shirt_size: val("cr-shirt"),
+      mailing_address: val("cr-address"),
+      emergency_contact_name: val("cr-ec-name"),
+      emergency_contact_relationship: val("cr-ec-rel"),
+      emergency_contact_phone: val("cr-ec-phone"),
+      lifeguard_certified: lifeguard,
+      lifeguard_expiration: lifeguard ? val("cr-lg-exp") : null,
+      uswp_member: uswp,
+      uswp_member_number: uswp ? val("cr-uswp-num") : null,
+      uswp_expiration: uswp ? val("cr-uswp-exp") : null,
+      zelle_status: zelle,
+      zelle_contact: zelle === "yes" ? val("cr-zelle-contact") : null,
+      venmo_username: val("cr-venmo"),
+      availability: val("cr-availability"),
+      w9_path: w9Path,
+    });
+
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = "Submit Registration";
+      msg.className = "form-msg error";
+      msg.textContent = "Could not submit: " + error.message;
+      return;
+    }
+
+    document.getElementById("reg-card").outerHTML =
+      '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
+      "<strong>Thanks &mdash; you're registered!</strong> Clint &amp; Marcy will be in touch. " +
+      'If you don\'t have a website account yet, <a href="signup.html">create one here</a> with this same email so you can log practice hours.</div>';
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+</script>
+</body>
+</html>

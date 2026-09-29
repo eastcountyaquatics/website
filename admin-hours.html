@@ -129,7 +129,7 @@
 
     let q = supabaseClient
       .from("coach_hours")
-      .select("id, coach_id, team_slug, session_date, hours")
+      .select("id, coach_id, team_slug, session_date, session_end_date, session_type, tournament_name, hours")
       .order("session_date", { ascending: false });
     if (from) q = q.gte("session_date", from);
     if (to) q = q.lte("session_date", to);
@@ -175,8 +175,10 @@
         payRow +
         '<details><summary class="muted" style="cursor:pointer;font-size:13px;padding-left:16px;">Show each session</summary>' +
         rows.map(function (r) {
-          return '<div class="hours-row"><span>' + fmtDate(r.session_date) + " &middot; " +
-            escapeHtml(teamLabels[r.team_slug] || r.team_slug) + "</span><span>" +
+          const dateText = fmtDate(r.session_date) + (r.session_end_date ? " \u2013 " + fmtDate(r.session_end_date) : "");
+          const tournBit = r.session_type === "tournament" ? " &middot; " + escapeHtml(r.tournament_name || "Tournament") : "";
+          return '<div class="hours-row"><span>' + dateText + " &middot; " +
+            escapeHtml(teamLabels[r.team_slug] || r.team_slug) + tournBit + "</span><span>" +
             parseFloat(r.hours).toFixed(2) + " hrs</span></div>";
         }).join("") +
         "</details></div>";
@@ -185,11 +187,14 @@
 
   document.getElementById("export-btn").addEventListener("click", function () {
     if (!loadedRows.length) return;
-    const lines = [["Coach", "Date", "Team", "Hours"].join(",")];
+    const lines = [["Coach", "Date", "End Date", "Type", "Tournament", "Team", "Hours"].join(",")];
     loadedRows.forEach(function (r) {
       lines.push([
         nameById[r.coach_id] || "Coach",
         r.session_date,
+        r.session_end_date || "",
+        r.session_type || "practice",
+        r.tournament_name || "",
         teamLabels[r.team_slug] || r.team_slug,
         parseFloat(r.hours).toFixed(2),
       ].map(csvField).join(","));

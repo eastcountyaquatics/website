@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournament Coach Hours | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .coach-hours-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#f7f9fc;border:1px solid #e3edf3;border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:13.5px;}
+  .coach-hours-row .actions{display:flex;gap:4px;flex-shrink:0;}
+  .coach-hours-row button{border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;padding:2px 6px;}
+  .coach-hours-row button.remove{color:#a12626;}
+  .coach-hours-row button.edit{color:var(--blue);}
+  .th-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px;}
+  .th-grid .field{margin:0;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Tournament Coach Hours</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:760px;">
+    <p class="muted" style="font-size:13.5px;">Coaches are paid 2 hours per game worked at a tournament, plus $75/day for travel if the tournament is outside the county. Practice hours are still logged on the <a href="admin-attendance.html">Attendance</a> page.</p>
+
+    <div class="card" style="margin-bottom:22px;">
+      <h3 id="th-form-title" style="margin-top:0;">Log Tournament Hours</h3>
+      <div id="tourn-hours-msg" class="form-msg"></div>
+      <form id="tourn-hours-form">
+        <input type="hidden" id="th-id">
+        <div class="th-grid">
+          <div class="field" style="grid-column:1/-1;">
+            <label for="th-tournament-pick">Tournament</label>
+            <select id="th-tournament-pick"><option value="">Other / not listed&hellip;</option></select>
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label for="th-tournament-name">Tournament Name</label>
+            <input type="text" id="th-tournament-name" placeholder="e.g. Rocktober Classic" required>
+          </div>
+          <div class="field">
+            <label for="th-team">Team</label>
+            <select id="th-team" required><option value="">Choose a team&hellip;</option></select>
+          </div>
+          <div class="field">
+            <label for="th-coach">Coach</label>
+            <select id="th-coach" required><option value="">Choose a coach&hellip;</option></select>
+          </div>
+          <div class="field">
+            <label for="th-date">Start Date</label>
+            <input type="date" id="th-date" required>
+          </div>
+          <div class="field">
+            <label for="th-end-date">End Date</label>
+            <input type="date" id="th-end-date">
+          </div>
+          <div class="field">
+            <label for="th-games">Games Coached (whole tournament)</label>
+            <input type="number" id="th-games" min="0" step="1" placeholder="5">
+          </div>
+          <div class="field">
+            <label for="th-hours">Total Hours</label>
+            <input type="number" id="th-hours" min="0.25" max="99" step="0.25" required>
+            <p class="field-hint" style="margin-bottom:0;">Auto-fills at 2 hrs per game.</p>
+          </div>
+          <div class="field" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="th-travel" style="width:auto;">
+            <label for="th-travel" style="margin:0;font-weight:400;">Out of county (travel pay)</label>
+          </div>
+          <div class="field" id="th-travel-days-wrap" style="display:none;">
+            <label for="th-travel-days">Travel Days</label>
+            <input type="number" id="th-travel-days" min="1" step="1" value="1">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button type="submit" id="th-submit-btn" class="btn btn-primary">Add</button>
+          <button type="button" id="th-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
+      <h3 style="margin:0;flex:1;">Logged Tournament Hours</h3>
+      <div class="field" style="margin:0;">
+        <label for="th-filter-month" style="font-size:13px;">Month</label>
+        <input type="month" id="th-filter-month">
+      </div>
+    </div>
+    <div id="tourn-hours-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function todayIso() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function formatShortDate(d) {
+    if (!d) return "";
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function formatRange(start, end) {
+    if (!end || end === start) return formatShortDate(start);
+    return formatShortDate(start) + " \u2013 " + formatShortDate(end);
+  }
+
+  // Inclusive day count, so a Sat-Sun tournament defaults to 2 travel days.
+  function daysInRange(start, end) {
+    if (!start) return 1;
+    if (!end || end < start) return 1;
+    return Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000) + 1;
+  }
+
+  let teams = [];
+  let coachRoster = [];
+  let tournaments = [];
+  let tournamentHoursRows = [];
+  let travelDaysTouched = false;
+
+  function coachName(profileId) {
+    const c = coachRoster.find(function (x) { return x.id === profileId; });
+    return c ? c.full_name : "Coach";
+  }
+
+  function teamLabel(slug) {
+    return (teams.find(function (t) { return t.team_slug === slug; }) || {}).team_label || slug;
+  }
+
+  // Tournament hours are bucketed by START date, same as the Coach Hours,
+  // Coach Pay and month-end sign-off screens, so a tournament that spans
+  // Oct 31-Nov 1 counts toward October everywhere.
+  async function loadTournamentHours() {
+    const listEl = document.getElementById("tourn-hours-list");
+    let q = supabaseClient
+      .from("coach_hours")
+      .select("id, coach_id, team_slug, session_date, session_end_date, hours, tournament_id, tournament_name, travel_days")
+      .eq("session_type", "tournament")
+      .order("session_date", { ascending: false });
+    const month = document.getElementById("th-filter-month").value;
+    if (month) {
+      const [y, m] = month.split("-").map(Number);
+      const last = new Date(y, m, 0).getDate();
+      q = q.gte("session_date", month + "-01").lte("session_date", month + "-" + String(last).padStart(2, "0"));
+    }
+    const { data, error } = await q;
+
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    tournamentHoursRows = data || [];
+    if (tournamentHoursRows.length === 0) {
+      listEl.innerHTML = '<p class="muted">No tournament hours logged' + (month ? " for this month" : "") + " yet.</p>";
+      return;
+    }
+
+    listEl.innerHTML = tournamentHoursRows.map(function (r) {
+      const travelBit = r.travel_days ? " &middot; " + r.travel_days + " travel day" + (r.travel_days === 1 ? "" : "s") + " ($" + (r.travel_days * 75).toFixed(2) + ")" : "";
+      return '<div class="coach-hours-row">' +
+        "<span><strong>" + escapeHtml(coachName(r.coach_id)) + "</strong> \u2014 " + escapeHtml(r.tournament_name || "Tournament") +
+        " (" + escapeHtml(teamLabel(r.team_slug)) + ")" +
+        " &middot; " + formatRange(r.session_date, r.session_end_date) + " &middot; " + parseFloat(r.hours).toFixed(2) + " hrs" + travelBit + "</span>" +
+        '<div class="actions">' +
+        '<button type="button" class="edit" data-edit-th="' + r.id + '">Edit</button>' +
+        '<button type="button" class="remove" data-remove-th="' + r.id + '">Remove</button>' +
+        "</div></div>";
+    }).join("");
+
+    listEl.querySelectorAll("[data-edit-th]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const r = tournamentHoursRows.find(function (x) { return x.id === btn.dataset.editTh; });
+        if (!r) return;
+        document.getElementById("th-id").value = r.id;
+        document.getElementById("th-tournament-pick").value = r.tournament_id || "";
+        document.getElementById("th-team").value = r.team_slug;
+        document.getElementById("th-tournament-name").value = r.tournament_name || "";
+        document.getElementById("th-coach").value = r.coach_id;
+        document.getElementById("th-date").value = r.session_date;
+        document.getElementById("th-end-date").value = r.session_end_date || "";
+        document.getElementById("th-games").value = "";
+        document.getElementById("th-hours").value = parseFloat(r.hours);
+        document.getElementById("th-travel").checked = !!r.travel_days;
+        document.getElementById("th-travel-days-wrap").style.display = r.travel_days ? "block" : "none";
+        document.getElementById("th-travel-days").value = r.travel_days || 1;
+        travelDaysTouched = true;
+        document.getElementById("th-form-title").textContent = "Edit Tournament Hours";
+        document.getElementById("th-submit-btn").textContent = "Save Changes";
+        document.getElementById("th-cancel-btn").style.display = "inline-block";
+        document.getElementById("tourn-hours-form").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    listEl.querySelectorAll("[data-remove-th]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Remove this tournament hours entry?")) return;
+        const { error } = await supabaseClient.from("coach_hours").delete().eq("id", btn.dataset.removeTh);
+        if (error) { alert("Could not remove: " + error.message); return; }
+        loadTournamentHours();
+      });
+    });
+  }
+
+  function resetTournamentHoursForm() {
+    document.getElementById("tourn-hours-form").reset();
+    document.getElementById("th-id").value = "";
+    document.getElementById("th-date").value = todayIso();
+    document.getElementById("th-end-date").value = "";
+    document.getElementById("th-travel-days-wrap").style.display = "none";
+    document.getElementById("th-form-title").textContent = "Log Tournament Hours";
+    document.getElementById("th-submit-btn").textContent = "Add";
+    document.getElementById("th-cancel-btn").style.display = "none";
+    travelDaysTouched = false;
+  }
+
+  function syncTravelDays() {
+    if (travelDaysTouched) return;
+    document.getElementById("th-travel-days").value =
+      daysInRange(document.getElementById("th-date").value, document.getElementById("th-end-date").value);
+  }
+
+  async function init() {
+    const [{ data: teamRows }, { data: coachRows }, { data: tournamentRows }] = await Promise.all([
+      supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
+      supabaseClient.rpc("list_staff_profiles"),
+      supabaseClient.from("tournaments").select("id, name, event_date, end_date").order("event_date", { ascending: false }).limit(60),
+    ]);
+    teams = teamRows || [];
+    coachRoster = coachRows || [];
+    tournaments = tournamentRows || [];
+
+    document.getElementById("th-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+    document.getElementById("th-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
+      coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    document.getElementById("th-tournament-pick").innerHTML = '<option value="">Other / not listed&hellip;</option>' +
+      tournaments.map(function (t) {
+        return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + " (" + escapeHtml(formatRange(t.event_date, t.end_date)) + ")</option>";
+      }).join("");
+
+    document.getElementById("th-date").value = todayIso();
+    const now = new Date();
+    document.getElementById("th-filter-month").value = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+
+    // Picking a tournament the club already set up fills in its name and
+    // dates, so coaches don't have to retype them.
+    document.getElementById("th-tournament-pick").addEventListener("change", function () {
+      const t = tournaments.find(function (x) { return x.id === this.value; }, this);
+      if (!t) return;
+      document.getElementById("th-tournament-name").value = t.name;
+      document.getElementById("th-date").value = t.event_date;
+      document.getElementById("th-end-date").value = t.end_date || "";
+      syncTravelDays();
+    });
+    document.getElementById("th-games").addEventListener("input", function () {
+      const games = parseInt(this.value, 10);
+      if (!isNaN(games) && games >= 0) {
+        document.getElementById("th-hours").value = games * 2;
+      }
+    });
+    document.getElementById("th-date").addEventListener("change", syncTravelDays);
+    document.getElementById("th-end-date").addEventListener("change", syncTravelDays);
+    document.getElementById("th-travel-days").addEventListener("input", function () { travelDaysTouched = true; });
+    document.getElementById("th-travel").addEventListener("change", function () {
+      document.getElementById("th-travel-days-wrap").style.display = this.checked ? "block" : "none";
+      syncTravelDays();
+    });
+    document.getElementById("th-cancel-btn").addEventListener("click", resetTournamentHoursForm);
+    document.getElementById("th-filter-month").addEventListener("change", loadTournamentHours);
+
+    document.getElementById("tourn-hours-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const msg = document.getElementById("tourn-hours-msg");
+      msg.className = "form-msg";
+
+      const start = document.getElementById("th-date").value;
+      const end = document.getElementById("th-end-date").value;
+      if (end && end < start) {
+        msg.className = "form-msg error";
+        msg.textContent = "The end date can't be before the start date.";
+        return;
+      }
+      const hours = parseFloat(document.getElementById("th-hours").value);
+      if (isNaN(hours) || hours <= 0 || hours > 99) {
+        msg.className = "form-msg error";
+        msg.textContent = "Enter total hours (or fill in Games to calculate it automatically).";
+        return;
+      }
+      const travelChecked = document.getElementById("th-travel").checked;
+      const travelDays = travelChecked ? (parseInt(document.getElementById("th-travel-days").value, 10) || 1) : null;
+
+      const payload = {
+        coach_id: document.getElementById("th-coach").value,
+        team_slug: document.getElementById("th-team").value,
+        tournament_id: document.getElementById("th-tournament-pick").value || null,
+        tournament_name: document.getElementById("th-tournament-name").value.trim(),
+        session_date: start,
+        session_end_date: end && end !== start ? end : null,
+        hours: hours,
+        travel_days: travelDays,
+        session_type: "tournament",
+      };
+
+      const id = document.getElementById("th-id").value;
+      const result = id
+        ? await supabaseClient.from("coach_hours").update(payload).eq("id", id)
+        : await supabaseClient.from("coach_hours").insert(payload);
+
+      if (result.error) {
+        msg.className = "form-msg error";
+        msg.textContent = result.error.code === "23505"
+          ? "This coach already has hours logged for that tournament starting that day \u2014 edit the existing entry below instead."
+          : result.error.message;
+        return;
+      }
+      msg.className = "form-msg success";
+      msg.textContent = id ? "Updated." : "Added.";
+      resetTournamentHoursForm();
+      loadTournamentHours();
+    });
+
+    loadTournamentHours();
+  }
+
+  (async function () {
+    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    if (!auth) return;
+    init();
+  })();
+</script>
+</body>
+</html>

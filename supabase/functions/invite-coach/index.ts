@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
           `Hi${coachName ? " " + coachName : ""},\n\n` +
           `You've been added as a coach at San Diego East County Aquatics. Create your account here to get access:\n\n${signupUrl}\n\n` +
           `Use this same email address (${email}) when you sign up, so your coach access connects automatically.\n\n` +
+          `Please also fill out the coach registration form (contact info, emergency contact, certifications, W-9 and payment details):\n\n${siteUrl}/coach-registration.html\n\n` +
           `San Diego East County Aquatics`,
       }),
     });

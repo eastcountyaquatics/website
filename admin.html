@@ -65,6 +65,12 @@
           <p class="muted">Take attendance for practice &mdash; check off who's present, saves automatically.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="tournament-hours-card" style="display:none;">
+        <a href="admin-tournament-hours.html" style="display:block;color:inherit;">
+          <h3>Tournament Coach Hours</h3>
+          <p class="muted">Log coaching hours and travel days for a tournament, start to end date.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="athletes-card" style="display:none;">
         <a href="admin-athletes.html" style="display:block;color:inherit;">
           <h3>Roster</h3>
@@ -125,6 +131,12 @@
           <p class="muted">Hours logged at attendance, totalled per coach for payroll.</p>
         </a>
       </div>
+      <div class="admin-nav-card" id="coach-registrations-card" style="display:none;">
+        <a href="admin-coach-registrations.html" style="display:block;color:inherit;">
+          <h3>Coach Registrations</h3>
+          <p class="muted">Coach info, certifications and W-9s from the registration form &mdash; set hourly rates here.</p>
+        </a>
+      </div>
       <div class="admin-nav-card" id="coach-pay-card" style="display:none;">
         <a href="admin-coach-pay.html" style="display:block;color:inherit;">
           <h3>Coach Pay</h3>
@@ -176,6 +188,7 @@
       document.getElementById("schedules-card").style.display = "block";
       document.getElementById("athletes-card").style.display = "block";
       document.getElementById("attendance-card").style.display = "block";
+      document.getElementById("tournament-hours-card").style.display = "block";
       document.getElementById("tournaments-card").style.display = "block";
       document.getElementById("interest-card").style.display = "block";
     }
@@ -190,6 +203,7 @@
     }
     if (auth.role === "owner") {
       document.getElementById("coach-pay-card").style.display = "block";
+      document.getElementById("coach-registrations-card").style.display = "block";
       document.getElementById("signups-card").style.display = "block";
       document.getElementById("sponsors-card").style.display = "block";
       document.getElementById("registrations-card").style.display = "block";

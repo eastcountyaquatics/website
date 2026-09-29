@@ -8,5 +8,7 @@ Disallow: /login.html
 Disallow: /signup.html
 Disallow: /forgot-password.html
 Disallow: /reset-password.html
+Disallow: /coach-registration.html
+Disallow: /hours-signoff.html
 
 Sitemap: https://eastcountyaquatics.github.io/website/sitemap.xml

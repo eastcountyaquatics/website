@@ -8,7 +8,7 @@
 -- from Vault, and the edge function checks it by calling
 -- check_hours_signoff_cron_secret() with the service role.
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_net schema extensions;
 
 do $$
 begin
@@ -44,7 +44,9 @@ select cron.schedule(
       'Content-Type', 'application/json',
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'hours_signoff_cron_secret')
     ),
-    body := '{}'::jsonb
+    body := '{}'::jsonb,
+    -- pg_net's default is 5s; emailing a dozen coaches takes longer.
+    timeout_milliseconds := 120000
   );
   $$
 );

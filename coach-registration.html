@@ -191,6 +191,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -245,24 +246,37 @@
     btn.disabled = true;
     btn.textContent = "Submitting...";
 
-    // Upload the W-9 first under a random folder (nobody but the owner can
-    // read the bucket, and there's no overwrite policy), then save the
-    // registration pointing at it.
+    // The W-9 goes to a private bucket nobody but the owner can read, via a
+    // one-time signed upload URL from the coach-w9-upload-url function (a
+    // plain anonymous upload would need read access to that bucket).
     let w9Path = null;
     if (file) {
-      const ext = (file.name.split(".").pop() || "pdf").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "pdf";
-      w9Path = "w9/" + crypto.randomUUID() + "/w9." + ext;
-      const { error: uploadError } = await supabaseClient.storage.from("coach-documents").upload(w9Path, file, {
-        contentType: file.type || undefined,
-        upsert: false,
-      });
-      if (uploadError) {
+      const ext = (file.name.split(".").pop() || "").toLowerCase();
+      const CONTENT_TYPES = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", heic: "image/heic", heif: "image/heif", webp: "image/webp" };
+      const failUpload = function (text) {
         btn.disabled = false;
         btn.textContent = "Submit Registration";
         msg.className = "form-msg error";
-        msg.textContent = "Could not upload your W-9: " + uploadError.message;
+        msg.textContent = text;
+      };
+      if (!CONTENT_TYPES[ext]) {
+        failUpload("Please upload your W-9 as a PDF or a photo (JPG, PNG, HEIC).");
         return;
       }
+      const { data: slot, error: slotError } = await supabaseClient.functions.invoke("coach-w9-upload-url", { body: { ext: ext } });
+      if (slotError || !slot || !slot.path) {
+        failUpload(await functionErrorMessage(slotError, slot, "Could not upload your W-9. Please try again."));
+        return;
+      }
+      // Content type from the extension, not file.type -- some phones hand
+      // over HEIC photos with an empty type, which the bucket would reject.
+      const { error: uploadError } = await supabaseClient.storage.from("coach-documents")
+        .uploadToSignedUrl(slot.path, slot.token, file, { contentType: CONTENT_TYPES[ext] });
+      if (uploadError) {
+        failUpload("Could not upload your W-9: " + uploadError.message);
+        return;
+      }
+      w9Path = slot.path;
     }
 
     const lifeguard = radioValue("cr-lifeguard") === "yes";

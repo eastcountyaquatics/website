@@ -58,9 +58,9 @@ create trigger coach_registrations_set_updated_at
   before update on public.coach_registrations
   for each row execute function public.set_updated_at();
 
--- Private bucket for W-9s (they carry SSNs). Anyone may upload a NEW file
--- under w9/ (no update policy, so an upload can never overwrite someone
--- else's); only the owner can read or delete. 10MB, PDF or photo.
+-- Private bucket for W-9s (they carry SSNs); only the owner can read or
+-- delete. 10MB, PDF or photo. (The anon upload policy below was replaced by
+-- signed upload URLs in 20260929040000_coach_w9_signed_upload.)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('coach-documents', 'coach-documents', false, 10485760,
         array['application/pdf', 'image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp'])

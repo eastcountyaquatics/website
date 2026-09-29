@@ -146,8 +146,11 @@
       .replace(/'/g, "&#39;");
   }
 
+  // Local date, not toISOString() (UTC is already "tomorrow" after 5pm in
+  // San Diego).
   function todayIso() {
-    return new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
   function formatShortDate(d) {
@@ -172,6 +175,10 @@
   let tournaments = [];
   let tournamentHoursRows = [];
   let travelDaysTouched = false;
+  // Only an owner may log hours for someone else (coach_hours RLS); a coach
+  // or head coach is pinned to themselves so a save can't fail on it.
+  let currentUserId = null;
+  let isOwner = false;
 
   function coachName(profileId) {
     const c = coachRoster.find(function (x) { return x.id === profileId; });
@@ -258,6 +265,7 @@
   function resetTournamentHoursForm() {
     document.getElementById("tourn-hours-form").reset();
     document.getElementById("th-id").value = "";
+    if (!isOwner) document.getElementById("th-coach").value = currentUserId;
     document.getElementById("th-date").value = todayIso();
     document.getElementById("th-end-date").value = "";
     document.getElementById("th-travel-days-wrap").style.display = "none";
@@ -285,8 +293,9 @@
 
     document.getElementById("th-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
-    document.getElementById("th-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
-      coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    const selectableCoaches = isOwner ? coachRoster : coachRoster.filter(function (c) { return c.id === currentUserId; });
+    document.getElementById("th-coach").innerHTML = (isOwner ? '<option value="">Choose a coach&hellip;</option>' : "") +
+      selectableCoaches.map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
     document.getElementById("th-tournament-pick").innerHTML = '<option value="">Other / not listed&hellip;</option>' +
       tournaments.map(function (t) {
         return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + " (" + escapeHtml(formatRange(t.event_date, t.end_date)) + ")</option>";
@@ -364,7 +373,9 @@
         msg.className = "form-msg error";
         msg.textContent = result.error.code === "23505"
           ? "This coach already has hours logged for that tournament starting that day \u2014 edit the existing entry below instead."
-          : result.error.message;
+          : result.error.code === "42501"
+            ? "You can only log your own hours" + (isOwner ? "." : ", and head coaches only for their own team.")
+            : result.error.message;
         return;
       }
       msg.className = "form-msg success";
@@ -379,6 +390,8 @@
   (async function () {
     const auth = await requireRole(["owner", "coach", "head_coach"]);
     if (!auth) return;
+    currentUserId = auth.session.user.id;
+    isOwner = auth.role === "owner";
     init();
   })();
 </script>

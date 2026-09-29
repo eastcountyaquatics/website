@@ -126,6 +126,13 @@
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
+  // YYYY-MM-DD in the viewer's own time zone. toISOString() is UTC, which
+  // is already "tomorrow" after 5pm in San Diego -- exactly when evening
+  // practices happen.
+  function localToday() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
   function escapeHtml(str) {
     return String(str || "")
       .replace(/&/g, "&amp;")
@@ -186,7 +193,7 @@
     }
 
     const dateInput = document.getElementById("attendance-date");
-    dateInput.value = new Date().toISOString().slice(0, 10);
+    dateInput.value = localToday();
 
     teamSelect.addEventListener("change", loadRollCall);
     dateInput.addEventListener("change", loadRollCall);

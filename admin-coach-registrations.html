@@ -162,7 +162,7 @@
       const flags =
         (r.lifeguard_certified ? expiryFlag("Lifeguard", r.lifeguard_expiration) : "") +
         (r.uswp_member ? expiryFlag("USAWP", r.uswp_expiration) : '<span class="reg-flag warn">No USAWP</span>') +
-        (r.w9_path ? "" : '<span class="reg-flag bad">No W-9</span>') +
+        (r.w9_path || r.w9_external_url ? "" : '<span class="reg-flag bad">No W-9</span>') +
         (profile ? "" : '<span class="reg-flag warn">No account</span>');
 
       const dl = [
@@ -177,7 +177,12 @@
         ["Zelle", (ZELLE_LABELS[r.zelle_status] || escapeHtml(r.zelle_status)) + (r.zelle_contact ? " &middot; " + escapeHtml(r.zelle_contact) : "")],
         ["Venmo", escapeHtml(r.venmo_username || "\u2014")],
         ["Availability", escapeHtml(r.availability || "\u2014")],
-        ["W-9", r.w9_path ? '<button type="button" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12.5px;" data-w9="' + escapeHtml(r.w9_path) + '">View W-9</button>' : "Not uploaded"],
+        ["W-9", r.w9_path
+          ? '<button type="button" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12.5px;" data-w9="' + escapeHtml(r.w9_path) + '">View W-9</button>'
+          : r.w9_external_url
+            // Coaches imported from the old Google Form uploaded to Drive.
+            ? '<a class="btn btn-outline-dark" style="padding:4px 10px;font-size:12.5px;" href="' + escapeHtml(r.w9_external_url) + '" target="_blank" rel="noopener">View W-9 (Google Drive)</a>'
+            : "Not uploaded"],
         ["Submitted", new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
           (r.olderCount ? ' <span class="muted">(' + r.olderCount + " earlier submission" + (r.olderCount === 1 ? "" : "s") + ")</span>" : "")],
       ].map(function (pair) { return "<dt>" + pair[0] + "</dt><dd>" + pair[1] + "</dd>"; }).join("");
@@ -291,7 +296,7 @@
         r.full_name, r.email, r.phone, r.date_of_birth, r.shirt_size, r.mailing_address, r.emergency_contact_name,
         r.emergency_contact_relationship, r.emergency_contact_phone, r.lifeguard_certified ? "Yes" : "No", r.lifeguard_expiration,
         r.uswp_member ? "Yes" : "No", r.uswp_member_number, r.uswp_expiration, ZELLE_LABELS[r.zelle_status] || r.zelle_status,
-        r.zelle_contact, r.venmo_username, r.availability, r.w9_path ? "Yes" : "No", rate != null ? (rate / 100).toFixed(2) : "",
+        r.zelle_contact, r.venmo_username, r.availability, r.w9_path || r.w9_external_url ? "Yes" : "No", rate != null ? (rate / 100).toFixed(2) : "",
         r.owner_notes, r.created_at.slice(0, 10),
       ].map(csvField).join(","));
     });

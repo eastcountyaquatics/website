@@ -28,7 +28,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
-        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
       </ul>
@@ -219,11 +219,11 @@
     const { data: owners } = await supabaseClient.from("profiles").select("id").eq("role", "owner");
     const ownerCount = owners ? owners.length : 0;
     add("Access", ownerCount > 1 ? "ok" : "bad",
-      ownerCount === 1 ? "Only one owner account exists" : ownerCount + " owner accounts",
+      ownerCount === 1 ? "Only one manager account exists" : ownerCount + " manager accounts",
       ownerCount > 1
-        ? "If one owner loses access, another can still get in."
-        : "If you lose access to this account, nobody can reach the admin panel and there is no way back in from the site. Add a second owner \u2014 you can pre-assign the role to an email before they sign up.",
-      ownerCount > 1 ? null : '<a href="admin-users.html">Add a second owner</a>');
+        ? "If one manager loses access, another can still get in."
+        : "If you lose access to this account, nobody can reach the admin panel and there is no way back in from the site. Add a second manager \u2014 you can pre-assign the role to an email before they sign up.",
+      ownerCount > 1 ? null : '<a href="admin-users.html">Add a second manager</a>');
 
     // Not detectable from the browser -- Supabase Auth settings aren't
     // exposed to the client. Listed as a one-time manual check because it is
@@ -236,7 +236,7 @@
     if (unlinkedCoaches && unlinkedCoaches.length) {
       add("Access", "warn", unlinkedCoaches.length + " coach profile" +
         (unlinkedCoaches.length === 1 ? " is" : "s are") + " not linked to an account",
-        "Contact-form messages addressed to them arrive in the owner's inbox instead of theirs.",
+        "Contact-form messages addressed to them arrive in the manager's inbox instead of theirs.",
         '<a href="admin-coaches.html">Link coach accounts</a>');
     } else {
       add("Access", "ok", "All coaches linked to accounts", "Contact messages route straight to them.");

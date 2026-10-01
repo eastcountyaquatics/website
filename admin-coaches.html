@@ -28,7 +28,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
-        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
       </ul>
@@ -48,7 +48,7 @@
   <div class="container" style="max-width:760px;">
 
     <div id="permission-notice" class="notice" style="display:none;margin-bottom:24px;">
-      Your account can view this list but doesn't have permission to add, edit, or delete coaches. Ask an owner if you need changes made.
+      Your account can view this list but doesn't have permission to add, edit, or delete coaches. Ask a manager if you need changes made.
     </div>
 
     <div id="claim-section" class="admin-form" style="display:none;margin-bottom:24px;">
@@ -75,18 +75,26 @@
         </div>
         <div class="field">
           <label for="role_title">Role / Title</label>
-          <input type="text" id="role_title" placeholder="e.g. Coach, Club Founder, Masters Team Manager">
+          <select id="role_title">
+            <option value="">Choose a role / title&hellip;</option>
+            <option value="Club Founder">Club Founder</option>
+            <option value="Finance">Finance</option>
+            <option value="Manager">Manager</option>
+            <option value="Head Coach">Head Coach</option>
+            <option value="Coach">Coach</option>
+          </select>
         </div>
         <div class="field">
-          <label for="team_group">Team Group</label>
-          <input type="text" id="team_group" placeholder="e.g. 14U Boys, Club Founders">
+          <label>Team Group</label>
+          <div id="team_group_options" style="display:flex;flex-wrap:wrap;gap:8px 18px;padding:8px 0;"></div>
+          <p class="field-hint">Check every team this person coaches &mdash; you can pick more than one.</p>
         </div>
         <div class="field">
           <label for="profile_id">Account (for contact form messages)</label>
           <select id="profile_id">
-            <option value="">Not linked &mdash; messages go to the owner</option>
+            <option value="">Not linked &mdash; messages go to the manager</option>
           </select>
-          <p class="field-hint">Linking an account sends this coach's contact-form messages straight to their own inbox. Until then the owner receives them.</p>
+          <p class="field-hint">Linking an account sends this coach's contact-form messages straight to their own inbox. Until then the manager receives them.</p>
         </div>
         <div class="field" id="invite-email-field">
           <label for="invite_email">Invite by Email (optional)</label>
@@ -171,6 +179,56 @@
     img.src = url;
   }
   document.getElementById("photo_url").addEventListener("input", updatePhotoPreview);
+
+  // Team Group used to be free text, so existing coaches have combined
+  // values like "8U & 10U Coed & 12U Boys" typed by hand. Checkboxes give
+  // a fixed list to build that same kind of combined value from -- joined
+  // with " & " to match the format already on the page.
+  var TEAM_GROUP_OPTIONS = ["Splashball", "8U Coed", "10U Coed", "12U Boys", "12U Girls",
+    "14U Boys", "14U Girls", "16U Boys", "16U Girls", "18U Boys", "18U Girls", "Masters", "Club Founders"];
+
+  function renderTeamGroupOptions() {
+    document.getElementById("team_group_options").innerHTML = TEAM_GROUP_OPTIONS.map(function (label) {
+      return '<label style="display:flex;align-items:center;gap:5px;font-weight:400;min-width:auto;">' +
+        '<input type="checkbox" class="team-group-box" value="' + escapeHtml(label) + '" style="width:auto;">' +
+        escapeHtml(label) + "</label>";
+    }).join("");
+  }
+  renderTeamGroupOptions();
+
+  // A legacy value might not break cleanly into today's checkbox labels
+  // (e.g. "8U & 10U Coed & 12U Boys" doesn't literally contain "8U Coed").
+  // Checking only exact-substring matches and keeping the original string
+  // as a fallback (see getTeamGroupValue) means an edit that doesn't touch
+  // these boxes at all can't silently wipe out a value it couldn't parse.
+  function setTeamGroupValue(value) {
+    document.querySelectorAll(".team-group-box").forEach(function (b) {
+      b.checked = !!value && value.indexOf(b.value) !== -1;
+    });
+  }
+
+  function getTeamGroupValue(fallback) {
+    const checked = Array.prototype.map.call(document.querySelectorAll(".team-group-box:checked"), function (b) { return b.value; });
+    return checked.length ? checked.join(" & ") : (fallback || "");
+  }
+
+  // Role / Title used to be free text too ("Masters Team Manager & Coach").
+  // Keep that exact text selectable (rather than silently discarding it)
+  // by adding it as an extra option when it doesn't match one of the fixed
+  // choices below.
+  function setRoleTitleValue(value) {
+    const select = document.getElementById("role_title");
+    const customOpt = select.querySelector('option[data-custom="true"]');
+    if (customOpt) customOpt.remove();
+    if (value && !Array.prototype.some.call(select.options, function (o) { return o.value === value; })) {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value + " (current)";
+      opt.dataset.custom = "true";
+      select.insertBefore(opt, select.options[1] || null);
+    }
+    select.value = value || "";
+  }
 
   // A coach's own account may not be pointed at any bio row yet -- the owner
   // links most coaches, but a coach who already has the 'coach' role (see
@@ -310,8 +368,9 @@
     document.getElementById("form-title").textContent = "Edit Coach";
     document.getElementById("coach-id").value = coach.id;
     document.getElementById("full_name").value = coach.full_name || "";
-    document.getElementById("role_title").value = coach.role_title || "";
-    document.getElementById("team_group").value = coach.team_group || "";
+    setRoleTitleValue(coach.role_title || "");
+    setTeamGroupValue(coach.team_group || "");
+    document.getElementById("coach-form").dataset.origTeamGroup = coach.team_group || "";
     document.getElementById("bio").value = coach.bio || "";
     document.getElementById("photo_url").value = coach.photo_url || "";
     document.getElementById("sort_order").value = coach.sort_order || 0;
@@ -332,6 +391,9 @@
     document.getElementById("coach-form").reset();
     document.getElementById("hourly_rate").value = "";
     document.getElementById("coach-id").value = "";
+    setRoleTitleValue("");
+    setTeamGroupValue("");
+    delete document.getElementById("coach-form").dataset.origTeamGroup;
     document.getElementById("invite-email-field").style.display = "block";
     document.getElementById("form-title").textContent = "Add a Coach";
     document.getElementById("submit-btn").textContent = "Add Coach";
@@ -379,7 +441,7 @@
     const payload = {
       full_name: document.getElementById("full_name").value.trim(),
       role_title: document.getElementById("role_title").value.trim() || null,
-      team_group: document.getElementById("team_group").value.trim() || null,
+      team_group: getTeamGroupValue(document.getElementById("coach-form").dataset.origTeamGroup).trim() || null,
       bio: document.getElementById("bio").value.trim() || null,
       photo_url: document.getElementById("photo_url").value.trim() || null,
       sort_order: parseInt(document.getElementById("sort_order").value, 10) || 0,
@@ -464,7 +526,7 @@
     myUserId = auth.session.user.id;
     await loadAccountOptions(isOwnerView);
     if (isOwnerView) await loadPayRates();
-    canEdit = auth.role === "owner" || auth.role === "coach";
+    canEdit = auth.role === "owner";
     if (!canEdit) {
       document.getElementById("coach-form-wrap").style.display = "none";
       document.getElementById("permission-notice").style.display = "block";

@@ -28,7 +28,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
-        <li><a href="support.html">Sponsors</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
       </ul>
@@ -46,7 +46,7 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
-    <p class="muted"><strong>Owners</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Head Coaches</strong> get Schedules, Attendance, Roster, Tournaments, and Team Interest &mdash; but only for the team(s) they're assigned to below.</p>
+    <p class="muted"><strong>Managers</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Head Coaches</strong> get Schedules, Attendance, Roster, Tournaments, and Team Interest &mdash; but only for the team(s) they're assigned to below.</p>
 
     <div class="admin-form" style="margin-top:24px;">
       <h3>Assign Access</h3>
@@ -61,7 +61,7 @@
         <div class="field">
           <label for="assign_role">Role</label>
           <select id="assign_role" required>
-            <option value="owner">Owner</option>
+            <option value="owner">Manager</option>
             <option value="coach" selected>Coach</option>
             <option value="head_coach">Head Coach</option>
           </select>
@@ -278,7 +278,7 @@
     listEl.innerHTML = data
       .map(function (u) {
         const roles = ["", "owner", "coach", "head_coach"];
-        const roleLabels = { "": "No admin access", owner: "Owner", coach: "Coach", head_coach: "Head Coach" };
+        const roleLabels = { "": "No admin access", owner: "Manager", coach: "Coach", head_coach: "Head Coach" };
         const options = roles
           .map(function (r) {
             const selected = (u.role || "") === r ? " selected" : "";

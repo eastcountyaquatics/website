@@ -76,7 +76,7 @@
       Toggle a team <strong>Published</strong> when its schedule is ready for families to see. Unpublished schedules are only visible here in admin. The box on the right shows exactly what families will see as you type. Adding a team here makes it available for Roster, Attendance, and registration options &mdash; it still needs its own public team page built separately before families can see a dedicated page for it.
     </div>
 
-    <div class="admin-form" style="margin-bottom:24px;">
+    <div class="admin-form" id="add-team-section" style="margin-bottom:24px;">
       <h3>Add a New Team</h3>
       <div id="add-team-msg" class="form-msg"></div>
       <form id="add-team-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
@@ -319,6 +319,7 @@
   }
 
   var entriesByScheduleId = {};
+  var canEdit = true; // false for assistant coaches -- they get a view-only schedule list
   function collectEntries(container) {
     return Array.from(container.querySelectorAll("[data-entry-row]")).map(collectEntry);
   }
@@ -385,21 +386,25 @@
           '<div class="sched-card" data-team="' + s.id + '">' +
           '<div class="sched-card-head">' +
           "<h3 style=\"margin:0;\">" + escapeHtml(s.team_label) + "</h3>" +
-          '<label class="publish-toggle">' +
-          '<input type="checkbox" data-publish-toggle="' + s.id + '" ' + (s.is_published ? "checked" : "") + ">" +
-          '<span data-publish-label="' + s.id + '">' + (s.is_published ? "Published" : "Not Published") + "</span>" +
-          "</label>" +
+          (canEdit
+            ? '<label class="publish-toggle">' +
+              '<input type="checkbox" data-publish-toggle="' + s.id + '" ' + (s.is_published ? "checked" : "") + ">" +
+              '<span data-publish-label="' + s.id + '">' + (s.is_published ? "Published" : "Not Published") + "</span>" +
+              "</label>"
+            : '<span class="muted" style="font-size:13px;">' + (s.is_published ? "Published" : "Not Published") + "</span>") +
           "</div>" +
           '<p class="muted" style="font-size:13px;margin-top:6px;">' +
           (s.season_label ? escapeHtml(s.season_label) : "No season set") +
           (s.date_range ? " &middot; " + escapeHtml(s.date_range) : "") +
           "</p>" +
-          '<button type="button" class="btn btn-outline-dark" data-edit-toggle="' + s.id + '" style="margin-top:10px;">' +
-          (s.season_label || s.date_range || (s.practice_lines && s.practice_lines.length) ? "Edit Schedule" : "Set Up Schedule") +
-          "</button>" +
-          '<div class="sched-form" data-form="' + s.id + '">' +
+          (canEdit
+            ? '<button type="button" class="btn btn-outline-dark" data-edit-toggle="' + s.id + '" style="margin-top:10px;">' +
+              (s.season_label || s.date_range || (s.practice_lines && s.practice_lines.length) ? "Edit Schedule" : "Set Up Schedule") +
+              "</button>"
+            : "") +
+          '<div class="sched-form" data-form="' + s.id + '"' + (canEdit ? "" : " style=\"display:block;\"") + '>' +
           '<div class="sched-editor">' +
-          '<div class="sched-editor-fields">' +
+          '<div class="sched-editor-fields"' + (canEdit ? "" : " style=\"display:none;\"") + '>' +
           '<div class="field"><label>Season Label</label><input type="text" data-field="season_label" value="' + escapeHtml(s.season_label) + '" placeholder="e.g. 2026 Fall Season"></div>' +
           '<div class="field"><label>Date Range</label><input type="text" data-field="date_range" value="' + escapeHtml(s.date_range) + '" placeholder="e.g. August 17 &ndash; October 31"></div>' +
           '<div class="field"><label>Requirements <span class="muted" style="font-weight:400;">(optional)</span></label><textarea data-field="requirements" placeholder="Swim test details, membership level required, etc." style="min-height:60px;">' + escapeHtml(s.requirements) + "</textarea></div>" +
@@ -553,8 +558,10 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
+    canEdit = auth.role !== "assistant_coach";
+    if (!canEdit) document.getElementById("add-team-section").style.display = "none";
     await loadPoolLocations();
     loadSchedules();
   })();

@@ -180,18 +180,27 @@
 <script src="js/main.js"></script>
 <script>
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
     document.getElementById("admin-email").textContent = auth.session.user.email;
-    const roleLabels = { owner: "Manager", coach: "Coach", head_coach: "Head Coach" };
+    const roleLabels = { owner: "Manager", coach: "Coach", head_coach: "Head Coach", assistant_coach: "Assistant Coach" };
     document.getElementById("admin-role").textContent = roleLabels[auth.role] || auth.role;
-    if (auth.role === "owner" || auth.role === "coach" || auth.role === "head_coach") {
+    if (auth.role === "owner" || auth.role === "coach" || auth.role === "head_coach" || auth.role === "assistant_coach") {
       document.getElementById("schedules-card").style.display = "block";
       document.getElementById("athletes-card").style.display = "block";
       document.getElementById("attendance-card").style.display = "block";
       document.getElementById("tournament-hours-card").style.display = "block";
       document.getElementById("tournaments-card").style.display = "block";
+    }
+    // Team Interest is a management tool (posting questions to a team), not
+    // something an assistant coach's narrower, view-mostly access covers.
+    if (auth.role === "owner" || auth.role === "coach" || auth.role === "head_coach") {
       document.getElementById("interest-card").style.display = "block";
+    }
+    // Coach Hours is normally club-wide (owner/coach only, see below), but an
+    // assistant coach still needs to see their own logged hours.
+    if (auth.role === "assistant_coach") {
+      document.getElementById("hours-card").style.display = "block";
     }
     // Hosted Events and Coach Hours are club-wide (not scoped to a single
     // team), so a head coach -- who only has access to their own team's

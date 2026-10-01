@@ -153,6 +153,7 @@
   let teams = [];
   let allAthletes = [];
   let currentUserId = null;
+  let myRole = null;
   // Athlete ids marked PRESENT so far. Everyone not in here stays in the
   // plain default look -- attendance should never visually suggest someone
   // is absent just because nobody has tapped them in yet.
@@ -184,11 +185,20 @@
     teamSelect.innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
 
+    // Assistant coaches can only log their own hours (see coach_hours RLS),
+    // so skip the picker entirely and just lock it to themselves -- a
+    // dropdown full of names they'd get rejected for picking is confusing.
+    const hoursRoster = myRole === "assistant_coach"
+      ? coachRoster.filter(function (c) { return c.profile_id === currentUserId; })
+      : coachRoster;
     const coachSelect = document.getElementById("hours-coach-select");
     coachSelect.innerHTML = '<option value="">Choose a coach&hellip;</option>' +
-      coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
-    if (coachRoster.length === 0) {
+      hoursRoster.map(function (c) { return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    if (hoursRoster.length === 0) {
       coachSelect.innerHTML = '<option value="">No coaches yet</option>';
+      coachSelect.disabled = true;
+    } else if (myRole === "assistant_coach") {
+      coachSelect.value = currentUserId;
       coachSelect.disabled = true;
     }
 
@@ -448,9 +458,10 @@
   }
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
     currentUserId = auth.session.user.id;
+    myRole = auth.role;
     init();
   })();
 </script>

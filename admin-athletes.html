@@ -168,6 +168,7 @@
 
   let allAthletes = [];
   let teams = []; // {team_slug, team_label} from the schedules table
+  let canEdit = true; // false for assistant coaches -- they get a view-only roster
 
   function teamLabelFor(a) {
     if (a.team_slug) {
@@ -243,22 +244,26 @@
           emergencyContactRow("Emergency Contact 2", a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2) +
           (a.notes ? "<dt>Medical / Allergy Notes</dt><dd>" + escapeHtml(a.notes) + '<br><span class="muted" style="font-size:12px;">Entered by the parent</span></dd>' : "") +
           "<dt>Coach Notes</dt><dd>" +
-          '<textarea data-coach-notes="' + a.id + '" rows="2" placeholder="Notes for staff — position, progress, attendance...">' + escapeHtml(a.coach_notes) + "</textarea>" +
-          '<button type="button" class="btn btn-outline-dark" data-save-notes="' + a.id + '" style="margin-top:6px;padding:6px 14px;font-size:13px;">Save Notes</button>' +
-          '<span class="team-save-msg" data-notes-msg="' + a.id + '"></span>' +
+          (canEdit
+            ? '<textarea data-coach-notes="' + a.id + '" rows="2" placeholder="Notes for staff — position, progress, attendance...">' + escapeHtml(a.coach_notes) + "</textarea>" +
+              '<button type="button" class="btn btn-outline-dark" data-save-notes="' + a.id + '" style="margin-top:6px;padding:6px 14px;font-size:13px;">Save Notes</button>' +
+              '<span class="team-save-msg" data-notes-msg="' + a.id + '"></span>'
+            : escapeHtml(a.coach_notes) || '<span class="muted">(none)</span>') +
           "</dd>" +
           "<dt>Registrations</dt>" + regList +
           "<dt>Team</dt><dd>" +
-          '<select data-team-for="' + a.id + '">' +
-          '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; sex (" + escapeHtml(deriveTeamLabel(age, a.sex)) + ")</option>" +
-          teams
-            .map(function (t) {
-              return '<option value="' + escapeHtml(t.team_slug) + '"' +
-                (a.team_slug === t.team_slug ? " selected" : "") + ">" + escapeHtml(t.team_label) + "</option>";
-            })
-            .join("") +
-          "</select>" +
-          '<span class="team-save-msg" data-team-msg="' + a.id + '"></span>' +
+          (canEdit
+            ? '<select data-team-for="' + a.id + '">' +
+              '<option value=""' + (a.team_slug ? "" : " selected") + ">Auto by age &amp; sex (" + escapeHtml(deriveTeamLabel(age, a.sex)) + ")</option>" +
+              teams
+                .map(function (t) {
+                  return '<option value="' + escapeHtml(t.team_slug) + '"' +
+                    (a.team_slug === t.team_slug ? " selected" : "") + ">" + escapeHtml(t.team_label) + "</option>";
+                })
+                .join("") +
+              "</select>" +
+              '<span class="team-save-msg" data-team-msg="' + a.id + '"></span>'
+            : escapeHtml(teamLabelFor(a))) +
           "</dd>" +
           "</dl>" +
           "</div>"
@@ -553,8 +558,9 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
+    canEdit = auth.role !== "assistant_coach";
 
     // Team list comes from the schedules table so it stays in sync with the
     // club's real teams rather than being hardcoded here.

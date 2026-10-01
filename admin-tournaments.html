@@ -59,7 +59,7 @@
       Tournament pricing is set by age/gender bracket, computed using the athlete's age <strong>on the tournament's event date</strong> (not the season eligibility rule used for team placement). Invite links are unique per athlete and don't require a login to pay.
     </div>
 
-    <div class="admin-form">
+    <div class="admin-form" id="tournament-form-wrap">
       <h3 id="tournament-form-title">Add a Tournament</h3>
       <div id="tournament-form-msg" class="form-msg"></div>
       <form id="tournament-form">
@@ -180,6 +180,7 @@
 
   let tournaments = [];
   let teams = [];
+  let canEdit = true; // false for assistant coaches -- they get a view-only tournament list
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
@@ -233,10 +234,12 @@
           (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
           '<div class="muted" style="font-size:13px;">' + formatTournamentDates(t) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + (t.max_age ? " &middot; " + t.max_age + "U max" : "") + "</div>" +
           "</div>" +
-          '<div class="admin-list-actions">' +
-          '<a href="admin-tournament-manage.html?id=' + t.id + '" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;text-decoration:none;">Manage &rarr;</a>' +
-          '<button data-edit="' + t.id + '">Edit</button>' +
-          "</div>" +
+          (canEdit
+            ? '<div class="admin-list-actions">' +
+              '<a href="admin-tournament-manage.html?id=' + t.id + '" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;text-decoration:none;">Manage &rarr;</a>' +
+              '<button data-edit="' + t.id + '">Edit</button>' +
+              "</div>"
+            : "") +
           "</div>"
         );
       })
@@ -383,14 +386,18 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
+    canEdit = auth.role !== "assistant_coach";
+    if (!canEdit) document.getElementById("tournament-form-wrap").style.display = "none";
     await loadTeams();
     await loadTournaments();
-    const editId = new URLSearchParams(window.location.search).get("edit");
-    if (editId) {
-      const t = tournaments.find(function (x) { return x.id === editId; });
-      if (t) startEditTournament(t);
+    if (canEdit) {
+      const editId = new URLSearchParams(window.location.search).get("edit");
+      if (editId) {
+        const t = tournaments.find(function (x) { return x.id === editId; });
+        if (t) startEditTournament(t);
+      }
     }
   })();
 </script>

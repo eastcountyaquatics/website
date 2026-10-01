@@ -176,9 +176,11 @@
   let tournamentHoursRows = [];
   let travelDaysTouched = false;
   // Any coach may log tournament hours for any coach (a co-coach, say);
-  // head coaches only for their own team -- see the
-  // coach_hours_tournament_rls_fix migration.
+  // head coaches only for their own team; assistant coaches only for
+  // themselves -- see the coach_hours_tournament_rls_fix migration.
   let isOwner = false;
+  let myRole = null;
+  let myUserId = null;
 
   function coachName(profileId) {
     const c = coachRoster.find(function (x) { return x.id === profileId; });
@@ -292,8 +294,19 @@
 
     document.getElementById("th-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
-    document.getElementById("th-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
-      coachRoster.map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    // Assistant coaches can only log their own hours (see coach_hours RLS),
+    // so skip the picker entirely and just lock it to themselves -- a
+    // dropdown full of names they'd get rejected for picking is confusing.
+    const coachOptions = myRole === "assistant_coach"
+      ? coachRoster.filter(function (c) { return c.id === myUserId; })
+      : coachRoster;
+    const thCoachSelect = document.getElementById("th-coach");
+    thCoachSelect.innerHTML = '<option value="">Choose a coach&hellip;</option>' +
+      coachOptions.map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    if (myRole === "assistant_coach") {
+      thCoachSelect.value = myUserId;
+      thCoachSelect.disabled = true;
+    }
     document.getElementById("th-tournament-pick").innerHTML = '<option value="">Other / not listed&hellip;</option>' +
       tournaments.map(function (t) {
         return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + " (" + escapeHtml(formatRange(t.event_date, t.end_date)) + ")</option>";
@@ -372,7 +385,9 @@
         msg.textContent = result.error.code === "23505"
           ? "This coach already has hours logged for that tournament starting that day \u2014 edit the existing entry below instead."
           : result.error.code === "42501"
-            ? (isOwner ? "You don't have permission to save this entry." : "Head coaches can only log tournament hours for their own team.")
+            ? (isOwner ? "You don't have permission to save this entry."
+              : myRole === "assistant_coach" ? "Assistant coaches can only log their own hours."
+              : "Head coaches can only log tournament hours for their own team.")
             : result.error.message;
         return;
       }
@@ -386,9 +401,11 @@
   }
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
     isOwner = auth.role === "owner";
+    myRole = auth.role;
+    myUserId = auth.session.user.id;
     init();
   })();
 </script>

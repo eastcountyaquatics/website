@@ -46,7 +46,7 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
-    <p class="muted"><strong>Managers</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Head Coaches</strong> get Schedules, Attendance, Roster, Tournaments, and Team Interest &mdash; but only for the team(s) they're assigned to below.</p>
+    <p class="muted"><strong>Managers</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Head Coaches</strong> get Schedules, Attendance, Roster, Tournaments, and Team Interest &mdash; but only for the team(s) they're assigned to below. <strong>Assistant Coaches</strong> can take attendance, log their own hours, and view (not edit) the Roster, Schedules, and Tournaments, club-wide.</p>
 
     <div class="admin-form" style="margin-top:24px;">
       <h3>Assign Access</h3>
@@ -64,6 +64,7 @@
             <option value="owner">Manager</option>
             <option value="coach" selected>Coach</option>
             <option value="head_coach">Head Coach</option>
+            <option value="assistant_coach">Assistant Coach</option>
           </select>
         </div>
         <div class="field" id="assign-teams-wrap" style="display:none;">
@@ -277,8 +278,8 @@
 
     listEl.innerHTML = data
       .map(function (u) {
-        const roles = ["", "owner", "coach", "head_coach"];
-        const roleLabels = { "": "No admin access", owner: "Manager", coach: "Coach", head_coach: "Head Coach" };
+        const roles = ["", "owner", "coach", "head_coach", "assistant_coach"];
+        const roleLabels = { "": "No admin access", owner: "Manager", coach: "Coach", head_coach: "Head Coach", assistant_coach: "Assistant Coach" };
         const options = roles
           .map(function (r) {
             const selected = (u.role || "") === r ? " selected" : "";

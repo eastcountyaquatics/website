@@ -8,7 +8,8 @@
 // into this one module, so they can never disagree with each other.
 (function (global) {
   var DIVISIONS = [
-    { name: "10U", minAge: null, maxAge: 10 },
+    { name: "8U", minAge: null, maxAge: 8 },
+    { name: "10U", minAge: 9, maxAge: 10 },
     { name: "12U", minAge: 11, maxAge: 12 },
     { name: "14U", minAge: 13, maxAge: 14 },
     { name: "16U", minAge: 15, maxAge: 16 },

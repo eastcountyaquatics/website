@@ -89,7 +89,9 @@
           </div>
           <div class="field">
             <label for="th-games">Games Coached (whole tournament)</label>
-            <input type="number" id="th-games" min="0" step="1" placeholder="5">
+            <select id="th-games">
+              <option value="">Choose&hellip;</option>
+            </select>
           </div>
           <div class="field">
             <label for="th-hours">Total Hours</label>
@@ -286,7 +288,7 @@
     const [{ data: teamRows }, { data: coachRows }, { data: tournamentRows }] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
       supabaseClient.rpc("list_staff_profiles"),
-      supabaseClient.from("tournaments").select("id, name, event_date, end_date").order("event_date", { ascending: false }).limit(60),
+      supabaseClient.from("tournaments").select("id, name, event_date, end_date, travel_days").order("event_date", { ascending: false }).limit(60),
     ]);
     teams = teamRows || [];
     coachRoster = coachRows || [];
@@ -294,6 +296,12 @@
 
     document.getElementById("th-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+    // A dropdown of whole-number games is more reliable than a number-input
+    // stepper (especially on mobile) and still auto-fills Hours at 2/game.
+    document.getElementById("th-games").innerHTML = '<option value="">Choose&hellip;</option>' +
+      Array.from({ length: 16 }, function (_, i) { return i; })
+        .map(function (n) { return '<option value="' + n + '">' + n + " game" + (n === 1 ? "" : "s") + "</option>"; })
+        .join("");
     // Assistant coaches can only log their own hours (see coach_hours RLS),
     // so skip the picker entirely and just lock it to themselves -- a
     // dropdown full of names they'd get rejected for picking is confusing.
@@ -324,9 +332,22 @@
       document.getElementById("th-tournament-name").value = t.name;
       document.getElementById("th-date").value = t.event_date;
       document.getElementById("th-end-date").value = t.end_date || "";
-      syncTravelDays();
+      // The tournament's own travel-day setting (if any) takes precedence
+      // over guessing from the date range, and over anything the coach may
+      // have already typed -- picking a tournament is a stronger signal.
+      if (t.travel_days) {
+        document.getElementById("th-travel").checked = true;
+        document.getElementById("th-travel-days-wrap").style.display = "block";
+        document.getElementById("th-travel-days").value = t.travel_days;
+        travelDaysTouched = true;
+      } else {
+        document.getElementById("th-travel").checked = false;
+        document.getElementById("th-travel-days-wrap").style.display = "none";
+        travelDaysTouched = false;
+        syncTravelDays();
+      }
     });
-    document.getElementById("th-games").addEventListener("input", function () {
+    document.getElementById("th-games").addEventListener("change", function () {
       const games = parseInt(this.value, 10);
       if (!isNaN(games) && games >= 0) {
         document.getElementById("th-hours").value = games * 2;

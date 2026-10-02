@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Age Division Calculator | San Diego East County Aquatics</title>
+<meta name="description" content="Find your athlete's USA Water Polo age division, or browse the age-division chart for any tournament year.">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://eastcountyaquatics.github.io/website/age-division-calculator.html">
+<meta property="og:title" content="Age Division Calculator | San Diego East County Aquatics">
+<meta property="og:description" content="Find your athlete's USA Water Polo age division, or browse the age-division chart for any tournament year.">
+<meta property="og:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Age Division Calculator | San Diego East County Aquatics">
+<meta name="twitter:description" content="Find your athlete's USA Water Polo age division, or browse the age-division chart for any tournament year.">
+<meta name="twitter:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  #adc-year-select, #adc-calc-year, #adc-dob{width:auto;min-width:140px;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;background:#fff;}
+  .adc-year-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;}
+  .adc-year-row label{font-weight:700;font-size:13px;color:var(--navy);}
+  table.schedule.adc-chart td:first-child, table.schedule.adc-chart th:first-child{font-weight:700;white-space:nowrap;}
+  .adc-calc-fields{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+  .adc-result{display:none;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);border-top:6px solid var(--gold);padding:28px;text-align:center;margin-top:20px;}
+  .adc-result.visible{display:block;}
+  .adc-result .adc-division{font-family:'Bitter',serif;font-weight:800;font-size:34px;color:var(--blue);margin:0 0 10px;}
+  .adc-result p{margin:4px 0;}
+  .adc-result .adc-cutoff{font-size:13px;color:var(--muted);margin-top:14px;}
+  @media (max-width:480px){
+    table.schedule.adc-chart th, table.schedule.adc-chart td{padding:10px 12px;font-size:13.5px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="container">
+    <span class="breadcrumb">Age Divisions</span>
+    <h1>USA Water Polo Age Divisions</h1>
+    <p>Age divisions are based on the athlete's age on August 1 of the tournament year.</p>
+  </div>
+  <div class="waves">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:640px;">
+    <div class="adc-year-row">
+      <label for="adc-year-select">Tournament Year</label>
+      <select id="adc-year-select"></select>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table class="schedule adc-chart">
+        <thead>
+          <tr><th>Division</th><th>Eligible Birth Dates</th></tr>
+        </thead>
+        <tbody id="adc-chart-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="container" style="max-width:640px;">
+    <div class="section-head" style="margin-bottom:24px;">
+      <span class="kicker" style="color:var(--gold);">Find Your Division</span>
+      <h2>Find Your Division</h2>
+      <p class="muted">Enter the athlete's birthday to find their age division.</p>
+    </div>
+
+    <div class="card">
+      <form id="adc-calc-form">
+        <div class="adc-calc-fields">
+          <div class="field" style="margin:0;flex:1;min-width:160px;">
+            <label for="adc-dob">Date of Birth</label>
+            <input type="date" id="adc-dob" required>
+          </div>
+          <div class="field" style="margin:0;">
+            <label for="adc-calc-year">Tournament Year</label>
+            <select id="adc-calc-year"></select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="height:46px;">Find Division</button>
+        </div>
+      </form>
+
+      <div class="adc-result" id="adc-result">
+        <p class="adc-division" id="adc-result-division"></p>
+        <p id="adc-result-age"></p>
+        <p id="adc-result-eligible"></p>
+        <p class="adc-cutoff" id="adc-result-cutoff"></p>
+      </div>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin-top:14px;">Athletes may be permitted to play in an older age division. Tournament-specific eligibility rules may apply.</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-row">
+          <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="footer-logo">
+          <h4>San Diego East County Aquatics</h4>
+        </div>
+        <p class="muted" style="max-width:340px;">A year-round, non-profit water polo program serving El Cajon and San Diego's East County, ages 7&ndash;18+, from beginner to advanced competitive teams.</p>
+        <p class="footer-tagline">Building athletes, character, and community since 2009.</p>
+        <p class="muted" style="font-size:13px;margin-top:10px;">Club Founders: Clint &amp; Marcy McLaughlin</p>
+        <div class="social-row">
+          <a href="https://www.instagram.com/eastcountyaquatics/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
+          <a href="https://www.facebook.com/SanDiegoECA/" target="_blank" rel="noopener" aria-label="Facebook">f</a>
+          <a href="mailto:eastcountyaquatics@gmail.com" aria-label="Email">@</a>
+        </div>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li><a href="about-us.html">About Us</a></li>
+            <li><a href="teams.html">Teams</a></li>
+            <li><a href="masters.html">Masters</a></li>
+          <li><a href="junior-olympics.html">Junior Olympics</a></li>
+          <li><a href="support.html">Donate/Sponsor</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+          <li><a href="age-division-calculator.html">Age Division Calculator</a></li>
+          <li><a href="guidelines-etiquette.html">Guidelines &amp; Etiquette</a></li>
+          <li><a href="registration-refund-policy.html">Registration/Refund Policy</a></li>
+          <li><a href="eca-gear.html">ECA Gear</a></li>
+          <li><a href="accomplishments.html">Accomplishments</a></li>
+          <li><a href="projects.html">Athlete Projects</a></li>
+          <li><a href="summer-league.html">Summer League</a></li>
+          <li><a href="st-pattys-day-shootout.html">St. Patty's Day Shootout</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="mailto:eastcountyaquatics@gmail.com" style="color:inherit;">eastcountyaquatics@gmail.com</a></li>
+          <li>El Cajon, CA &middot; San Diego East County</li>
+          <li><a href="contact.html">Full contact details &rarr;</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/uswp-age-division.js"></script>
+<script>
+  function formatLongDate(d) {
+    return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function yearOptionsHtml(selectedYear) {
+    const now = new Date().getFullYear();
+    let html = "";
+    for (let y = now - 1; y <= now + 3; y++) {
+      html += '<option value="' + y + '"' + (y === selectedYear ? " selected" : "") + ">" + y + "</option>";
+    }
+    return html;
+  }
+
+  function renderChart(tournamentYear) {
+    const body = document.getElementById("adc-chart-body");
+    body.innerHTML = USWP_AGE_DIVISIONS.map(function (div) {
+      const range = uswpDivisionBirthdateRange(div, tournamentYear);
+      const text = range.latest
+        ? formatLongDate(range.earliest) + " – " + formatLongDate(range.latest)
+        : formatLongDate(range.earliest) + " or later";
+      return "<tr><td>" + div.name + "</td><td>" + text + "</td></tr>";
+    }).join("");
+  }
+
+  const yearSelect = document.getElementById("adc-year-select");
+  const calcYearSelect = document.getElementById("adc-calc-year");
+  const currentYear = new Date().getFullYear();
+  yearSelect.innerHTML = yearOptionsHtml(currentYear);
+  calcYearSelect.innerHTML = yearOptionsHtml(currentYear);
+  renderChart(currentYear);
+
+  yearSelect.addEventListener("change", function () {
+    renderChart(parseInt(this.value, 10));
+  });
+
+  document.getElementById("adc-calc-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const dobRaw = document.getElementById("adc-dob").value;
+    if (!dobRaw) return;
+    const dob = new Date(dobRaw + "T00:00:00");
+    const tournamentYear = parseInt(calcYearSelect.value, 10);
+    const result = uswpDivisionForBirthdate(dob, tournamentYear);
+    const cutoff = uswpAugustFirst(tournamentYear);
+
+    const resultEl = document.getElementById("adc-result");
+    resultEl.classList.add("visible");
+
+    if (result.division) {
+      document.getElementById("adc-result-division").textContent = "Your Division: " + result.division;
+      document.getElementById("adc-result-age").textContent = "Age on " + formatLongDate(cutoff) + ": " + result.age;
+      document.getElementById("adc-result-eligible").textContent = "Eligible for " + result.division;
+    } else if (result.age > 18) {
+      document.getElementById("adc-result-division").textContent = "No Standard Youth Division";
+      document.getElementById("adc-result-age").textContent = "Age on " + formatLongDate(cutoff) + ": " + result.age;
+      document.getElementById("adc-result-eligible").textContent = "Older than 18U — contact the club about Masters or adult play.";
+    } else {
+      document.getElementById("adc-result-division").textContent = "Check the Date";
+      document.getElementById("adc-result-age").textContent = "That birthdate is after the " + tournamentYear + " cutoff.";
+      document.getElementById("adc-result-eligible").textContent = "";
+    }
+    document.getElementById("adc-result-cutoff").textContent = "USA Water Polo cutoff: " + formatLongDate(cutoff);
+    resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+</script>
+</body>
+</html>

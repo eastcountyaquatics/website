@@ -108,6 +108,15 @@
           <label for="t-location">Location</label>
           <input type="text" id="t-location" placeholder="e.g. Riverside Aquatics Complex, Riverside, CA" required>
         </div>
+        <div class="field" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="t-travel" style="width:auto;">
+          <label for="t-travel" style="margin:0;">Out of county (coaches get $75/day travel pay)</label>
+        </div>
+        <div class="field" id="t-travel-days-wrap" style="display:none;">
+          <label for="t-travel-days">Travel Days</label>
+          <input type="number" id="t-travel-days" min="1" step="1">
+          <p class="muted" style="font-size:12px;margin-top:4px;">Pre-fills on the Tournament Coach Hours page so every coach logging this tournament gets the same number automatically -- still editable per entry afterward.</p>
+        </div>
         <div class="field">
           <label for="t-cost-note">Estimated Cost of Tournament</label>
           <input type="text" id="t-cost-note" placeholder="e.g. $250" required>
@@ -295,6 +304,28 @@
   });
   document.getElementById("t-age-as-of").addEventListener("input", function () { this.dataset.touched = "1"; });
 
+  // Inclusive day count, so a Sat-Sun tournament defaults to 2 travel days --
+  // same logic as Tournament Coach Hours, just not re-derived there since
+  // this field is now the source of truth coaches pick up automatically.
+  function daysInRange(start, end) {
+    if (!start) return 1;
+    if (!end || end < start) return 1;
+    return Math.round((new Date(end + "T00:00:00") - new Date(start + "T00:00:00")) / 86400000) + 1;
+  }
+  function syncTournamentTravelDays() {
+    if (document.getElementById("t-travel-days").dataset.touched) return;
+    const activeMode = document.querySelector("[data-datemode].active").dataset.datemode;
+    const end = activeMode === "range" ? document.getElementById("t-end-date").value : "";
+    document.getElementById("t-travel-days").value = daysInRange(document.getElementById("t-event-date").value, end);
+  }
+  document.getElementById("t-travel").addEventListener("change", function () {
+    document.getElementById("t-travel-days-wrap").style.display = this.checked ? "block" : "none";
+    if (this.checked) syncTournamentTravelDays();
+  });
+  document.getElementById("t-travel-days").addEventListener("input", function () { this.dataset.touched = "1"; });
+  document.getElementById("t-event-date").addEventListener("change", syncTournamentTravelDays);
+  document.getElementById("t-end-date").addEventListener("change", syncTournamentTravelDays);
+
   function startEditTournament(t) {
     document.getElementById("tournament-form-title").textContent = "Edit Tournament";
     document.getElementById("t-id").value = t.id;
@@ -304,6 +335,10 @@
     document.getElementById("t-team-slug").value = t.team_slug || "";
     document.getElementById("t-rsvp-deadline").value = t.rsvp_deadline || "";
     document.getElementById("t-location").value = t.location || "";
+    document.getElementById("t-travel").checked = !!t.travel_days;
+    document.getElementById("t-travel-days-wrap").style.display = t.travel_days ? "block" : "none";
+    document.getElementById("t-travel-days").value = t.travel_days || "";
+    document.getElementById("t-travel-days").dataset.touched = t.travel_days ? "1" : "";
     document.getElementById("t-cost-note").value = t.estimated_cost_note || "";
     document.getElementById("t-max-age").value = t.max_age || "";
     document.getElementById("t-age-as-of").value = t.age_as_of || t.event_date;
@@ -331,6 +366,8 @@
     document.getElementById("t-id").value = "";
     document.getElementById("t-age-as-of").dataset.touched = "";
     document.getElementById("t-age-as-of-wrap").style.display = "none";
+    document.getElementById("t-travel-days-wrap").style.display = "none";
+    document.getElementById("t-travel-days").dataset.touched = "";
     document.getElementById("tournament-form-title").textContent = "Add a Tournament";
     document.getElementById("t-submit-btn").textContent = "Add Tournament";
     document.getElementById("t-cancel-btn").style.display = "none";
@@ -359,6 +396,7 @@
       team_slug: document.getElementById("t-team-slug").value || null,
       rsvp_deadline: document.getElementById("t-rsvp-deadline").value || null,
       location: document.getElementById("t-location").value.trim() || null,
+      travel_days: document.getElementById("t-travel").checked ? (parseInt(document.getElementById("t-travel-days").value, 10) || 1) : null,
       estimated_cost_note: document.getElementById("t-cost-note").value.trim() || null,
       max_age: document.getElementById("t-max-age").value ? parseInt(document.getElementById("t-max-age").value, 10) : null,
       age_as_of: document.getElementById("t-max-age").value ? (document.getElementById("t-age-as-of").value || document.getElementById("t-event-date").value) : null,

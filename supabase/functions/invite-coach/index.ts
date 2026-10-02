@@ -68,6 +68,8 @@ Deno.serve(async (req) => {
     });
 
     if (!res.ok) {
+      const body = await res.text();
+      console.error(`Resend invite failed (${res.status}) for ${email}: ${body}`);
       return json({ ok: true, emailed: false, reason: `Resend responded with ${res.status}` });
     }
     return json({ ok: true, emailed: true });

@@ -135,7 +135,6 @@
               <option value="Silver" data-min="1250">Silver Sponsorship: $1,250-$2,499</option>
               <option value="Gold" data-min="2500">Gold Sponsorship: $2,500-$3,999</option>
               <option value="Platinum" data-min="4000">Platinum Sponsorship: $4,000+</option>
-              <option value="Other" data-min="1">Other</option>
             </select>
             <p class="field-hint"><a href="support.html">Compare what each level includes</a>.</p>
           </div>
@@ -209,21 +208,15 @@
     return parseFloat(opt.dataset.min) || 1;
   }
 
-  // Picking a level fills in its starting amount; "Other" lets the sponsor
-  // name any amount they'd like.
+  // Picking a level fills in its starting amount -- the sponsor can still
+  // raise it, just never below that level's minimum.
   document.getElementById("sp-tier").addEventListener("change", function () {
     const min = tierMin();
     const amountInput = document.getElementById("sp-amount");
     amountInput.min = min;
-    if (this.value === "Other") {
-      amountInput.value = "";
-      amountInput.placeholder = "Enter any amount";
-      document.getElementById("sp-amount-hint").textContent = "Enter the amount you'd like to sponsor.";
-    } else {
-      amountInput.value = min;
-      document.getElementById("sp-amount-hint").textContent =
-        "Minimum $" + min.toLocaleString("en-US") + " for " + this.value + ". You're welcome to give more.";
-    }
+    amountInput.value = min;
+    document.getElementById("sp-amount-hint").textContent =
+      "Minimum $" + min.toLocaleString("en-US") + " for " + this.value + ". You're welcome to give more.";
   });
 
   typeSelect.addEventListener("change", applyType);

@@ -126,21 +126,14 @@
           <label for="cr-lg-exp">Lifeguard Certification Expiration Date</label>
           <input type="date" id="cr-lg-exp">
         </div>
-        <div class="field">
-          <label>Do you have a USA Water Polo Coaches Membership?</label>
-          <div class="radio-row">
-            <label><input type="radio" name="cr-uswp" value="yes" required> Yes</label>
-            <label><input type="radio" name="cr-uswp" value="no"> No</label>
-          </div>
-        </div>
-        <div class="reg-grid" id="cr-uswp-wrap" style="display:none;">
+        <div class="reg-grid">
           <div class="field">
-            <label for="cr-uswp-num">Membership Number</label>
-            <input type="text" id="cr-uswp-num" maxlength="50">
+            <label for="cr-uswp-num">USA Water Polo Membership Number</label>
+            <input type="text" id="cr-uswp-num" maxlength="50" required>
           </div>
           <div class="field">
             <label for="cr-uswp-exp">Membership Expiration</label>
-            <input type="date" id="cr-uswp-exp">
+            <input type="date" id="cr-uswp-exp" required>
           </div>
         </div>
 
@@ -201,7 +194,7 @@
   }
 
   function toggle(id, show) {
-    document.getElementById(id).style.display = show ? (id === "cr-uswp-wrap" ? "grid" : "block") : "none";
+    document.getElementById(id).style.display = show ? "block" : "none";
   }
 
   document.querySelectorAll('input[name="cr-lifeguard"]').forEach(function (r) {
@@ -209,14 +202,6 @@
       const yes = radioValue("cr-lifeguard") === "yes";
       toggle("cr-lg-exp-wrap", yes);
       document.getElementById("cr-lg-exp").required = yes;
-    });
-  });
-  document.querySelectorAll('input[name="cr-uswp"]').forEach(function (r) {
-    r.addEventListener("change", function () {
-      const yes = radioValue("cr-uswp") === "yes";
-      toggle("cr-uswp-wrap", yes);
-      document.getElementById("cr-uswp-num").required = yes;
-      document.getElementById("cr-uswp-exp").required = yes;
     });
   });
   document.getElementById("cr-zelle").addEventListener("change", function () {
@@ -280,7 +265,6 @@
     }
 
     const lifeguard = radioValue("cr-lifeguard") === "yes";
-    const uswp = radioValue("cr-uswp") === "yes";
     const zelle = document.getElementById("cr-zelle").value;
 
     // Plain insert with no .select(): the public can submit but never read
@@ -297,9 +281,9 @@
       emergency_contact_phone: val("cr-ec-phone"),
       lifeguard_certified: lifeguard,
       lifeguard_expiration: lifeguard ? val("cr-lg-exp") : null,
-      uswp_member: uswp,
-      uswp_member_number: uswp ? val("cr-uswp-num") : null,
-      uswp_expiration: uswp ? val("cr-uswp-exp") : null,
+      uswp_member: true,
+      uswp_member_number: val("cr-uswp-num"),
+      uswp_expiration: val("cr-uswp-exp"),
       zelle_status: zelle,
       zelle_contact: zelle === "yes" ? val("cr-zelle-contact") : null,
       venmo_username: val("cr-venmo"),

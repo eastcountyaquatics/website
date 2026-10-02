@@ -204,6 +204,11 @@ section{padding:72px 0;}
   display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:19px;letter-spacing:.02em;font-family:"Bitter",serif;
 }
 .team-card .team-body{padding:22px;flex:1;display:flex;flex-direction:column;}
+
+.team-panel{text-align:center;}
+.team-panel h3{font-family:"Bitter",serif;}
+.team-panel-buttons{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:18px;}
+.team-panel-buttons .btn{padding:10px 20px;}
 .team-card .tag{
   align-self:flex-start;background:var(--foam);color:var(--blue);font-size:12px;font-weight:700;
   padding:4px 10px;border-radius:999px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;

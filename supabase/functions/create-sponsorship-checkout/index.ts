@@ -72,7 +72,9 @@ Deno.serve(async (req) => {
         },
       ],
       customer_email: sponsorship.contact_email,
-      success_url: `${returnUrl}?status=success`,
+      // Stripe fills in {CHECKOUT_SESSION_ID} itself; the page hands it to
+      // get-donation-receipt to show a printable receipt on the spot.
+      success_url: `${returnUrl}?status=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}?status=cancelled`,
       metadata: {
         sponsorship_id: sponsorship.id,

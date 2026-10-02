@@ -428,3 +428,35 @@ table.schedule tr:nth-child(even){background:var(--foam);}
   .coach-card{flex-direction:column;}
   section{padding:52px 0;}
 }
+
+/* Donation/sponsorship receipt (js/donation-receipt.js) */
+.receipt-thanks{border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;margin-bottom:20px;}
+.receipt-card{background:#fff;border:1px solid #d8dce8;border-radius:var(--radius);padding:32px;box-shadow:var(--shadow);}
+.receipt-head{display:flex;gap:16px;align-items:center;border-bottom:2px solid var(--navy);padding-bottom:16px;margin-bottom:20px;}
+.receipt-logo{width:64px;height:64px;object-fit:contain;flex-shrink:0;}
+.receipt-title{font-size:22px;margin:0 0 4px;}
+.receipt-sub{font-size:13px;color:var(--muted);}
+.receipt-heading{font-size:18px;text-transform:uppercase;letter-spacing:.05em;}
+.receipt-table{width:100%;border-collapse:collapse;margin:8px 0 20px;}
+.receipt-table th,.receipt-table td{padding:9px 0;border-bottom:1px solid #eceef4;text-align:left;vertical-align:top;font-size:15px;}
+.receipt-table th{width:38%;color:var(--muted);font-weight:500;}
+.receipt-table td{overflow-wrap:anywhere;}
+.receipt-table tr:last-child th,.receipt-table tr:last-child td{font-weight:700;color:var(--navy);font-size:17px;border-bottom:none;}
+.receipt-statement{font-size:13.5px;color:var(--ink);background:var(--foam);padding:14px;border-radius:8px;}
+.receipt-sign{margin-top:20px;}
+.receipt-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;}
+@media (max-width:560px){.receipt-card{padding:20px;}.receipt-head{flex-direction:column;align-items:flex-start;}}
+@media print{
+  body *{visibility:hidden;}
+  #donation-receipt,#donation-receipt *{visibility:visible;}
+  #donation-receipt{position:absolute;left:0;top:0;width:100%;}
+  #donation-receipt .no-print{display:none;}
+  .receipt-card{box-shadow:none;border:none;}
+}
+.admin-list-actions button.icon-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;}
+
+/* Head coach contact on team pages (js/team-head-coach.js) */
+.head-coach-card{max-width:600px;margin:0 auto 24px;background:#fff;border:1px solid #e3e6f0;border-top:4px solid var(--gold);border-radius:var(--radius);padding:18px 22px;text-align:center;box-shadow:var(--shadow);}
+.head-coach-card .kicker{display:block;color:var(--blue);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px;margin-bottom:6px;}
+.head-coach-row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;font-size:16px;padding:4px 0;}
+.head-coach-row a{color:var(--blue);font-weight:700;overflow-wrap:anywhere;}

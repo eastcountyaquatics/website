@@ -379,10 +379,8 @@ async function handleSponsorshipPayment(
     // sponsorship (which gets marketing exposure) -- that's the actual IRS
     // distinction for whether a gift is deductible, so the two get
     // different receipt language rather than one generic "thanks" email.
-    // The EIN is real IRS-issued data this codebase has never been given;
-    // fabricating one on a financial receipt would be worse than omitting
-    // it, so it only appears once ORG_EIN is set as a real secret.
-    const ein = Deno.env.get("ORG_EIN");
+    // EIN comes from the club's IRS determination; ORG_EIN can override it.
+    const ein = orgEin();
     const paidDate = updated.paid_at
       ? new Date(updated.paid_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
       : new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
@@ -392,9 +390,8 @@ async function handleSponsorshipPayment(
       "Thank you for your donation to East County Aquatics!",
       `Thank you, ${updated.contact_name}, for your generous donation of ${amount} to San Diego East County Aquatics on ${paidDate}.\n\n` +
         `San Diego East County Aquatics is a 501(c)(3) non-profit organization` +
-        (ein ? ` (EIN: ${ein})` : "") +
+        ` (EIN: ${ein})` +
         `. No goods or services were provided in exchange for this contribution, so it may be tax-deductible to the extent allowed by law. Please consult your tax advisor and retain this email for your records.` +
-        (ein ? "" : " (Contact us if you need our EIN for your records.)") +
         `\n\nWith gratitude,\nSan Diego East County Aquatics`
     );
     await sendReceiptEmail(
@@ -411,7 +408,7 @@ async function handleSponsorshipPayment(
         `with a contribution of $${(updated.amount_cents / 100).toFixed(2)}. ` +
         `We truly appreciate your support -- we'll be in touch about featuring your business.\n\n` +
         `San Diego East County Aquatics is a 501(c)(3) non-profit organization` +
-        (Deno.env.get("ORG_EIN") ? ` (EIN: ${Deno.env.get("ORG_EIN")})` : "") +
+        ` (EIN: ${orgEin()})` +
         `. Your sponsorship is tax-deductible to the extent allowed by law; the deductible amount may be reduced ` +
         `by the fair market value of any advertising or benefits received. Please consult your tax advisor and retain this email for your records.`
     );
@@ -489,6 +486,10 @@ async function handleHostedEventPayment(
   );
 
   return new Response("ok", { status: 200 });
+}
+
+function orgEin(): string {
+  return Deno.env.get("ORG_EIN") || "85-0673706";
 }
 
 // Best-effort thank-you email, sent via Resend (https://resend.com). Never

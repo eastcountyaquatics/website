@@ -97,6 +97,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -108,6 +109,8 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
+
+  var TRASH_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 
   var knownProfiles = [];
   var currentUserId = null;
@@ -171,7 +174,7 @@
           '<div class="muted" style="font-size:13px;">Will become ' + escapeHtml(p.role) + teamNote + " on sign-up</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
-          '<button data-cancel="' + escapeHtml(p.email) + '" class="danger">Cancel</button>' +
+          '<button data-cancel="' + escapeHtml(p.email) + '" class="danger icon-btn" title="Remove" aria-label="Remove ' + escapeHtml(p.email) + '">' + TRASH_ICON + "</button>" +
           "</div>" +
           "</div>"
         );
@@ -180,6 +183,7 @@
 
     listEl.querySelectorAll("[data-cancel]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
+        if (!confirm("Remove the pending access for " + btn.dataset.cancel + "?")) return;
         const { error } = await supabaseClient
           .from("pending_role_assignments")
           .delete()
@@ -295,7 +299,8 @@
           '<div class="admin-list-actions">' +
           (u.id === currentUserId
             ? '<span class="muted" style="font-size:13px;">You (' + escapeHtml(roleLabels[u.role || ""] || u.role) + ")</span>"
-            : '<select data-user="' + u.id + '" style="padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;">' + options + "</select>") +
+            : '<select data-user="' + u.id + '" style="padding:6px 10px;border:1px solid #d7e6ee;border-radius:6px;">' + options + "</select>" +
+              '<button type="button" data-delete-user="' + u.id + '" class="danger icon-btn" title="Delete account" aria-label="Delete ' + escapeHtml(u.full_name || u.email) + '">' + TRASH_ICON + "</button>") +
           "</div>" +
           (u.id !== currentUserId
             ? '<div data-teams-wrap="' + u.id + '" style="flex-basis:100%;margin-top:8px;display:' + (u.role === "head_coach" ? "block" : "none") + ';">' +
@@ -346,6 +351,58 @@
     listEl.querySelectorAll("[data-teams-wrap]").forEach(function (wrap) {
       wireTeamCheckboxes(wrap, wrap.dataset.teamsWrap);
     });
+    listEl.querySelectorAll("[data-delete-user]").forEach(function (btn) {
+      btn.addEventListener("click", function () { deleteAccount(btn); });
+    });
+  }
+
+  // Two round trips on purpose: first ask what's attached to the account
+  // so the confirm box can say exactly what disappears with it.
+  async function deleteAccount(btn) {
+    const msg = document.getElementById("assign-msg");
+    const userId = btn.dataset.deleteUser;
+    btn.disabled = true;
+    const { data: preview, error: previewError } = await supabaseClient.functions.invoke("delete-user", {
+      body: { action: "preview", user_id: userId },
+    });
+    btn.disabled = false;
+    if (previewError || !preview || !preview.ok) {
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(previewError, preview, "Could not check this account.");
+      return;
+    }
+
+    const who = preview.account.full_name ? preview.account.full_name + " (" + preview.account.email + ")" : preview.account.email;
+    if (preview.blocked) {
+      alert(
+        who + " can't be deleted: this account has payment or coach-pay history the club needs to keep.\n\n" +
+        'To take away their access, set their role to "No admin access" instead.'
+      );
+      return;
+    }
+
+    let text = "Permanently delete the account for " + who + "?\n\nThey will no longer be able to log in.";
+    if (preview.linked.athletes > 0) {
+      text += "\n\nThis will also delete " + preview.linked.athletes + " athlete" +
+        (preview.linked.athletes === 1 ? "" : "s") + " registered under this account.";
+    }
+    text += "\n\nThis can't be undone.";
+    if (!confirm(text)) return;
+
+    btn.disabled = true;
+    const { data, error } = await supabaseClient.functions.invoke("delete-user", {
+      body: { action: "delete", user_id: userId },
+    });
+    if (error || !data || !data.ok) {
+      btn.disabled = false;
+      msg.className = "form-msg error";
+      msg.textContent = await functionErrorMessage(error, data, "Could not delete this account.");
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Deleted " + who + ".";
+    loadUsers();
+    loadPending();
   }
 
   function wireTeamCheckboxes(wrap, profileId) {

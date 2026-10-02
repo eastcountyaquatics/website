@@ -177,6 +177,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/fn-error.js"></script>
+<script src="js/donation-receipt.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -229,7 +230,9 @@
     applyType();
 
     const status = params.get("status");
-    if (status === "success") {
+    if (status === "success" && showDonationReceipt(document.querySelector(".card"))) {
+      // Printable receipt took over the form area.
+    } else if (status === "success") {
       document.querySelector(".card").outerHTML =
         '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
         "<strong>Thank you for your support!</strong> A receipt was sent to your email &mdash; please keep it for your tax records.</div>";

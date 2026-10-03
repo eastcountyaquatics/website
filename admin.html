@@ -55,6 +55,12 @@
             <p class="muted">Summary of coach's logged hours. Coaches log hours on the Attendance page when taking roll and tournament hours on Tournament Coach Hours.</p>
           </a>
         </div>
+        <div class="admin-nav-card" id="coach-profile-card">
+          <a href="admin-coaches.html" style="display:block;color:inherit;">
+            <h3 id="coach-profile-title">Coach Profiles</h3>
+            <p class="muted" id="coach-profile-desc">Edit coach profiles &mdash; bios, photos, titles, teams, and contact emails.</p>
+          </a>
+        </div>
         <div class="admin-nav-card" id="tournament-hours-card">
           <a href="admin-tournament-hours.html" style="display:block;color:inherit;">
             <h3>Tournament Coach Hours</h3>
@@ -221,6 +227,10 @@
       assistant_coach: ["coaches", "teams"],
       coach: ["coaches"],
     };
+    if (auth.role !== "owner") {
+      document.getElementById("coach-profile-title").textContent = "My Coach Profile";
+      document.getElementById("coach-profile-desc").textContent = "Edit your bio, photo, and public contact email.";
+    }
     (GROUPS_BY_ROLE[auth.role] || []).forEach(function (group) {
       document.querySelector('[data-group="' + group + '"]').style.display = "block";
     });

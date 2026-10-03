@@ -73,7 +73,7 @@
           <label for="full_name">Full Name</label>
           <input type="text" id="full_name" required>
         </div>
-        <div class="field">
+        <div class="field" id="role-title-field">
           <label for="role_title">Role / Title</label>
           <select id="role_title">
             <option value="">Choose a role / title&hellip;</option>
@@ -85,7 +85,7 @@
             <option value="Assistant Coach">Assistant Coach</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field" id="team-group-field">
           <label>Team Group</label>
           <div id="team_group_options" style="display:flex;flex-wrap:wrap;gap:8px 18px;padding:8px 0;"></div>
           <p class="field-hint">Check every team this person coaches &mdash; you can pick more than one.</p>
@@ -93,7 +93,7 @@
         <div class="field" id="contact-email-field" style="display:none;">
           <label for="contact_email">Public Contact Email</label>
           <input type="email" id="contact_email" placeholder="coach@example.com">
-          <p class="field-hint">Required for Head Coaches. Shown publicly (as a clickable email link) on the team page for every team checked above.</p>
+          <p class="field-hint">Required for Head Coaches. Shown publicly (as a clickable email link) on the team page(s) this coach heads.</p>
         </div>
         <div class="field" style="display:none;">
           <!-- Hidden per request: existing account links keep working exactly as
@@ -132,7 +132,7 @@
           </div>
           <p class="muted" style="font-size:12px;margin-top:4px;">Shown as a circle everywhere on the site &mdash; a square, centered headshot crops best.</p>
         </div>
-        <div class="field">
+        <div class="field" id="sort-order-field">
           <label for="sort_order">Display Order (lower shows first)</label>
           <input type="number" id="sort_order" value="0">
         </div>
@@ -272,6 +272,8 @@
       linkedBox.style.display = "block";
       listBox.innerHTML = "";
       document.getElementById("claim-linked-name").textContent = mine.full_name;
+      document.getElementById("claim-title").textContent = "Your Coach Record";
+      document.getElementById("claim-hint").style.display = "none";
       document.getElementById("claim-unlink-btn").onclick = async function () {
         const { error } = await supabaseClient
           .from("coaches")
@@ -289,6 +291,8 @@
     }
 
     linkedBox.style.display = "none";
+    document.getElementById("claim-title").textContent = "Which coach are you?";
+    document.getElementById("claim-hint").style.display = "";
     if (unclaimed.length === 0) {
       section.style.display = "none";
       return;
@@ -335,7 +339,14 @@
       listEl.innerHTML = '<p class="muted">Could not load coaches: ' + escapeHtml(error.message) + "</p>";
       return;
     }
-    if (!isOwnerView) renderClaimSection(data || []);
+    if (!isOwnerView) {
+      renderClaimSection(data || []);
+      const mine = (data || []).find(function (c) { return c.profile_id === myUserId; });
+      document.getElementById("coach-form-wrap").style.display = mine ? "block" : "none";
+      if (mine) startSelfEdit(mine);
+      listEl.innerHTML = "";
+      return;
+    }
     if (!data || data.length === 0) {
       listEl.innerHTML = '<p class="muted">No coaches yet.</p>';
       return;
@@ -443,6 +454,52 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // Non-managers: the form edits only their own linked record, and only
+  // the bio, photo and public contact email (the database enforces this too).
+  var myCoachRecord = null;
+  function startSelfEdit(coach) {
+    myCoachRecord = coach;
+    document.getElementById("form-title").textContent = "Edit My Profile";
+    document.getElementById("coach-id").value = coach.id;
+    const nameInput = document.getElementById("full_name");
+    nameInput.value = coach.full_name || "";
+    nameInput.readOnly = true;
+    ["role-title-field", "team-group-field", "invite-email-field", "rate-field", "sort-order-field"].forEach(function (id) {
+      document.getElementById(id).style.display = "none";
+    });
+    document.getElementById("contact-email-field").style.display = "block";
+    document.getElementById("contact_email").required = coach.role_title === "Head Coach";
+    document.getElementById("contact_email").value = coach.contact_email || "";
+    document.getElementById("bio").value = coach.bio || "";
+    document.getElementById("photo_url").value = coach.photo_url || "";
+    document.getElementById("submit-btn").textContent = "Save Profile";
+    document.getElementById("cancel-edit-btn").style.display = "none";
+    updatePhotoPreview();
+  }
+
+  async function saveOwnProfile(msg) {
+    if (!myCoachRecord) return;
+    const payload = {
+      bio: document.getElementById("bio").value.trim() || null,
+      photo_url: document.getElementById("photo_url").value.trim() || null,
+      contact_email: document.getElementById("contact_email").value.trim().toLowerCase() || null,
+    };
+    if (myCoachRecord.role_title === "Head Coach" && !payload.contact_email) {
+      msg.className = "form-msg error";
+      msg.textContent = "Head Coaches need a Public Contact Email -- it's shown on your team page.";
+      return;
+    }
+    const { error } = await supabaseClient.from("coaches").update(payload).eq("id", myCoachRecord.id);
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = error.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Your profile was saved.";
+    loadCoaches();
+  }
+
   function resetForm() {
     document.getElementById("coach-form").reset();
     document.getElementById("hourly_rate").value = "";
@@ -503,6 +560,10 @@
     e.preventDefault();
     const msg = document.getElementById("form-msg");
     msg.className = "form-msg";
+    if (!isOwnerView) {
+      saveOwnProfile(msg);
+      return;
+    }
 
     const payload = {
       full_name: document.getElementById("full_name").value.trim(),
@@ -608,7 +669,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
     isOwnerView = auth.role === "owner";
     myUserId = auth.session.user.id;
@@ -616,8 +677,10 @@
     if (isOwnerView) await loadPayRates();
     canEdit = auth.role === "owner";
     if (!canEdit) {
+      // Coaches edit only their own profile (see startSelfEdit).
+      document.querySelector(".admin-header h1").textContent = "My Coach Profile";
+      document.title = "My Coach Profile | Admin | San Diego East County Aquatics";
       document.getElementById("coach-form-wrap").style.display = "none";
-      document.getElementById("permission-notice").style.display = "block";
     }
     loadCoaches();
   })();

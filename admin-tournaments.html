@@ -424,7 +424,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
+    const auth = await requireRole(["owner", "head_coach"]);
     if (!auth) return;
     canEdit = auth.role !== "assistant_coach";
     if (!canEdit) document.getElementById("tournament-form-wrap").style.display = "none";

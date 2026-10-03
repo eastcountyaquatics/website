@@ -46,120 +46,148 @@
 
 <section class="section-tight">
   <div class="container">
-    <div class="admin-nav-cards">
-      <div class="admin-nav-card" id="coaches-card" style="display:none;">
-        <a href="admin-coaches.html" style="display:block;color:inherit;">
-          <h3>Coaches</h3>
-          <p class="muted">Add, edit, or remove coaches shown on the About Us page.</p>
-        </a>
+    <div class="admin-group" data-group="coaches" style="display:none;">
+      <h2 class="admin-group-title">Coaches</h2>
+      <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="hours-card">
+          <a href="admin-hours.html" style="display:block;color:inherit;">
+            <h3>Coach Hours</h3>
+            <p class="muted">Log your practice hours and see hours totalled per coach for payroll.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="tournament-hours-card">
+          <a href="admin-tournament-hours.html" style="display:block;color:inherit;">
+            <h3>Tournament Coach Hours</h3>
+            <p class="muted">Log coaching hours and travel days for a tournament, start to end date.</p>
+          </a>
+        </div>
       </div>
-      <div class="admin-nav-card" id="schedules-card" style="display:none;">
-        <a href="admin-schedules.html" style="display:block;color:inherit;">
-          <h3>Schedules</h3>
-          <p class="muted">Update each team's practice schedule and publish it when ready.</p>
-        </a>
+    </div>
+    <div class="admin-group" data-group="teams" style="display:none;">
+      <h2 class="admin-group-title">Teams</h2>
+      <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="athletes-card">
+          <a href="admin-athletes.html" style="display:block;color:inherit;">
+            <h3>Roster</h3>
+            <p class="muted">See every registered athlete, their parent's contact info, and what they've signed up for.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="attendance-card">
+          <a href="admin-attendance.html" style="display:block;color:inherit;">
+            <h3>Attendance</h3>
+            <p class="muted">Take attendance for practice &mdash; check off who's present, saves automatically.</p>
+          </a>
+        </div>
       </div>
-      <div class="admin-nav-card" id="attendance-card" style="display:none;">
-        <a href="admin-attendance.html" style="display:block;color:inherit;">
-          <h3>Attendance</h3>
-          <p class="muted">Take attendance for practice &mdash; check off who's present, saves automatically.</p>
-        </a>
+    </div>
+    <div class="admin-group" data-group="tournaments" style="display:none;">
+      <h2 class="admin-group-title">Tournaments</h2>
+      <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="interest-card">
+          <a href="admin-interest.html" style="display:block;color:inherit;">
+            <h3>Team Interest</h3>
+            <p class="muted">Post a question to a team and see who's interested.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="tournaments-card">
+          <a href="admin-tournaments.html" style="display:block;color:inherit;">
+            <h3>Tournaments</h3>
+            <p class="muted">Set age/gender pricing and send invite-only payment links.</p>
+          </a>
+        </div>
       </div>
-      <div class="admin-nav-card" id="tournament-hours-card" style="display:none;">
-        <a href="admin-tournament-hours.html" style="display:block;color:inherit;">
-          <h3>Tournament Coach Hours</h3>
-          <p class="muted">Log coaching hours and travel days for a tournament, start to end date.</p>
-        </a>
+    </div>
+    <div class="admin-group" data-group="website" style="display:none;">
+      <h2 class="admin-group-title">Admin <span>&rsaquo; Website</span></h2>
+      <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="editor-card">
+          <a href="admin-editor.html" style="display:block;color:inherit;">
+            <h3>Edit Website</h3>
+            <p class="muted">Click any text or photo on any page to change it, or add a brand new page.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="coaches-card">
+          <a href="admin-coaches.html" style="display:block;color:inherit;">
+            <h3>Coaches</h3>
+            <p class="muted">Add, edit, or remove coaches shown on the About Us page.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="coach-registrations-card">
+          <a href="admin-coach-registrations.html" style="display:block;color:inherit;">
+            <h3>Coach Registrations</h3>
+            <p class="muted">Coach info, certifications and W-9s from the registration form &mdash; set hourly rates here.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="registrations-card">
+          <a href="admin-registrations.html" style="display:block;color:inherit;">
+            <h3>Registrations</h3>
+            <p class="muted">Create the programs families can sign up and pay for online.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="coupons-card">
+          <a href="admin-coupons.html" style="display:block;color:inherit;">
+            <h3>Coupon Codes</h3>
+            <p class="muted">Create discount codes for siblings and new athletes.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="schedules-card">
+          <a href="admin-schedules.html" style="display:block;color:inherit;">
+            <h3>Schedules</h3>
+            <p class="muted">Update each team's practice schedule and publish it when ready.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="band-links-card">
+          <a href="admin-band-links.html" style="display:block;color:inherit;">
+            <h3>BAND Links</h3>
+            <p class="muted">Update each team's BAND group invite link &mdash; these change every session.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="hosted-events-card">
+          <a href="admin-hosted-events.html" style="display:block;color:inherit;">
+            <h3>Hosted Events</h3>
+            <p class="muted">Invite outside teams to a scrimmage or tournament you're hosting and collect their fee.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="masters-card">
+          <a href="admin-masters.html" style="display:block;color:inherit;">
+            <h3>Masters Membership</h3>
+            <p class="muted">Set monthly pricing by age bracket and manage member subscriptions.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="users-card">
+          <a href="admin-users.html" style="display:block;color:inherit;">
+            <h3>Team Access</h3>
+            <p class="muted">Set who has manager, coach, or head coach access to this admin area.</p>
+          </a>
+        </div>
       </div>
-      <div class="admin-nav-card" id="athletes-card" style="display:none;">
-        <a href="admin-athletes.html" style="display:block;color:inherit;">
-          <h3>Roster</h3>
-          <p class="muted">See every registered athlete, their parent's contact info, and what they've signed up for.</p>
-        </a>
+    </div>
+    <div class="admin-group" data-group="finance" style="display:none;">
+      <h2 class="admin-group-title">Finance</h2>
+      <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="coach-pay-card">
+          <a href="admin-coach-pay.html" style="display:block;color:inherit;">
+            <h3>Coach Pay</h3>
+            <p class="muted">Calculate what each coach is owed and record how/when they were paid.</p>
+          </a>
+        </div>
       </div>
-      <div class="admin-nav-card" id="editor-card" style="display:none;">
-        <a href="admin-editor.html" style="display:block;color:inherit;">
-          <h3>Edit Website</h3>
-          <p class="muted">Click any text or photo on any page to change it, or add a brand new page.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="registrations-card" style="display:none;">
-        <a href="admin-registrations.html" style="display:block;color:inherit;">
-          <h3>Registrations</h3>
-          <p class="muted">Create the programs families can sign up and pay for online.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="tournaments-card" style="display:none;">
-        <a href="admin-tournaments.html" style="display:block;color:inherit;">
-          <h3>Tournaments</h3>
-          <p class="muted">Set age/gender pricing and send invite-only payment links.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="interest-card" style="display:none;">
-        <a href="admin-interest.html" style="display:block;color:inherit;">
-          <h3>Team Interest</h3>
-          <p class="muted">Post a question to a team and see who's interested.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="sponsors-card" style="display:none;">
-        <a href="admin-sponsors.html" style="display:block;color:inherit;">
-          <h3>Sponsorships</h3>
-          <p class="muted">Sponsor inquiries and payments from the public form.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="hosted-events-card" style="display:none;">
-        <a href="admin-hosted-events.html" style="display:block;color:inherit;">
-          <h3>Hosted Events</h3>
-          <p class="muted">Invite outside teams to a scrimmage or tournament you're hosting and collect their fee.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="coupons-card" style="display:none;">
-        <a href="admin-coupons.html" style="display:block;color:inherit;">
-          <h3>Coupon Codes</h3>
-          <p class="muted">Create discount codes for siblings and new athletes.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="masters-card" style="display:none;">
-        <a href="admin-masters.html" style="display:block;color:inherit;">
-          <h3>Masters Membership</h3>
-          <p class="muted">Set monthly pricing by age bracket and manage member subscriptions.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="hours-card" style="display:none;">
-        <a href="admin-hours.html" style="display:block;color:inherit;">
-          <h3>Coach Hours</h3>
-          <p class="muted">Hours logged at attendance, totalled per coach for payroll.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="coach-registrations-card" style="display:none;">
-        <a href="admin-coach-registrations.html" style="display:block;color:inherit;">
-          <h3>Coach Registrations</h3>
-          <p class="muted">Coach info, certifications and W-9s from the registration form &mdash; set hourly rates here.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="coach-pay-card" style="display:none;">
-        <a href="admin-coach-pay.html" style="display:block;color:inherit;">
-          <h3>Coach Pay</h3>
-          <p class="muted">Calculate what each coach is owed and record how/when they were paid.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="band-links-card" style="display:none;">
-        <a href="admin-band-links.html" style="display:block;color:inherit;">
-          <h3>BAND Links</h3>
-          <p class="muted">Update each team's BAND group invite link &mdash; these change every session.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="signups-card" style="display:none;">
-        <a href="admin-signups.html" style="display:block;color:inherit;">
-          <h3>Sign-Ups</h3>
-          <p class="muted">See who's registered and paid &mdash; export to CSV for QuickBooks.</p>
-        </a>
-      </div>
-      <div class="admin-nav-card" id="users-card" style="display:none;">
-        <a href="admin-users.html" style="display:block;color:inherit;">
-          <h3>Team Access</h3>
-          <p class="muted">Set who has manager, coach, or head coach access to this admin area.</p>
-        </a>
+    </div>
+    <div class="admin-group" data-group="donations" style="display:none;">
+      <h2 class="admin-group-title">Donations / Sponsorships</h2>
+      <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="sponsors-card">
+          <a href="admin-sponsors.html" style="display:block;color:inherit;">
+            <h3>Sponsorships</h3>
+            <p class="muted">Sponsor inquiries and payments from the public form.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="signups-card">
+          <a href="admin-signups.html" style="display:block;color:inherit;">
+            <h3>Sign-Ups</h3>
+            <p class="muted">See who's registered and paid &mdash; export to CSV for QuickBooks.</p>
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -185,43 +213,17 @@
     document.getElementById("admin-email").textContent = auth.session.user.email;
     const roleLabels = { owner: "Manager", coach: "Coach", head_coach: "Head Coach", assistant_coach: "Assistant Coach" };
     document.getElementById("admin-role").textContent = roleLabels[auth.role] || auth.role;
-    if (auth.role === "owner" || auth.role === "coach" || auth.role === "head_coach" || auth.role === "assistant_coach") {
-      document.getElementById("schedules-card").style.display = "block";
-      document.getElementById("athletes-card").style.display = "block";
-      document.getElementById("attendance-card").style.display = "block";
-      document.getElementById("tournament-hours-card").style.display = "block";
-      document.getElementById("tournaments-card").style.display = "block";
-    }
-    // Team Interest is a management tool (posting questions to a team), not
-    // something an assistant coach's narrower, view-mostly access covers.
-    if (auth.role === "owner" || auth.role === "coach" || auth.role === "head_coach") {
-      document.getElementById("interest-card").style.display = "block";
-    }
-    // Coach Hours is normally club-wide (owner/coach only, see below), but an
-    // assistant coach still needs to see their own logged hours.
-    if (auth.role === "assistant_coach") {
-      document.getElementById("hours-card").style.display = "block";
-    }
-    // Hosted Events and Coach Hours are club-wide (not scoped to a single
-    // team), so a head coach -- who only has access to their own team's
-    // data -- doesn't get these two even though owner/coach do.
-    if (auth.role === "owner" || auth.role === "coach") {
-      document.getElementById("coaches-card").style.display = "block";
-      document.getElementById("hosted-events-card").style.display = "block";
-      document.getElementById("hours-card").style.display = "block";
-    }
-    if (auth.role === "owner") {
-      document.getElementById("band-links-card").style.display = "block";
-      document.getElementById("coach-pay-card").style.display = "block";
-      document.getElementById("coach-registrations-card").style.display = "block";
-      document.getElementById("signups-card").style.display = "block";
-      document.getElementById("sponsors-card").style.display = "block";
-      document.getElementById("registrations-card").style.display = "block";
-      document.getElementById("coupons-card").style.display = "block";
-      document.getElementById("masters-card").style.display = "block";
-      document.getElementById("editor-card").style.display = "block";
-      document.getElementById("users-card").style.display = "block";
-    }
+    // Which groups of cards each role sees. Founders and Finance log in
+    // with Manager ("owner") access, so they get everything too.
+    const GROUPS_BY_ROLE = {
+      owner: ["coaches", "teams", "tournaments", "website", "finance", "donations"],
+      head_coach: ["coaches", "teams", "tournaments"],
+      assistant_coach: ["coaches", "teams"],
+      coach: ["coaches"],
+    };
+    (GROUPS_BY_ROLE[auth.role] || []).forEach(function (group) {
+      document.querySelector('[data-group="' + group + '"]').style.display = "block";
+    });
   })();
 </script>
 </body>

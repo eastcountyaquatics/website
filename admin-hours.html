@@ -50,12 +50,33 @@
   .hours-total .big{font-size:22px;font-weight:800;color:var(--blue);}
   .hours-detail{font-size:13px;color:var(--muted);margin:2px 0 0;}
   .hours-row{display:flex;justify-content:space-between;padding:7px 16px;font-size:13.5px;border-bottom:1px solid #f0f4f7;}
+  .hours-row button{border:none;background:none;color:#c0392b;cursor:pointer;font-size:13px;margin-left:10px;}
   .hours-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;}
 </style>
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
     <div id="scope-note" class="notice" style="margin-bottom:20px;"></div>
+
+    <div class="admin-form" id="log-form-wrap" style="display:none;margin-bottom:24px;">
+      <h3>Log Practice Hours</h3>
+      <div id="log-msg" class="form-msg"></div>
+      <form id="log-form" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="margin:0;">
+          <label for="log-date">Date</label>
+          <input type="date" id="log-date" required>
+        </div>
+        <div class="field" style="margin:0;min-width:180px;">
+          <label for="log-team">Team</label>
+          <select id="log-team" required style="width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;background:#fff;"></select>
+        </div>
+        <div class="field" style="margin:0;">
+          <label for="log-hours">Hours</label>
+          <input type="number" id="log-hours" min="0.25" max="12" step="0.25" value="1.5" required style="max-width:110px;">
+        </div>
+        <button type="submit" class="btn btn-primary" id="log-submit">Add Hours</button>
+      </form>
+    </div>
 
     <div class="hours-filters">
       <div class="field" style="margin:0;">
@@ -106,6 +127,7 @@
   }
 
   var isOwner = false;
+  var currentUserId = null;
   var loadedRows = [];
   var nameById = {};
   var teamLabels = {};
@@ -131,6 +153,9 @@
       .from("coach_hours")
       .select("id, coach_id, team_slug, session_date, session_end_date, session_type, tournament_name, hours")
       .order("session_date", { ascending: false });
+    // Everyone but the manager sees only their own hours, even where RLS
+    // would show more (coaches can manage other coaches' tournament hours).
+    if (!isOwner) q = q.eq("coach_id", currentUserId);
     if (from) q = q.gte("session_date", from);
     if (to) q = q.lte("session_date", to);
 
@@ -144,7 +169,7 @@
 
     loadedRows = data || [];
     if (!loadedRows.length) {
-      listEl.innerHTML = '<p class="muted">No hours logged in this date range. Coaches log hours on the Attendance page when they take roll.</p>';
+      listEl.innerHTML = '<p class="muted">No hours logged in this date range. </p>';
       return;
     }
 
@@ -179,11 +204,58 @@
           const tournBit = r.session_type === "tournament" ? " &middot; " + escapeHtml(r.tournament_name || "Tournament") : "";
           return '<div class="hours-row"><span>' + dateText + " &middot; " +
             escapeHtml(teamLabels[r.team_slug] || r.team_slug) + tournBit + "</span><span>" +
-            parseFloat(r.hours).toFixed(2) + " hrs</span></div>";
+            parseFloat(r.hours).toFixed(2) + " hrs" +
+            (!isOwner && r.session_type !== "tournament"
+              ? '<button type="button" data-remove-hours="' + escapeHtml(r.id) + '" title="Remove">Remove</button>'
+              : "") +
+            "</span></div>";
         }).join("") +
         "</details></div>";
     }).join("");
+
+    listEl.querySelectorAll("[data-remove-hours]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Remove these hours?")) return;
+        const { error } = await supabaseClient.from("coach_hours").delete().eq("id", btn.dataset.removeHours);
+        if (error) {
+          msgEl.className = "form-msg error";
+          msgEl.textContent = "Could not remove: " + error.message;
+          return;
+        }
+        load();
+      });
+    });
   }
+
+  document.getElementById("log-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("log-msg");
+    const btn = document.getElementById("log-submit");
+    msg.className = "form-msg";
+    const hours = parseFloat(document.getElementById("log-hours").value);
+    if (!(hours > 0)) {
+      msg.className = "form-msg error";
+      msg.textContent = "Enter the hours you coached.";
+      return;
+    }
+    btn.disabled = true;
+    const { error } = await supabaseClient.from("coach_hours").insert({
+      coach_id: currentUserId,
+      team_slug: document.getElementById("log-team").value,
+      session_date: document.getElementById("log-date").value,
+      session_type: "practice",
+      hours: hours,
+    });
+    btn.disabled = false;
+    if (error) {
+      msg.className = "form-msg error";
+      msg.textContent = "Could not save: " + error.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Saved.";
+    load();
+  });
 
   document.getElementById("export-btn").addEventListener("click", function () {
     if (!loadedRows.length) return;
@@ -212,13 +284,15 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "assistant_coach"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
     isOwner = auth.role === "owner";
 
+    currentUserId = auth.session.user.id;
+
     document.getElementById("scope-note").innerHTML = isOwner
-      ? "Every coach's logged hours. Coaches enter these on the <a href=\"admin-attendance.html\">Attendance</a> page when they take roll."
-      : "Your own logged hours. You enter these on the <a href=\"admin-attendance.html\">Attendance</a> page when you take roll \u2014 only you and the club manager can see them.";
+      ? "Every coach's logged hours. Coaches log practice hours here (or on the <a href=\"admin-attendance.html\">Attendance</a> page when taking roll) and tournament hours on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>."
+      : "Your own logged hours &mdash; only you and the club manager can see them. Log practice hours below; tournament hours go on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>.";
 
     document.getElementById("from-date").value = monthStart();
 
@@ -226,11 +300,27 @@
       isOwner
         ? supabaseClient.from("profiles").select("id, full_name, email")
         : Promise.resolve({ data: [{ id: auth.session.user.id, full_name: "You", email: "" }] }),
-      supabaseClient.from("schedules").select("team_slug, team_label"),
+      supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
       supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
     ]);
     (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
     (teams || []).forEach(function (t) { teamLabels[t.team_slug] = t.team_label; });
+
+    if (!isOwner) {
+      // A head coach can only log practice hours for their own team(s).
+      let teamOptions = teams || [];
+      if (auth.role === "head_coach") {
+        const { data: mine } = await supabaseClient.from("head_coach_teams").select("team_slug").eq("profile_id", currentUserId);
+        const mySlugs = (mine || []).map(function (r) { return r.team_slug; });
+        teamOptions = teamOptions.filter(function (t) { return mySlugs.indexOf(t.team_slug) !== -1; });
+      }
+      document.getElementById("log-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
+        teamOptions.map(function (t) {
+          return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>";
+        }).join("");
+      document.getElementById("log-date").value = new Date().toLocaleDateString("en-CA");
+      document.getElementById("log-form-wrap").style.display = "block";
+    }
     (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
 
     load();

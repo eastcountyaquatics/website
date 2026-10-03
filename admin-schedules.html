@@ -558,7 +558,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
+    const auth = await requireRole(["owner"]);
     if (!auth) return;
     canEdit = auth.role !== "assistant_coach";
     if (!canEdit) document.getElementById("add-team-section").style.display = "none";

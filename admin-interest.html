@@ -304,7 +304,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach", "head_coach"]);
+    const auth = await requireRole(["owner", "head_coach"]);
     if (!auth) return;
     await loadTeams();
     loadAnnouncements();

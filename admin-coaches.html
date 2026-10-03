@@ -550,7 +550,7 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner", "coach"]);
+    const auth = await requireRole(["owner"]);
     if (!auth) return;
     isOwnerView = auth.role === "owner";
     myUserId = auth.session.user.id;

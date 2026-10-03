@@ -460,3 +460,9 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 .head-coach-card .kicker{display:block;color:var(--blue);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:12px;margin-bottom:6px;}
 .head-coach-row{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 12px;font-size:16px;padding:4px 0;}
 .head-coach-row a{color:var(--blue);font-weight:700;overflow-wrap:anywhere;}
+
+/* Admin home: cards grouped by area (admin.html) */
+.admin-group{margin-bottom:36px;}
+.admin-group-title{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;margin:0 0 16px;}
+.admin-group-title span{color:var(--muted);font-weight:700;}
+.admin-group .admin-nav-cards{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}

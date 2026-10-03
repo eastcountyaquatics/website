@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coach Hours | Admin | San Diego East County Aquatics</title>
+<title>Coaches&rsquo; Hours Logged | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
@@ -39,7 +39,7 @@
 
 <section class="admin-header">
   <div class="container">
-    <h1>Coach Hours</h1>
+    <h1>Coaches&rsquo; Hours Logged</h1>
     <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
   </div>
 </section>
@@ -59,9 +59,20 @@
     <div id="scope-note" class="notice" style="margin-bottom:20px;"></div>
 
     <div class="admin-form" id="log-form-wrap" style="display:none;margin-bottom:24px;">
-      <h3>Log Practice Hours</h3>
+      <h3>Log Practice or Meeting Hours</h3>
       <div id="log-msg" class="form-msg"></div>
       <form id="log-form" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" id="log-coach-wrap" style="margin:0;min-width:180px;display:none;">
+          <label for="log-coach">Coach</label>
+          <select id="log-coach" style="width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;background:#fff;"></select>
+        </div>
+        <div class="field" style="margin:0;">
+          <label for="log-type">Type</label>
+          <select id="log-type" style="width:100%;padding:12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;background:#fff;">
+            <option value="practice" selected>Practice</option>
+            <option value="meeting">Meeting</option>
+          </select>
+        </div>
         <div class="field" style="margin:0;">
           <label for="log-date">Date</label>
           <input type="date" id="log-date" required>
@@ -127,6 +138,20 @@
   }
 
   var isOwner = false;
+  var teamOptions = [];
+  function teamName(slug) {
+    return slug === "club" ? "Club-wide" : (teamLabels[slug] || slug);
+  }
+  // Meetings usually aren't for one team, so they default to Club-wide;
+  // practices always need a real team.
+  function renderTeamOptions() {
+    const isMeeting = document.getElementById("log-type").value === "meeting";
+    document.getElementById("log-team").innerHTML =
+      (isMeeting ? '<option value="club" selected>Club-wide (no specific team)</option>' : '<option value="">Choose a team&hellip;</option>') +
+      teamOptions.map(function (t) {
+        return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>";
+      }).join("");
+  }
   var currentUserId = null;
   var loadedRows = [];
   var nameById = {};
@@ -201,11 +226,12 @@
         '<details><summary class="muted" style="cursor:pointer;font-size:13px;padding-left:16px;">Show each session</summary>' +
         rows.map(function (r) {
           const dateText = fmtDate(r.session_date) + (r.session_end_date ? " \u2013 " + fmtDate(r.session_end_date) : "");
-          const tournBit = r.session_type === "tournament" ? " &middot; " + escapeHtml(r.tournament_name || "Tournament") : "";
+          const tournBit = r.session_type === "tournament" ? " &middot; " + escapeHtml(r.tournament_name || "Tournament")
+            : r.session_type === "meeting" ? " &middot; Meeting" : "";
           return '<div class="hours-row"><span>' + dateText + " &middot; " +
-            escapeHtml(teamLabels[r.team_slug] || r.team_slug) + tournBit + "</span><span>" +
+            escapeHtml(teamName(r.team_slug)) + tournBit + "</span><span>" +
             parseFloat(r.hours).toFixed(2) + " hrs" +
-            (!isOwner && r.session_type !== "tournament"
+            (r.session_type !== "tournament"
               ? '<button type="button" data-remove-hours="' + escapeHtml(r.id) + '" title="Remove">Remove</button>'
               : "") +
             "</span></div>";
@@ -240,10 +266,10 @@
     }
     btn.disabled = true;
     const { error } = await supabaseClient.from("coach_hours").insert({
-      coach_id: currentUserId,
+      coach_id: isOwner ? document.getElementById("log-coach").value : currentUserId,
       team_slug: document.getElementById("log-team").value,
       session_date: document.getElementById("log-date").value,
-      session_type: "practice",
+      session_type: document.getElementById("log-type").value,
       hours: hours,
     });
     btn.disabled = false;
@@ -267,7 +293,7 @@
         r.session_end_date || "",
         r.session_type || "practice",
         r.tournament_name || "",
-        teamLabels[r.team_slug] || r.team_slug,
+        teamName(r.team_slug),
         parseFloat(r.hours).toFixed(2),
       ].map(csvField).join(","));
     });
@@ -291,8 +317,8 @@
     currentUserId = auth.session.user.id;
 
     document.getElementById("scope-note").innerHTML = isOwner
-      ? "Every coach's logged hours. Coaches log practice hours here (or on the <a href=\"admin-attendance.html\">Attendance</a> page when taking roll) and tournament hours on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>."
-      : "Your own logged hours &mdash; only you and the club manager can see them. Log practice hours below; tournament hours go on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>.";
+      ? "Summary of coach's logged hours. Coaches log hours on the <a href=\"admin-attendance.html\">Attendance</a> page when taking roll and tournament hours on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>. Paid meetings (and any practice missed at roll) are logged below."
+      : "Your own logged hours &mdash; only you and the club manager can see them. Log practice or paid meeting hours below; tournament hours go on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>.";
 
     document.getElementById("from-date").value = monthStart();
 
@@ -306,21 +332,27 @@
     (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
     (teams || []).forEach(function (t) { teamLabels[t.team_slug] = t.team_label; });
 
-    if (!isOwner) {
+    teamOptions = teams || [];
+    if (isOwner) {
+      const { data: staff } = await supabaseClient.rpc("list_staff_profiles");
+      document.getElementById("log-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
+        (staff || []).map(function (c) {
+          return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>";
+        }).join("");
+      document.getElementById("log-coach").required = true;
+      document.getElementById("log-coach-wrap").style.display = "block";
+    } else {
       // A head coach can only log practice hours for their own team(s).
-      let teamOptions = teams || [];
       if (auth.role === "head_coach") {
         const { data: mine } = await supabaseClient.from("head_coach_teams").select("team_slug").eq("profile_id", currentUserId);
         const mySlugs = (mine || []).map(function (r) { return r.team_slug; });
         teamOptions = teamOptions.filter(function (t) { return mySlugs.indexOf(t.team_slug) !== -1; });
       }
-      document.getElementById("log-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
-        teamOptions.map(function (t) {
-          return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>";
-        }).join("");
-      document.getElementById("log-date").value = new Date().toLocaleDateString("en-CA");
-      document.getElementById("log-form-wrap").style.display = "block";
     }
+    renderTeamOptions();
+    document.getElementById("log-type").addEventListener("change", renderTeamOptions);
+    document.getElementById("log-date").value = new Date().toLocaleDateString("en-CA");
+    document.getElementById("log-form-wrap").style.display = "block";
     (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
 
     load();

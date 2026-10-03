@@ -184,6 +184,7 @@
 <script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/tournament-teams.js"></script>
 <script>
   function escapeHtml(str) {
     return String(str || "")
@@ -220,7 +221,7 @@
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
-    teams = data || [];
+    teams = withTournamentTeams(data);
   }
 
   async function loadHeader() {
@@ -241,7 +242,7 @@
       '<p class="muted">' + formatTournamentDates(t) +
       (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") +
       (t.location ? " &middot; " + escapeHtml(t.location) : "") +
-      (t.estimated_cost_note ? " &middot; Estimated Cost of Tournament: " + escapeHtml(t.estimated_cost_note) : "") + "</p>" +
+      (t.estimated_cost_note ? " &middot; Cost of Tournament: " + escapeHtml(t.estimated_cost_note) : "") + "</p>" +
       (t.estimated_cost_note ? '<p class="muted" style="font-size:12.5px;">Does not include lodging and travel, if applicable.</p>' : "") +
       (t.max_age ? '<p class="muted" style="font-size:13px;">Maximum age ' + t.max_age + " (as of " + formatDate(t.age_as_of || t.event_date) + ")</p>" : "") +
       (t.status === "interest"
@@ -651,7 +652,7 @@
     listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
 
     const { data: rosterAthletes } = await supabaseClient
-      .from("athletes").select("id, full_name").eq("team_slug", t.team_slug).order("full_name", { ascending: true });
+      .from("athletes").select("id, full_name").in("team_slug", regularTeamSlugsIn(t.team_slug)).order("full_name", { ascending: true });
     const { data: rsvps } = await supabaseClient
       .from("tournament_rsvps").select("id, athlete_id, response, on_roster").eq("tournament_id", currentTournamentId);
     const rsvpByAthlete = {};

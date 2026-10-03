@@ -1,6 +1,6 @@
-// Head coach contact on a team page: every coach whose Role / Title is
-// "Head Coach" and whose Team Group includes this page's team shows up
-// with a mailto link. Managed entirely from Admin > Manage Coaches.
+// Coaches on a team page, from Admin > Manage Coaches: every active coach
+// whose Team Group includes this page's team is listed, and each "Head
+// Coach" with a public contact email gets a card with a mailto link.
 (function () {
   var slug = window.TEAM_SLUG;
   if (!slug || typeof supabaseClient === "undefined") return;
@@ -53,14 +53,28 @@
     target.appendChild(card);
   }
 
+  // The page's "Team Coaches" list is typed-in text; once Manage Coaches has
+  // anyone for this team, show that list instead so the two never drift.
+  function renderCoachList(coaches) {
+    var list = document.querySelector("#head-coach-contact ~ ul.donor-columns");
+    if (!list) return;
+    list.innerHTML = "";
+    coaches.forEach(function (c) {
+      var li = document.createElement("li");
+      li.textContent = c.full_name + (c.role_title === "Head Coach" ? " (Head Coach)" : c.role_title === "Assistant Coach" ? " (Assistant Coach)" : "");
+      list.appendChild(li);
+    });
+  }
+
   supabaseClient
     .from("coaches")
-    .select("full_name, team_group, contact_email, sort_order")
-    .eq("role_title", "Head Coach")
-    .not("contact_email", "is", null)
+    .select("full_name, role_title, team_group, contact_email, sort_order")
+    .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .then(function (res) {
       var coaches = (res.data || []).filter(coachesThisTeam);
-      if (coaches.length) render(coaches);
+      if (coaches.length) renderCoachList(coaches);
+      var heads = coaches.filter(function (c) { return c.role_title === "Head Coach" && c.contact_email; });
+      if (heads.length) render(heads);
     });
 })();

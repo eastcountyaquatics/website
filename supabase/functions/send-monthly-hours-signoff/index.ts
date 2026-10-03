@@ -1,7 +1,7 @@
 // Month-end hours sign-off: emails every coach who logged hours in a month
 // a private link (hours-signoff.html?token=...) to review those hours and
 // either sign off or ask for edits. The answer is handled by the
-// hours-signoff function, which emails Clint & Marcy.
+// hours-signoff function, which emails Finance.SD.ECA@gmail.com.
 //
 // Two ways in:
 //   1. The monthly pg_cron job (see the monthly_hours_signoff_cron

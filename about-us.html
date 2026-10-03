@@ -225,7 +225,7 @@
       var timeout = new Promise(function (_, reject) {
         setTimeout(function () { reject(new Error("timeout")); }, 8000);
       });
-      var result = await Promise.race([supabaseClient.from("coaches").select("*"), timeout]);
+      var result = await Promise.race([supabaseClient.from("coaches").select("*").eq("is_active", true), timeout]);
       if (result.error) throw result.error;
       data = result.data;
     } catch (e) {

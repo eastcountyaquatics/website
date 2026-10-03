@@ -118,9 +118,9 @@
           <p class="muted" style="font-size:12px;margin-top:4px;">Pre-fills on the Tournament Coach Hours page so every coach logging this tournament gets the same number automatically -- still editable per entry afterward.</p>
         </div>
         <div class="field">
-          <label for="t-cost-note">Estimated Cost of Tournament</label>
+          <label for="t-cost-note">Cost of Tournament</label>
           <input type="text" id="t-cost-note" placeholder="e.g. $250" required>
-          <p class="muted" style="font-size:12px;margin-top:4px;">Does not include lodging and travel, if applicable. Shown to families before they RSVP &mdash; the real charge is whatever the price tiers add up to.</p>
+          <p class="muted" style="font-size:12px;margin-top:4px;">The actual price per athlete. Does not include lodging and travel, if applicable. Shown to families before they RSVP.</p>
         </div>
         <div class="field">
           <label for="t-max-age">Maximum Age (optional)</label>
@@ -173,6 +173,7 @@
 <script src="js/team-age.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/tournament-teams.js"></script>
 <script>
   function escapeHtml(str) {
     return String(str || "")
@@ -193,7 +194,7 @@
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
-    teams = data || [];
+    teams = withTournamentTeams(data);
     const select = document.getElementById("t-team-slug");
     select.innerHTML = '<option value="" disabled' + (document.getElementById("t-id").value ? "" : " selected") + '>Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");

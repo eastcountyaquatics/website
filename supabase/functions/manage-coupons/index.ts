@@ -130,9 +130,13 @@ Deno.serve(async (req) => {
         coupon: coupon.id,
         code,
       };
-      // Max Uses defaults to 1 (the admin can raise it) rather than Stripe's
-      // own default of unlimited.
-      promoParams.max_redemptions = body.max_redemptions ? Number(body.max_redemptions) : 1;
+      // Max Uses defaults to 1 rather than Stripe's own default of
+      // unlimited; "unlimited" has to be picked on purpose.
+      if (body.max_redemptions !== "unlimited") {
+        const maxUses = Math.trunc(Number(body.max_redemptions || 1));
+        if (!(maxUses >= 1)) return json({ error: "Max Uses must be 1 or more, or unlimited" }, 400);
+        promoParams.max_redemptions = maxUses;
+      }
       if (body.expires_at) promoParams.expires_at = Math.floor(new Date(body.expires_at).getTime() / 1000);
 
       const promotionCode = await stripe.promotionCodes.create(promoParams);

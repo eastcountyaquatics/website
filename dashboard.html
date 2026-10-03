@@ -329,6 +329,7 @@
 <script src="js/sanitize-html.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/tournament-teams.js"></script>
 <script src="js/content-blocks.js"></script>
 <script src="js/image-blocks.js"></script>
 <script src="js/page-extras.js"></script>
@@ -392,7 +393,7 @@
 
   async function loadTeamLabels() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label");
-    (data || []).forEach(function (t) { teamLabelBySlug[t.team_slug] = t.team_label; });
+    withTournamentTeams(data).forEach(function (t) { teamLabelBySlug[t.team_slug] = t.team_label; });
   }
   function teamLabelForSlug(slug) {
     return teamLabelBySlug[slug] || slug;
@@ -508,7 +509,9 @@
   async function loadTournamentsSection() {
     const wrap = document.getElementById("tournaments-section");
     const athleteIds = myAthletes.map(function (a) { return a.id; });
-    const teamSlugs = [...new Set((myAthletes || []).map(function (a) { return a.team_slug; }).filter(Boolean))];
+    // Includes tournament-only combined teams (e.g. 12U Coed) an athlete's
+    // regular team rolls up into.
+    const teamSlugs = [...new Set((myAthletes || []).reduce(function (all, a) { return all.concat(tournamentTeamSlugsFor(a.team_slug)); }, []))];
 
     const { data: inviteRows } = await supabaseClient
       .from("tournament_invites")
@@ -557,7 +560,7 @@
     tlist.forEach(function (t) {
       myAthletes.forEach(function (a) {
         const key = t.id + ":" + a.id;
-        const isOwnTeam = a.team_slug === t.team_slug;
+        const isOwnTeam = tournamentTeamSlugsFor(a.team_slug).indexOf(t.team_slug) !== -1;
         const invite = inviteByKey[key];
         if (!isOwnTeam && !invite) return;
         cards.push({ t: t, a: a, rsvp: rsvpByKey[key], invite: invite, crossTeam: !isOwnTeam });
@@ -599,7 +602,7 @@
           (c.t.location ? " &middot; " + escapeHtml(c.t.location) : "") +
           (c.t.rsvp_deadline ? " &middot; RSVP by " + formatDate(c.t.rsvp_deadline) : "") + "</p>" +
           (c.crossTeam ? '<p class="muted" style="margin-bottom:8px;font-size:12.5px;">' + escapeHtml(c.a.full_name) + " has been invited to this tournament individually &mdash; accepting only adds them to this tournament's roster and does not change their team.</p>" : "") +
-          (c.t.estimated_cost_note ? '<p class="muted" style="margin-bottom:10px;font-size:12.5px;">Estimated cost: ' + escapeHtml(c.t.estimated_cost_note) + " &mdash; estimate only</p>" : "");
+          (c.t.estimated_cost_note ? '<p class="muted" style="margin-bottom:10px;font-size:12.5px;">Cost: ' + escapeHtml(c.t.estimated_cost_note) + " (does not include lodging and travel)</p>" : "");
 
         const isLive = c.t.status === "live";
         const paid = c.invite && c.invite.status === "paid";

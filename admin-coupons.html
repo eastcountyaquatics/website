@@ -72,8 +72,8 @@
         <div class="field">
           <label for="scope_type">Applies To</label>
           <select id="scope_type" required>
-            <option value="tournament">A Tournament</option>
-            <option value="registration_option">A Team Registration Session</option>
+            <option value="tournament">Tournament</option>
+            <option value="registration_option">Session</option>
           </select>
           <p class="muted" style="font-size:12px;margin-top:4px;">Every code must be tied to one specific tournament or session &mdash; there are no club-wide codes.</p>
         </div>
@@ -83,7 +83,13 @@
         </div>
         <div class="field">
           <label for="max_redemptions">Max Uses</label>
-          <input type="number" id="max_redemptions" min="1" value="1">
+          <select id="max_redemptions">
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="unlimited">Unlimited</option>
+          </select>
         </div>
         <div class="field">
           <label for="expires_at">Expires (optional)</label>
@@ -222,7 +228,7 @@
       value: parseFloat(document.getElementById("value").value),
       scope_type: document.getElementById("scope_type").value,
       scope_id: scopeId,
-      max_redemptions: document.getElementById("max_redemptions").value || 1,
+      max_redemptions: document.getElementById("max_redemptions").value,
       expires_at: document.getElementById("expires_at").value || null,
     };
 

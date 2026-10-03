@@ -6,7 +6,7 @@
 //   { token, action: "get" }      -> the coach's hours for that month
 //   { token, action: "respond", decision: "signed_off" | "edits_requested", note? }
 //                                  -> records the answer and emails it to
-//                                     Clint & Marcy (HOURS_SIGNOFF_NOTIFY_EMAILS)
+//                                     Finance.SD.ECA@gmail.com (HOURS_SIGNOFF_NOTIFY_EMAILS)
 //
 // Deploy: supabase functions deploy hours-signoff --no-verify-jwt
 // Secrets required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       date: r.session_date,
       end_date: r.session_end_date,
       type: r.session_type,
-      team: teamLabel.get(r.team_slug) || r.team_slug,
+      team: r.team_slug === "club" ? "Club-wide" : (teamLabel.get(r.team_slug) || r.team_slug),
       tournament_name: r.tournament_name,
       hours: Number(r.hours),
       travel_days: r.travel_days || 0,
@@ -101,7 +101,8 @@ Deno.serve(async (req) => {
     const coachName = coach?.full_name || "A coach";
     const lines = entries.map((e) => {
       const dates = e.end_date ? `${e.date} to ${e.end_date}` : e.date;
-      const what = e.type === "tournament" ? `${e.tournament_name || "Tournament"} (${e.team})` : `Practice (${e.team})`;
+      const what = e.type === "tournament" ? `${e.tournament_name || "Tournament"} (${e.team})`
+        : e.type === "meeting" ? `Meeting (${e.team})` : `Practice (${e.team})`;
       return `  ${dates}  ${what}  ${e.hours.toFixed(2)} hrs${e.travel_days ? `, ${e.travel_days} travel day(s)` : ""}`;
     }).join("\n");
     const subject = decision === "signed_off"
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
       (coach?.email ? `Coach email: ${coach.email}\n` : "") +
       `Review on the Coach Pay page of the admin site.`;
 
-    const notifyTo = (Deno.env.get("HOURS_SIGNOFF_NOTIFY_EMAILS") || "eastcountyaquatics@gmail.com")
+    const notifyTo = (Deno.env.get("HOURS_SIGNOFF_NOTIFY_EMAILS") || "finance.sd.eca@gmail.com")
       .split(",").map((s) => s.trim()).filter(Boolean);
     await sendEmail(notifyTo, subject, text, coach?.email || undefined);
 

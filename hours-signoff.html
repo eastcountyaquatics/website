@@ -94,10 +94,10 @@
 
   function statusBanner(data) {
     if (data.status === "signed_off") {
-      return '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;margin-bottom:16px;"><strong>Signed off.</strong> Thanks! Clint &amp; Marcy have been notified. If something changes, you can request edits below.</div>';
+      return '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;margin-bottom:16px;"><strong>Signed off.</strong> Thanks! The club&rsquo;s finance team has been notified. If something changes, you can request edits below.</div>';
     }
     if (data.status === "edits_requested") {
-      return '<div class="notice" style="margin-bottom:16px;"><strong>Edits requested.</strong> Clint &amp; Marcy have your note and will follow up.' +
+      return '<div class="notice" style="margin-bottom:16px;"><strong>Edits requested.</strong> The club&rsquo;s finance team has your note and will follow up.' +
         (data.coach_note ? '<br><em>&ldquo;' + escapeHtml(data.coach_note) + '&rdquo;</em>' : "") + "</div>";
     }
     return "";
@@ -108,7 +108,7 @@
       const dates = fmtDate(e.date) + (e.end_date ? " \u2013 " + fmtDate(e.end_date) : "");
       const what = e.type === "tournament"
         ? escapeHtml(e.tournament_name || "Tournament") + " &middot; " + escapeHtml(e.team)
-        : "Practice &middot; " + escapeHtml(e.team);
+        : (e.type === "meeting" ? "Meeting" : "Practice") + " &middot; " + escapeHtml(e.team);
       const travel = e.travel_days ? '<div class="muted" style="font-size:12.5px;">' + e.travel_days + " travel day" + (e.travel_days === 1 ? "" : "s") + "</div>" : "";
       return '<div class="signoff-row"><div><strong>' + dates + '</strong><div class="muted" style="font-size:13px;">' + what + "</div>" + travel + "</div>" +
         '<div style="white-space:nowrap;font-weight:700;">' + e.hours.toFixed(2) + " hrs</div></div>";
@@ -174,8 +174,8 @@
     }
     msg.className = "form-msg success";
     msg.textContent = decision === "signed_off"
-      ? "Thanks! Your hours are signed off and Clint & Marcy have been notified."
-      : "Thanks! Your edit request was sent to Clint & Marcy.";
+      ? "Thanks! Your hours are signed off and the club's finance team has been notified."
+      : "Thanks! Your edit request was sent to the club's finance team.";
     load();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }

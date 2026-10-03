@@ -62,7 +62,7 @@
 <section class="section-tight">
   <div class="container" style="max-width:800px;">
     <div class="notice" style="margin-bottom:20px;">
-      Pay is calculated from practice hours logged on the <a href="admin-attendance.html">Attendance</a> page plus hours on the <a href="admin-tournament-hours.html">Tournament Coach Hours</a> page times each coach's hourly rate (set on the <a href="admin-coaches.html">Coaches</a> page), plus $75 per travel day for out-of-county tournaments. Recording a payment here just logs that it happened &mdash; it doesn't change what's shown as owed for a different date range.
+      Pay is calculated from practice and meeting hours (logged on the <a href="admin-attendance.html">Attendance</a> or <a href="admin-hours.html">Coaches&rsquo; Hours Logged</a> page) plus hours on the <a href="admin-tournament-hours.html">Tournament Coach Hours</a> page times each coach's hourly rate (set on the <a href="admin-coaches.html">Coaches</a> page), plus $75 per travel day for out-of-county tournaments. Recording a payment here just logs that it happened &mdash; it doesn't change what's shown as owed for a different date range.
     </div>
 
     <div class="pay-filters">
@@ -83,7 +83,7 @@
 
     <div class="card" style="margin-top:28px;">
       <h3 style="margin-top:0;">Month-End Hours Sign-Off</h3>
-      <p class="muted" style="font-size:13.5px;">On the last evening of each month, every coach with logged hours is emailed a link to review them and either <strong>sign off</strong> or <strong>request edits</strong>. Their answer is emailed to Clint &amp; Marcy and shows up here. Fixed someone's hours after they asked for edits? Send again and they'll get the same link to confirm the corrected numbers.</p>
+      <p class="muted" style="font-size:13.5px;">After the end of each month, every coach with logged hours is emailed a link to review them and either <strong>sign off</strong> or <strong>request edits</strong>. Their response answer is emailed to <a href="mailto:Finance.SD.ECA@gmail.com">Finance.SD.ECA@gmail.com</a> and is reflected here. If changes to hours are needed, they are corrected and another email will be sent with the corrected hours.</p>
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;">
         <div class="field" style="margin:0;">
           <label for="signoff-month">Month</label>
@@ -184,7 +184,7 @@
     const byCoach = {};
     function bucket(coachId) {
       return (byCoach[coachId] = byCoach[coachId] || {
-        practiceHours: 0, tournamentHours: 0, travelDays: 0, tournamentSessions: 0, payments: [],
+        practiceHours: 0, meetingHours: 0, tournamentHours: 0, travelDays: 0, tournamentSessions: 0, payments: [],
       });
     }
     (hoursRows || []).forEach(function (r) {
@@ -194,6 +194,8 @@
         b.tournamentHours += hrs;
         b.tournamentSessions += 1;
         b.travelDays += r.travel_days || 0;
+      } else if (r.session_type === "meeting") {
+        b.meetingHours += hrs;
       } else {
         b.practiceHours += hrs;
       }
@@ -212,7 +214,7 @@
     coachSummaries = coachIds.map(function (coachId) {
       const b = byCoach[coachId];
       const rateCents = rateByCoachId[coachId] || 0;
-      const hoursPayCents = Math.round((b.practiceHours + b.tournamentHours) * rateCents);
+      const hoursPayCents = Math.round((b.practiceHours + b.meetingHours + b.tournamentHours) * rateCents);
       const travelPayCents = b.travelDays * 7500;
       const totalOwedCents = hoursPayCents + travelPayCents;
       const totalPaidCents = b.payments.reduce(function (s, p) { return s + p.amount_cents; }, 0);
@@ -221,6 +223,7 @@
         name: nameById[coachId] || "Coach",
         rateCents: rateCents,
         practiceHours: b.practiceHours,
+        meetingHours: b.meetingHours,
         tournamentHours: b.tournamentHours,
         tournamentSessions: b.tournamentSessions,
         travelDays: b.travelDays,
@@ -254,10 +257,11 @@
         '<div class="coach-pay-card" data-coach-card="' + c.coachId + '">' +
         '<div class="coach-pay-head"><h3>' + escapeHtml(c.name) + '</h3><div class="coach-pay-total">' + money(c.totalOwedCents) + "</div></div>" +
         '<div class="coach-pay-detail">' +
-          (c.practiceHours ? c.practiceHours.toFixed(2) + " practice hrs" : "") +
-          (c.practiceHours && c.tournamentHours ? " + " : "") +
-          (c.tournamentHours ? c.tournamentHours.toFixed(2) + " tournament hrs (" + c.tournamentSessions + " session" + (c.tournamentSessions === 1 ? "" : "s") + ")" : "") +
-          (!c.practiceHours && !c.tournamentHours ? "No hours logged" : "") +
+          ([
+            c.practiceHours ? c.practiceHours.toFixed(2) + " practice hrs" : "",
+            c.meetingHours ? c.meetingHours.toFixed(2) + " meeting hrs" : "",
+            c.tournamentHours ? c.tournamentHours.toFixed(2) + " tournament hrs (" + c.tournamentSessions + " session" + (c.tournamentSessions === 1 ? "" : "s") + ")" : "",
+          ].filter(Boolean).join(" + ") || "No hours logged") +
           " &middot; " + rateNote +
           (c.travelDays ? " &middot; " + c.travelDays + " travel day" + (c.travelDays === 1 ? "" : "s") + " (" + money(c.travelDays * 7500) + ")" : "") +
           "<br>" +
@@ -329,13 +333,14 @@
 
   document.getElementById("export-btn").addEventListener("click", function () {
     if (!coachSummaries.length) return;
-    const header = ["Coach", "Rate/hr", "Practice Hours", "Tournament Hours", "Tournament Sessions", "Travel Days", "Travel Pay", "Total Owed", "Total Paid", "Balance"];
+    const header = ["Coach", "Rate/hr", "Practice Hours", "Meeting Hours", "Tournament Hours", "Tournament Sessions", "Travel Days", "Travel Pay", "Total Owed", "Total Paid", "Balance"];
     const lines = [header.map(csvField).join(",")];
     coachSummaries.forEach(function (c) {
       lines.push([
         c.name,
         (c.rateCents / 100).toFixed(2),
         c.practiceHours.toFixed(2),
+        c.meetingHours.toFixed(2),
         c.tournamentHours.toFixed(2),
         c.tournamentSessions,
         c.travelDays,

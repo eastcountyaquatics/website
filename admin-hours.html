@@ -119,6 +119,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/coach-rates.js"></script>
 <script>
   function escapeHtml(str) {
     return String(str == null ? "" : str)
@@ -157,6 +158,7 @@
   var nameById = {};
   var teamLabels = {};
   var rateByCoachId = {}; // owner: everyone's; coach: just their own (RLS)
+  var rateHistory = {}; // dated rates (js/coach-rates.js)
   function money(cents) {
     return "$" + (cents / 100).toFixed(2);
   }
@@ -210,10 +212,18 @@
       const total = rows.reduce(function (s, r) { return s + parseFloat(r.hours); }, 0);
       const sessions = rows.length;
       const rateCents = rateByCoachId[coachId];
+      // Each session at the rate in effect on its date (rates can change).
+      const rates = {};
+      const payCents = Math.round(rows.reduce(function (sum, r) {
+        const rate = rateInEffect(rateHistory, coachId, r.session_date, rateCents);
+        rates[rate] = true;
+        return sum + parseFloat(r.hours) * rate;
+      }, 0));
+      const rateText = Object.keys(rates).length > 1 ? "rate changed in this period" : money(rateCents) + "/hr";
       const payRow = rateCents != null
         ? '<div class="hours-total" style="background:#f7f9fc;margin-top:-6px;">' +
-            '<div class="muted" style="font-size:13px;">' + total.toFixed(2) + " hrs \u00d7 " + money(rateCents) + "/hr</div>" +
-            '<div style="font-weight:800;color:var(--blue);">' + money(Math.round(total * rateCents)) + "</div>" +
+            '<div class="muted" style="font-size:13px;">' + total.toFixed(2) + " hrs \u00d7 " + rateText + "</div>" +
+            '<div style="font-weight:800;color:var(--blue);">' + money(payCents) + "</div>" +
           "</div>"
         : "";
       return '<div style="margin-bottom:18px;">' +
@@ -354,6 +364,7 @@
     document.getElementById("log-date").value = new Date().toLocaleDateString("en-CA");
     document.getElementById("log-form-wrap").style.display = "block";
     (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
+    rateHistory = await loadCoachRateHistory();
 
     load();
   })();

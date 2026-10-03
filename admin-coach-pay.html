@@ -111,6 +111,7 @@
 <script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/coach-rates.js"></script>
 <script>
   // YYYY-MM-DD in the viewer's own time zone. toISOString() is UTC, which
   // is already "tomorrow" after 5pm in San Diego -- exactly when evening
@@ -142,6 +143,7 @@
 
   var nameById = {};
   var rateByCoachId = {};
+  var rateHistory = {}; // coach_id -> dated rates (js/coach-rates.js)
   var coachSummaries = []; // built fresh on every load()
 
   function monthStart() {
@@ -184,12 +186,17 @@
     const byCoach = {};
     function bucket(coachId) {
       return (byCoach[coachId] = byCoach[coachId] || {
-        practiceHours: 0, meetingHours: 0, tournamentHours: 0, travelDays: 0, tournamentSessions: 0, payments: [],
+        practiceHours: 0, meetingHours: 0, tournamentHours: 0, travelDays: 0, hoursPayCents: 0, ratesUsed: {}, tournamentSessions: 0, payments: [],
       });
     }
     (hoursRows || []).forEach(function (r) {
       const b = bucket(r.coach_id);
       const hrs = parseFloat(r.hours) || 0;
+      // Each session is paid at the rate in effect on its own date, so a
+      // rate change (or a backfilled one) only affects the right sessions.
+      const sessionRate = rateInEffect(rateHistory, r.coach_id, r.session_date, rateByCoachId[r.coach_id]);
+      b.hoursPayCents += hrs * sessionRate;
+      b.ratesUsed[sessionRate] = true;
       if (r.session_type === "tournament") {
         b.tournamentHours += hrs;
         b.tournamentSessions += 1;
@@ -214,7 +221,7 @@
     coachSummaries = coachIds.map(function (coachId) {
       const b = byCoach[coachId];
       const rateCents = rateByCoachId[coachId] || 0;
-      const hoursPayCents = Math.round((b.practiceHours + b.meetingHours + b.tournamentHours) * rateCents);
+      const hoursPayCents = Math.round(b.hoursPayCents);
       const travelPayCents = b.travelDays * 7500;
       const totalOwedCents = hoursPayCents + travelPayCents;
       const totalPaidCents = b.payments.reduce(function (s, p) { return s + p.amount_cents; }, 0);
@@ -222,6 +229,7 @@
         coachId: coachId,
         name: nameById[coachId] || "Coach",
         rateCents: rateCents,
+        rateChanged: Object.keys(b.ratesUsed).length > 1,
         practiceHours: b.practiceHours,
         meetingHours: b.meetingHours,
         tournamentHours: b.tournamentHours,
@@ -244,7 +252,8 @@
     }
 
     listEl.innerHTML = coachSummaries.map(function (c) {
-      const rateNote = c.rateCents ? money(c.rateCents) + "/hr" : "no hourly rate set";
+      const rateNote = (c.rateCents ? money(c.rateCents) + "/hr" : "no hourly rate set") +
+        (c.rateChanged ? " (rate changed during this period &mdash; each session paid at the rate in effect that day)" : "");
       const balance = c.totalOwedCents - c.totalPaidCents;
       const paymentsHtml = c.payments.length
         ? '<div class="payment-history">' + c.payments.map(function (p) {
@@ -439,6 +448,7 @@
       supabaseClient.from("profiles").select("id, full_name, email"),
       supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
     ]);
+    rateHistory = await loadCoachRateHistory();
     (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
     (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
 

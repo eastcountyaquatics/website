@@ -1,5 +1,6 @@
 // Public, no login required: hands coach-registration.html a one-time
-// signed upload URL for a W-9 in the private coach-documents bucket.
+// signed upload URL for a W-9 or a lifeguard certificate (body.kind:
+// "w9" | "lifeguard") in the private coach-documents bucket.
 //
 // Why not a plain anonymous upload: Storage reads the new object back after
 // inserting it, which needs a SELECT policy -- and a SELECT policy anon can
@@ -28,8 +29,10 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const ext = String(body.ext || "").toLowerCase();
+    const kind = body.kind === "lifeguard" ? "lifeguard" : "w9";
+    const docLabel = kind === "lifeguard" ? "lifeguard certificate" : "W-9";
     if (!EXTENSIONS.has(ext)) {
-      return json({ error: "Please upload your W-9 as a PDF or a photo (JPG, PNG, HEIC)." }, 400);
+      return json({ error: `Please upload your ${docLabel} as a PDF or a photo (JPG, PNG, HEIC).` }, 400);
     }
 
     const supabase = createClient(
@@ -37,14 +40,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const path = `w9/${crypto.randomUUID()}/w9.${ext}`;
+    const path = `${kind}/${crypto.randomUUID()}/${kind}.${ext}`;
     const { data, error } = await supabase.storage.from("coach-documents").createSignedUploadUrl(path);
     if (error || !data) throw error || new Error("no signed upload url");
 
     return json({ path, token: data.token });
   } catch (err) {
     console.error(err);
-    return json({ error: "Could not prepare the W-9 upload. Please try again." }, 500);
+    return json({ error: "Could not prepare the upload. Please try again." }, 500);
   }
 });
 

@@ -173,7 +173,11 @@
         ["Shirt Size", escapeHtml(r.shirt_size)],
         ["Mailing Address", escapeHtml(r.mailing_address || "\u2014")],
         ["Emergency Contact", escapeHtml(r.emergency_contact_name) + " (" + escapeHtml(r.emergency_contact_relationship) + ") &middot; " + escapeHtml(r.emergency_contact_phone)],
-        ["Certified Lifeguard", r.lifeguard_certified ? "Yes &middot; expires " + fmtDate(r.lifeguard_expiration) : "No"],
+        ["Certified Lifeguard", r.lifeguard_certified
+          ? "Yes &middot; expires " + fmtDate(r.lifeguard_expiration) +
+            (r.lifeguard_cert_path ? ' <button type="button" class="btn btn-outline-dark" style="padding:4px 10px;font-size:12.5px;margin-left:6px;" data-doc="' + escapeHtml(r.lifeguard_cert_path) + '">View Certificate</button>' : "")
+          : "No"],
+        ["Health Issues", escapeHtml(r.health_issues || "\u2014")],
         ["USA Water Polo Coach", r.uswp_member ? "#" + escapeHtml(r.uswp_member_number) + " &middot; expires " + fmtDate(r.uswp_expiration) : "No"],
         ["Zelle", (ZELLE_LABELS[r.zelle_status] || escapeHtml(r.zelle_status)) + (r.zelle_contact ? " &middot; " + escapeHtml(r.zelle_contact) : "")],
         ["Venmo", escapeHtml(r.venmo_username || "\u2014")],
@@ -204,6 +208,14 @@
         '<div class="form-msg" data-msg-for="' + r.id + '" style="margin-top:8px;"></div>' +
         "</div></details>";
     }).join("");
+
+    listEl.querySelectorAll("[data-doc]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const { data, error } = await supabaseClient.storage.from("coach-documents").createSignedUrl(btn.dataset.doc, 120);
+        if (error || !data) { alert("Could not open the file: " + (error ? error.message : "unknown error")); return; }
+        window.open(data.signedUrl, "_blank", "noopener");
+      });
+    });
 
     listEl.querySelectorAll("[data-w9]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
@@ -263,6 +275,54 @@
     });
   }
 
+  // Coaches see only their own latest registration (via an RPC that leaves
+  // out the Manager's private notes and the uploaded documents), plus the
+  // hourly rate the Manager set -- read-only.
+  async function showMyRegistration() {
+    document.querySelector(".admin-header h1").textContent = "My Coach Registration";
+    document.title = "My Coach Registration | Admin | San Diego East County Aquatics";
+    document.querySelector(".notice").innerHTML =
+      "This is the information you submitted on the <a href=\"coach-registration.html\">Coach Registration form</a>. " +
+      "Need to change something? Submit the form again with your updates. Your hourly rate is set by the club manager.";
+    document.getElementById("export-btn").parentElement.style.display = "none";
+    const listEl = document.getElementById("reg-list");
+    const [{ data: r, error }, { data: rateRow }] = await Promise.all([
+      supabaseClient.rpc("my_coach_registration"),
+      supabaseClient.from("coach_pay_rates").select("hourly_rate_cents").maybeSingle(),
+    ]);
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load your registration: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    const rateText = rateRow && rateRow.hourly_rate_cents != null
+      ? "$" + (rateRow.hourly_rate_cents / 100).toFixed(2) + "/hr"
+      : "Not set yet";
+    if (!r) {
+      listEl.innerHTML = '<div class="reg-item" style="padding:16px;"><p><strong>Hourly Rate:</strong> ' + rateText + "</p>" +
+        '<p class="muted">We don\'t have a coach registration for your email yet. <a href="coach-registration.html">Fill out the Coach Registration form</a>.</p></div>';
+      return;
+    }
+    const dl = [
+      ["Hourly Rate", "<strong>" + rateText + "</strong>"],
+      ["Name", escapeHtml(r.full_name)],
+      ["Email", escapeHtml(r.email)],
+      ["Phone", escapeHtml(r.phone)],
+      ["Date of Birth", fmtDate(r.date_of_birth)],
+      ["Shirt Size", escapeHtml(r.shirt_size)],
+      ["Mailing Address", escapeHtml(r.mailing_address || "\u2014")],
+      ["Emergency Contact", escapeHtml(r.emergency_contact_name) + " (" + escapeHtml(r.emergency_contact_relationship) + ") &middot; " + escapeHtml(r.emergency_contact_phone)],
+      ["Certified Lifeguard", r.lifeguard_certified ? "Yes &middot; expires " + fmtDate(r.lifeguard_expiration) + (r.has_lifeguard_cert ? " &middot; certificate on file" : "") : "No"],
+      ["USA Water Polo Coach", r.uswp_member ? "#" + escapeHtml(r.uswp_member_number) + " &middot; expires " + fmtDate(r.uswp_expiration) : "No"],
+      ["Health Issues", escapeHtml(r.health_issues || "\u2014")],
+      ["Zelle", escapeHtml(r.zelle_contact || "\u2014")],
+      ["Venmo", escapeHtml(r.venmo_username || "\u2014")],
+      ["Availability", escapeHtml(r.availability || "\u2014")],
+      ["W-9", r.has_w9 ? "On file" : "Not uploaded"],
+      ["Submitted", new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })],
+    ].map(function (pair) { return "<dt>" + pair[0] + "</dt><dd>" + pair[1] + "</dd>"; }).join("");
+    listEl.innerHTML = '<div class="reg-item"><div class="reg-body" style="padding-top:16px;"><dl class="reg-dl">' + dl + "</dl></div></div>";
+  }
+
   async function load() {
     const [{ data, error }, { data: profiles }, { data: rates }] = await Promise.all([
       supabaseClient.from("coach_registrations").select("*").order("created_at", { ascending: false }),
@@ -289,7 +349,7 @@
     const rows = latestPerEmail(registrations);
     if (!rows.length) return;
     const header = ["Name", "Email", "Phone", "Date of Birth", "Shirt Size", "Mailing Address", "Emergency Contact", "Relationship",
-      "Emergency Phone", "Certified Lifeguard", "Lifeguard Expiration", "USAWP Member", "USAWP Number", "USAWP Expiration",
+      "Emergency Phone", "Certified Lifeguard", "Lifeguard Expiration", "Lifeguard Cert Uploaded", "Health Issues", "USAWP Member", "USAWP Number", "USAWP Expiration",
       "Zelle", "Zelle Contact", "Venmo", "Availability", "W-9 Uploaded", "Hourly Rate", "Owner Notes", "Submitted"];
     const lines = [header.join(",")];
     rows.forEach(function (r) {
@@ -298,6 +358,7 @@
       lines.push([
         r.full_name, r.email, r.phone, r.date_of_birth, r.shirt_size, r.mailing_address, r.emergency_contact_name,
         r.emergency_contact_relationship, r.emergency_contact_phone, r.lifeguard_certified ? "Yes" : "No", r.lifeguard_expiration,
+        r.lifeguard_cert_path ? "Yes" : "No", r.health_issues,
         r.uswp_member ? "Yes" : "No", r.uswp_member_number, r.uswp_expiration, ZELLE_LABELS[r.zelle_status] || r.zelle_status,
         r.zelle_contact, r.venmo_username, r.availability, r.w9_path || r.w9_external_url ? "Yes" : "No", rate != null ? (rate / 100).toFixed(2) : "",
         r.owner_notes, r.created_at.slice(0, 10),
@@ -312,8 +373,12 @@
   });
 
   (async function () {
-    const auth = await requireRole(["owner"]);
+    const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
+    if (auth.role !== "owner") {
+      showMyRegistration();
+      return;
+    }
     const formUrl = new URL("coach-registration.html", window.location.href).href;
     document.getElementById("form-link").textContent = formUrl;
     document.getElementById("copy-link-btn").addEventListener("click", function () {

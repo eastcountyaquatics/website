@@ -122,19 +122,39 @@
             <label><input type="radio" name="cr-lifeguard" value="no"> No</label>
           </div>
         </div>
-        <div class="field" id="cr-lg-exp-wrap" style="display:none;">
-          <label for="cr-lg-exp">Lifeguard Certification Expiration Date</label>
-          <input type="date" id="cr-lg-exp">
+        <div id="cr-lg-wrap" style="display:none;">
+          <div class="field">
+            <label for="cr-lg-exp">Lifeguard Certification Expiration Date</label>
+            <input type="date" id="cr-lg-exp">
+          </div>
+          <div class="field">
+            <label for="cr-lg-file">Upload a Copy of Your Lifeguard Certification</label>
+            <input type="file" id="cr-lg-file" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp">
+          </div>
         </div>
-        <div class="reg-grid">
+        <div class="field">
+          <label>Are you a USA Water Polo Coach member?</label>
+          <div class="radio-row">
+            <label><input type="radio" name="cr-uswp" value="yes" required> Yes</label>
+            <label><input type="radio" name="cr-uswp" value="no"> No</label>
+          </div>
+        </div>
+        <div class="reg-grid" id="cr-uswp-wrap" style="display:none;">
           <div class="field">
             <label for="cr-uswp-num">USA Water Polo Membership Number</label>
-            <input type="text" id="cr-uswp-num" maxlength="50" required>
+            <input type="text" id="cr-uswp-num" maxlength="50">
           </div>
           <div class="field">
             <label for="cr-uswp-exp">Membership Expiration</label>
-            <input type="date" id="cr-uswp-exp" required>
+            <input type="date" id="cr-uswp-exp">
           </div>
+        </div>
+
+        <h3 class="reg-section">Health</h3>
+        <div class="field">
+          <label for="cr-health">Health Issues</label>
+          <textarea id="cr-health" rows="2" maxlength="2000" placeholder="Anything the club should know about (allergies, conditions, medications)" required></textarea>
+          <p class="field-hint">Enter &ldquo;None&rdquo; if there&rsquo;s nothing to share.</p>
         </div>
 
         <h3 class="reg-section">Getting Paid</h3>
@@ -143,22 +163,17 @@
           <p class="field-hint" style="margin-top:0;">Need to fill one out? <a href="https://www.jotform.com/tax-form-generator/w9/" target="_blank" rel="noopener">Use this free W-9 generator</a> to fill it out and sign it online, then download it and upload the completed, fully executed form here.</p>
           <input type="file" id="cr-w9" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp" required>
         </div>
-        <div class="field">
-          <label for="cr-zelle">We prefer to pay through Zelle. Do you have a Zelle account set up?</label>
-          <select id="cr-zelle" required>
-            <option value="">Choose&hellip;</option>
-            <option value="yes">Yes</option>
-            <option value="can_set_up">I can set one up</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-        <div class="field" id="cr-zelle-contact-wrap" style="display:none;">
-          <label for="cr-zelle-contact">Zelle account phone number or email</label>
-          <input type="text" id="cr-zelle-contact" maxlength="200">
-        </div>
-        <div class="field">
-          <label for="cr-venmo">Venmo Username (optional)</label>
-          <input type="text" id="cr-venmo" maxlength="100" placeholder="@username">
+        <div class="reg-grid">
+          <div class="field">
+            <label for="cr-zelle-contact">Zelle (phone number or email)</label>
+            <input type="text" id="cr-zelle-contact" maxlength="200" required>
+            <p class="field-hint">We prefer to pay through Zelle. Enter N/A if you don&rsquo;t have it.</p>
+          </div>
+          <div class="field">
+            <label for="cr-venmo">Venmo Username</label>
+            <input type="text" id="cr-venmo" maxlength="100" placeholder="@username" required>
+            <p class="field-hint">Enter N/A if you don&rsquo;t have it.</p>
+          </div>
         </div>
 
         <h3 class="reg-section">Availability</h3>
@@ -200,14 +215,18 @@
   document.querySelectorAll('input[name="cr-lifeguard"]').forEach(function (r) {
     r.addEventListener("change", function () {
       const yes = radioValue("cr-lifeguard") === "yes";
-      toggle("cr-lg-exp-wrap", yes);
+      toggle("cr-lg-wrap", yes);
       document.getElementById("cr-lg-exp").required = yes;
+      document.getElementById("cr-lg-file").required = yes;
     });
   });
-  document.getElementById("cr-zelle").addEventListener("change", function () {
-    const yes = this.value === "yes";
-    toggle("cr-zelle-contact-wrap", yes);
-    document.getElementById("cr-zelle-contact").required = yes;
+  document.querySelectorAll('input[name="cr-uswp"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      const yes = radioValue("cr-uswp") === "yes";
+      toggle("cr-uswp-wrap", yes);
+      document.getElementById("cr-uswp-num").required = yes;
+      document.getElementById("cr-uswp-exp").required = yes;
+    });
   });
 
   function val(id) {
@@ -221,51 +240,56 @@
     const btn = document.getElementById("reg-submit");
     msg.className = "form-msg";
 
-    const file = document.getElementById("cr-w9").files[0];
-    if (file && file.size > 10 * 1024 * 1024) {
-      msg.className = "form-msg error";
-      msg.textContent = "That W-9 file is over 10MB. Please upload a smaller PDF or photo.";
-      return;
+    const lifeguard = radioValue("cr-lifeguard") === "yes";
+    const w9File = document.getElementById("cr-w9").files[0];
+    const lgFile = lifeguard ? document.getElementById("cr-lg-file").files[0] : null;
+    for (const f of [w9File, lgFile]) {
+      if (f && f.size > 10 * 1024 * 1024) {
+        msg.className = "form-msg error";
+        msg.textContent = "\u201c" + f.name + "\u201d is over 10MB. Please upload a smaller PDF or photo.";
+        return;
+      }
     }
 
     btn.disabled = true;
     btn.textContent = "Submitting...";
+    const failUpload = function (text) {
+      btn.disabled = false;
+      btn.textContent = "Submit Registration";
+      msg.className = "form-msg error";
+      msg.textContent = text;
+    };
 
-    // The W-9 goes to a private bucket nobody but the owner can read, via a
-    // one-time signed upload URL from the coach-w9-upload-url function (a
-    // plain anonymous upload would need read access to that bucket).
-    let w9Path = null;
-    if (file) {
+    // Documents go to a private bucket nobody but the Manager can read, via
+    // a one-time signed upload URL from the coach-w9-upload-url function
+    // (a plain anonymous upload would need read access to that bucket).
+    const CONTENT_TYPES = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", heic: "image/heic", heif: "image/heif", webp: "image/webp" };
+    async function uploadDoc(file, kind, label) {
       const ext = (file.name.split(".").pop() || "").toLowerCase();
-      const CONTENT_TYPES = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", heic: "image/heic", heif: "image/heif", webp: "image/webp" };
-      const failUpload = function (text) {
-        btn.disabled = false;
-        btn.textContent = "Submit Registration";
-        msg.className = "form-msg error";
-        msg.textContent = text;
-      };
-      if (!CONTENT_TYPES[ext]) {
-        failUpload("Please upload your W-9 as a PDF or a photo (JPG, PNG, HEIC).");
-        return;
-      }
-      const { data: slot, error: slotError } = await supabaseClient.functions.invoke("coach-w9-upload-url", { body: { ext: ext } });
+      if (!CONTENT_TYPES[ext]) throw new Error("Please upload your " + label + " as a PDF or a photo (JPG, PNG, HEIC).");
+      const { data: slot, error: slotError } = await supabaseClient.functions.invoke("coach-w9-upload-url", { body: { ext: ext, kind: kind } });
       if (slotError || !slot || !slot.path) {
-        failUpload(await functionErrorMessage(slotError, slot, "Could not upload your W-9. Please try again."));
-        return;
+        throw new Error(await functionErrorMessage(slotError, slot, "Could not upload your " + label + ". Please try again."));
       }
       // Content type from the extension, not file.type -- some phones hand
       // over HEIC photos with an empty type, which the bucket would reject.
       const { error: uploadError } = await supabaseClient.storage.from("coach-documents")
         .uploadToSignedUrl(slot.path, slot.token, file, { contentType: CONTENT_TYPES[ext] });
-      if (uploadError) {
-        failUpload("Could not upload your W-9: " + uploadError.message);
-        return;
-      }
-      w9Path = slot.path;
+      if (uploadError) throw new Error("Could not upload your " + label + ": " + uploadError.message);
+      return slot.path;
     }
 
-    const lifeguard = radioValue("cr-lifeguard") === "yes";
-    const zelle = document.getElementById("cr-zelle").value;
+    let w9Path = null;
+    let lifeguardCertPath = null;
+    try {
+      if (w9File) w9Path = await uploadDoc(w9File, "w9", "W-9");
+      if (lgFile) lifeguardCertPath = await uploadDoc(lgFile, "lifeguard", "lifeguard certificate");
+    } catch (err) {
+      failUpload(err.message);
+      return;
+    }
+
+    const uswp = radioValue("cr-uswp") === "yes";
 
     // Plain insert with no .select(): the public can submit but never read
     // rows back (see the coach_registrations RLS policies).
@@ -281,11 +305,13 @@
       emergency_contact_phone: val("cr-ec-phone"),
       lifeguard_certified: lifeguard,
       lifeguard_expiration: lifeguard ? val("cr-lg-exp") : null,
-      uswp_member: true,
-      uswp_member_number: val("cr-uswp-num"),
-      uswp_expiration: val("cr-uswp-exp"),
-      zelle_status: zelle,
-      zelle_contact: zelle === "yes" ? val("cr-zelle-contact") : null,
+      lifeguard_cert_path: lifeguardCertPath,
+      uswp_member: uswp,
+      uswp_member_number: uswp ? val("cr-uswp-num") : null,
+      uswp_expiration: uswp ? val("cr-uswp-exp") : null,
+      health_issues: val("cr-health"),
+      zelle_status: /^n\/?a$/i.test(val("cr-zelle-contact") || "") ? "no" : "yes",
+      zelle_contact: val("cr-zelle-contact"),
       venmo_username: val("cr-venmo"),
       availability: val("cr-availability"),
       w9_path: w9Path,

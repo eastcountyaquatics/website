@@ -55,6 +55,10 @@
         <input type="email" id="email" name="email" autocomplete="email" required>
       </div>
       <div class="field">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="(619) 555-0100" required>
+      </div>
+      <div class="field">
         <label for="password">Password</label>
         <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
         <p class="field-hint">At least 8 characters.</p>
@@ -100,8 +104,15 @@
 
     const fullName = document.getElementById("full_name").value.trim();
     const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("confirm_password").value;
+
+    if (phone.replace(/\D/g, "").length < 10) {
+      msg.className = "form-msg error";
+      msg.textContent = "Please enter a phone number with area code.";
+      return;
+    }
 
     if (password !== confirmPassword) {
       msg.className = "form-msg error";
@@ -124,7 +135,7 @@
       email: email,
       password: password,
       options: {
-        data: { full_name: fullName },
+        data: { full_name: fullName, phone: phone },
         emailRedirectTo: window.location.origin + window.location.pathname.replace("signup.html", "login.html"),
       },
     });

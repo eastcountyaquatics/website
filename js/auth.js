@@ -16,10 +16,10 @@ async function renderNavAuthSlot(session) {
 
   if (session) {
     const role = await getUserRole(session.user.id);
-    // Staff go straight to the admin panel -- they don't need the
-    // parent-facing "My Account" dashboard cluttering their nav.
+    // Staff get the admin panel AND My Account -- coaches and managers are
+    // often parents too, and My Account is where they add their own kids.
     const middleLink = role
-      ? '<a href="admin.html" class="nav-btn nav-btn-admin">Admin</a>'
+      ? '<a href="admin.html" class="nav-btn nav-btn-admin">Admin</a><a href="dashboard.html" class="nav-btn">My Account</a>'
       : '<a href="dashboard.html" class="nav-btn">My Account</a>';
     slot.innerHTML = middleLink + '<a href="#" id="nav-sign-out">Sign Out</a>';
     const signOutLink = document.getElementById("nav-sign-out");

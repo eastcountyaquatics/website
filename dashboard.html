@@ -13,6 +13,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  .consent-review{margin-bottom:6px;}
+  .review-block{border:1px solid #e3e6f0;border-radius:8px;padding:10px 12px;margin-bottom:10px;background:#fafbfe;}
+  .review-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;}
+  .review-head .btn{padding:4px 12px;font-size:12px;}
+  .review-line{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:3px 0;border-top:1px solid #eef1f7;}
+  .review-line span:first-child{color:var(--muted);white-space:nowrap;}
+  .review-line span:last-child{text-align:right;overflow-wrap:anywhere;}
+  .review-missing{color:#c0392b;font-weight:700;}
   .consent-overlay{position:fixed;inset:0;background:rgba(10,20,50,.55);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;z-index:1000;}
   .consent-modal{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .consent-check{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:14px;line-height:1.5;cursor:pointer;}
@@ -127,6 +135,17 @@
             <input type="text" id="athlete_emergency_name" placeholder="e.g. Grandma Smith" required>
           </div>
           <div class="field">
+            <label for="athlete_emergency_relationship">Relationship to Athlete</label>
+            <select id="athlete_emergency_relationship" required>
+              <option value="">Select...</option>
+              <option value="Parent">Parent</option>
+              <option value="Guardian">Guardian</option>
+              <option value="Grandparent">Grandparent</option>
+              <option value="Other Relative">Other Relative</option>
+              <option value="Friend">Friend</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="athlete_emergency_email">Email</label>
             <input type="email" id="athlete_emergency_email" placeholder="grandma@example.com" required>
           </div>
@@ -140,6 +159,17 @@
           <div class="field">
             <label for="athlete_emergency2_name">Name</label>
             <input type="text" id="athlete_emergency2_name" placeholder="e.g. Uncle Mike">
+          </div>
+          <div class="field">
+            <label for="athlete_emergency2_relationship">Relationship to Athlete</label>
+            <select id="athlete_emergency2_relationship">
+              <option value="">Select...</option>
+              <option value="Parent">Parent</option>
+              <option value="Guardian">Guardian</option>
+              <option value="Grandparent">Grandparent</option>
+              <option value="Other Relative">Other Relative</option>
+              <option value="Friend">Friend</option>
+            </select>
           </div>
           <div class="field">
             <label for="athlete_emergency2_email">Email</label>
@@ -215,9 +245,14 @@
 <div id="consent-overlay" class="consent-overlay" style="display:none;">
   <div class="consent-modal">
     <h3>Before You Pay</h3>
-    <p class="muted" style="font-size:13px;margin-bottom:16px;">Please read and agree to the following for this registration.</p>
+    <p class="muted" style="font-size:13px;margin-bottom:16px;">Please review your information, then read and agree to the following for this registration.</p>
 
     <div id="consent-msg" class="form-msg"></div>
+    <div id="consent-review" class="consent-review"></div>
+    <label class="consent-check">
+      <input type="checkbox" data-consent-required="info-review">
+      <span>The account and athlete information above is correct and up to date.</span>
+    </label>
 
     <label class="consent-check">
       <input type="checkbox" data-consent-required="ball">
@@ -891,7 +926,7 @@
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, sex, school, team_slug, uswp_number, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, notes")
+      .select("id, full_name, birthdate, sex, school, team_slug, uswp_number, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, emergency_contact_relationship, emergency_contact2_relationship, notes")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -920,8 +955,8 @@
             detailRow("Sex", a.sex) +
             detailRow("School", a.school) +
             detailRow("USWP Number", a.uswp_number) +
-            detailRow("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2].filter(Boolean).join(" · ")) +
-            detailRow("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2].filter(Boolean).join(" · ")) +
+            detailRow("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_relationship, a.emergency_contact_email, a.emergency_contact_phone1, a.emergency_contact_phone2].filter(Boolean).join(" · ")) +
+            detailRow("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_relationship, a.emergency_contact2_email, a.emergency_contact2_phone1, a.emergency_contact2_phone2].filter(Boolean).join(" · ")) +
             detailRow("Medical / Allergy Notes", a.notes) +
             "</div>" +
             "</div>"
@@ -983,6 +1018,8 @@
     document.getElementById("athlete_emergency2_name").value = a.emergency_contact2_name || "";
     document.getElementById("athlete_emergency2_email").value = a.emergency_contact2_email || "";
     document.getElementById("athlete_emergency2_phone1").value = a.emergency_contact2_phone1 || "";
+    document.getElementById("athlete_emergency_relationship").value = a.emergency_contact_relationship || "";
+    document.getElementById("athlete_emergency2_relationship").value = a.emergency_contact2_relationship || "";
     document.getElementById("athlete_notes").value = a.notes || "";
     document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -1007,6 +1044,8 @@
       emergency_contact2_name: document.getElementById("athlete_emergency2_name").value.trim() || null,
       emergency_contact2_email: document.getElementById("athlete_emergency2_email").value.trim() || null,
       emergency_contact2_phone1: document.getElementById("athlete_emergency2_phone1").value.trim() || null,
+      emergency_contact_relationship: document.getElementById("athlete_emergency_relationship").value || null,
+      emergency_contact2_relationship: document.getElementById("athlete_emergency2_relationship").value || null,
       notes: document.getElementById("athlete_notes").value.trim() || null,
     };
 
@@ -1023,6 +1062,33 @@
     toggleAthleteForm(false);
     loadAthletes();
   });
+
+  // Is this athlete in the age group a program is for? Programs with no
+  // team tags are open to every youth athlete. Splashball takes 8 & under.
+  // Anyone 19+ (as of the Aug 1 cutoff) has aged out of youth programs --
+  // Masters is their program.
+  function athleteFitsProgram(a, optionTeams) {
+    const age = calcAge(a.birthdate);
+    if (age !== null && age > 18) return false;
+    if (!optionTeams.length) return true;
+    if (optionTeams.indexOf("splashball") !== -1 && age !== null && age <= 8) return true;
+    if (a.team_slug) return optionTeams.indexOf(a.team_slug) !== -1;
+    const derived = deriveTeamSlug(age, a.sex);
+    if (!derived) return true; // missing birthdate/sex -- can't tell, so don't hide them
+    return optionTeams.indexOf(derived) !== -1;
+  }
+
+  function mastersNote() {
+    const adults = myAthletes.filter(function (a) {
+      const age = calcAge(a.birthdate);
+      return age !== null && age > 18;
+    });
+    if (!adults.length) return "";
+    return '<div class="notice" style="margin-top:20px;">' +
+      adults.map(function (a) { return escapeHtml(a.full_name); }).join(", ") +
+      (adults.length === 1 ? " is" : " are") + " 19 or older, so youth programs don't apply &mdash; adult players join through " +
+      '<a href="#masters-section" style="color:#7a5b00;font-weight:700;">Masters Membership</a> below.</div>';
+  }
 
   async function loadRegistrationOptions() {
     const wrap = document.getElementById("registration-options");
@@ -1045,33 +1111,26 @@
       options
         .map(function (o) {
           const amount = formatAmount(o.amount_cents, "usd");
-          // Guides parents to the right program by birthdate: a lot of
-          // sign-ups for the wrong team happen because the age cutoff is
-          // next August 1, not today -- so an athlete can "look" one age
-          // group but actually belong to another. This warns rather than
-          // blocks, since a manual team_slug override or playing up/down
-          // a group are both legitimate reasons the derived team might not
-          // match what's actually right for them.
+          // Only athletes in this program's age group are offered -- age is
+          // as of the club's Aug 1 cutoff (js/team-age.js). A staff-set
+          // team on the athlete overrides the birthdate rule, so playing
+          // up/down a group still works.
           const optionTeams = o.team_slugs || [];
-          const athleteChecks = myAthletes.length
-            ? myAthletes
-                .map(function (a) {
-                  const athleteTeam = a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
-                  const mismatch = optionTeams.length && athleteTeam && optionTeams.indexOf(athleteTeam) === -1;
-                  const warning = mismatch
-                    ? '<div class="muted" style="font-size:12px;color:#a12626;margin:-2px 0 6px 26px;">Based on their birthdate, ' +
-                      escapeHtml(a.full_name.split(" ")[0]) + " is on the " + escapeHtml(deriveTeamLabel(calcAge(a.birthdate), a.sex)) +
-                      " team &mdash; double-check this is the right program.</div>"
-                    : "";
-                  return (
-                    '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
-                    '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
-                    escapeHtml(a.full_name) +
-                    "</label>" + warning
-                  );
-                })
-                .join("")
-            : '<p class="muted" style="font-size:13px;">Add an athlete above first.</p>';
+          const eligible = myAthletes.filter(function (a) { return athleteFitsProgram(a, optionTeams); });
+          const athleteChecks = !myAthletes.length
+            ? '<p class="muted" style="font-size:13px;">Add an athlete above first.</p>'
+            : !eligible.length
+              ? '<p class="muted" style="font-size:13px;">None of your athletes are in this program&rsquo;s age group.</p>'
+              : eligible
+                  .map(function (a) {
+                    return (
+                      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
+                      '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
+                      escapeHtml(a.full_name) +
+                      "</label>"
+                    );
+                  })
+                  .join("");
           return (
             '<div class="card">' +
             "<h3>" + escapeHtml(o.label) + "</h3>" +
@@ -1079,13 +1138,13 @@
             '<p style="font-size:22px;font-weight:800;color:var(--blue);margin:10px 0;">' + amount + "</p>" +
             '<div data-athlete-checks="' + o.id + '">' + athleteChecks + "</div>" +
             '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '" style="margin-top:10px;width:100%;" ' +
-            (myAthletes.length ? "" : "disabled") + ">Register &amp; Pay</button>" +
+            (eligible.length ? "" : "disabled") + ">Register &amp; Pay</button>" +
             '<div class="form-msg" data-checkout-msg="' + o.id + '"></div>' +
             "</div>"
           );
         })
         .join("") +
-      "</div>";
+      "</div>" + mastersNote();
 
     wrap.querySelectorAll("[data-checkout]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1111,6 +1170,55 @@
   var pendingCheckout = null;
   var consentOpener = null;
 
+  // Review step: before paying, families see the account + athlete info on
+  // file (school, emergency contacts, medical notes...) and can jump to
+  // edit any of it. Anything required that's missing blocks checkout.
+  var reviewMissing = [];
+  function reviewLine(label, value, required) {
+    const missing = required && !value;
+    return '<div class="review-line"><span>' + label + "</span><span" + (missing ? ' class="review-missing">Missing' : ">" + escapeHtml(value || "\u2014")) + "</span></div>";
+  }
+  function renderConsentReview(items) {
+    const wrap = document.getElementById("consent-review");
+    reviewMissing = [];
+    const ids = [...new Set(items.map(function (i) { return i.athlete_id; }))];
+    const athletes = ids.map(function (id) { return myAthletes.find(function (a) { return a.id === id; }); }).filter(Boolean);
+    const phone = currentProfile && currentProfile.phone;
+    let html = '<div class="review-block"><div class="review-head"><strong>Parent / Guardian</strong></div>' +
+      reviewLine("Name", currentProfile && currentProfile.full_name, false) +
+      reviewLine("Email", currentUser && currentUser.email, false) +
+      (phone
+        ? reviewLine("Phone", phone, true)
+        : '<div class="field" style="margin:6px 0 0;"><label for="consent-phone">Phone (required)</label><input type="tel" id="consent-phone" placeholder="(619) 555-0100"></div>') +
+      "</div>";
+    athletes.forEach(function (a) {
+      const required = [
+        ["School", a.school], ["USWP Number", a.uswp_number],
+        ["Emergency Contact 1", a.emergency_contact_name], ["Relationship", a.emergency_contact_relationship],
+        ["Emergency Phone", a.emergency_contact_phone1], ["Medical / Allergy Notes", a.notes],
+      ];
+      required.forEach(function (r) { if (!r[1]) reviewMissing.push(a.full_name + ": " + r[0]); });
+      html += '<div class="review-block"><div class="review-head"><strong>' + escapeHtml(a.full_name) + "</strong>" +
+        '<button type="button" class="btn btn-outline-dark" data-review-edit="' + a.id + '">Edit</button></div>' +
+        reviewLine("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "", true) +
+        reviewLine("School", a.school, true) +
+        reviewLine("USWP Number", a.uswp_number, true) +
+        reviewLine("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_relationship, a.emergency_contact_phone1].filter(Boolean).join(" \u00b7 "), true) +
+        (a.emergency_contact_name && !a.emergency_contact_relationship ? reviewLine("Relationship", "", true) : "") +
+        reviewLine("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_relationship, a.emergency_contact2_phone1].filter(Boolean).join(" \u00b7 "), false) +
+        reviewLine("Medical / Allergy Notes", a.notes, true) +
+        "</div>";
+    });
+    wrap.innerHTML = html;
+    wrap.querySelectorAll("[data-review-edit]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const athlete = myAthletes.find(function (x) { return x.id === b.dataset.reviewEdit; });
+        closeConsentModal();
+        if (athlete) startEditAthlete(athlete);
+      });
+    });
+  }
+
   function openConsentModal(items, btn, msgEl) {
     pendingCheckout = { items: items, btn: btn, msgEl: msgEl };
     consentOpener = btn;
@@ -1119,6 +1227,7 @@
     document.getElementById("consent-heard-about").value = "";
     document.getElementById("consent-referral-name").value = "";
     document.getElementById("consent-discount-code").value = "";
+    renderConsentReview(items);
     document.getElementById("consent-overlay").style.display = "flex";
     // Move focus into the dialog, or a keyboard/screen-reader user is left
     // tabbing through the page behind an overlay they can't see past.
@@ -1154,6 +1263,29 @@
       consentMsg.className = "form-msg error";
       consentMsg.textContent = "Please check all of the boxes above to continue.";
       return;
+    }
+
+    if (reviewMissing.length) {
+      consentMsg.className = "form-msg error";
+      consentMsg.textContent = "Some required information is missing (" + reviewMissing.join(", ") + "). Click Edit next to the athlete to fill it in, then register again.";
+      return;
+    }
+    const phoneInput = document.getElementById("consent-phone");
+    if (phoneInput) {
+      const phone = phoneInput.value.trim();
+      if (phone.replace(/\D/g, "").length < 10) {
+        consentMsg.className = "form-msg error";
+        consentMsg.textContent = "Please enter your phone number with area code.";
+        phoneInput.focus();
+        return;
+      }
+      const { error: phoneError } = await supabaseClient.from("profiles").update({ phone: phone }).eq("id", currentUser.id);
+      if (phoneError) {
+        consentMsg.className = "form-msg error";
+        consentMsg.textContent = "Could not save your phone number: " + phoneError.message;
+        return;
+      }
+      if (currentProfile) currentProfile.phone = phone;
     }
 
     const consent = {

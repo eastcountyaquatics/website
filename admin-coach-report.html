@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coach Hours Report | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .pay-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px;}
+  .report-table{width:100%;border-collapse:collapse;background:#fff;font-size:14px;margin-bottom:24px;}
+  .report-table th,.report-table td{padding:8px 10px;border-bottom:1px solid #eef1f7;text-align:right;white-space:nowrap;}
+  .report-table th:first-child,.report-table td:first-child{text-align:left;white-space:normal;}
+  .report-table thead th{background:var(--navy);color:#fff;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;}
+  .report-table tr.coach-head td{background:#eef1ff;font-weight:800;color:var(--navy);}
+  .report-table tr.subtotal td{font-weight:700;border-bottom:2px solid #d7dcea;}
+  .report-table tr.grand td{font-weight:800;background:#fff8d6;}
+  .report-wrap{overflow-x:auto;}
+  @media print{
+    .site-header,.admin-header,.pay-filters,.site-footer,.no-print{display:none !important;}
+    .report-table thead th{background:#ddd;color:#000;}
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="section-tight">
+  <div class="container" style="max-width:1000px;">
+    <div class="pay-filters">
+      <div class="field" style="margin:0;">
+        <label for="from-date">From</label>
+        <input type="date" id="from-date">
+      </div>
+      <div class="field" style="margin:0;">
+        <label for="to-date">To</label>
+        <input type="date" id="to-date">
+      </div>
+      <button type="button" id="print-btn" class="btn btn-outline-dark">Print</button>
+      <button type="button" id="export-btn" class="btn btn-outline-dark">Export CSV</button>
+    </div>
+    <p class="muted" id="report-range" style="font-weight:700;"></p>
+    <div id="report-msg" class="form-msg"></div>
+    <h3>By Program</h3>
+    <div class="report-wrap" id="by-program"><p class="muted">Loading&hellip;</p></div>
+    <h3>By Coach</h3>
+    <div class="report-wrap" id="by-coach"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/tournament-teams.js"></script>
+<script src="js/coach-rates.js"></script>
+<script>
+  // Coach hours for a date range, broken out by program (team) and by
+  // coach: practice / meeting / tournament hours, hourly pay at the rate in
+  // effect each day, travel days, other reimbursements, and totals.
+  const TRAVEL_DAY_CENTS = 7500;
+  function escapeHtml(str) {
+    return String(str == null ? "" : str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function money(cents) { return "$" + (cents / 100).toFixed(2); }
+  function hrs(n) { return n ? n.toFixed(2) : "—"; }
+  function csvField(value) {
+    let str = String(value == null ? "" : value);
+    if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
+    return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+  }
+  function fmtDate(d) {
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  function monthStart() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01";
+  }
+
+  var nameById = {}, teamLabels = {}, rateByCoachId = {}, rateHistory = {};
+  var report = null;
+
+  function programName(slug) {
+    if (slug === "club") return "Club-wide";
+    return teamLabels[slug] || slug || "No team";
+  }
+  function blank() { return { practice: 0, meeting: 0, tournament: 0, payCents: 0 }; }
+
+  async function load() {
+    const from = document.getElementById("from-date").value;
+    const to = document.getElementById("to-date").value;
+    document.getElementById("report-range").textContent =
+      (from ? fmtDate(from) : "Beginning") + " – " + (to ? fmtDate(to) : "Today");
+
+    let hq = supabaseClient.from("coach_hours").select("coach_id, team_slug, session_date, session_type, hours, travel_days");
+    let rq = supabaseClient.from("coach_reimbursements").select("coach_id, reimb_date, amount_cents, description");
+    if (from) { hq = hq.gte("session_date", from); rq = rq.gte("reimb_date", from); }
+    if (to) { hq = hq.lte("session_date", to); rq = rq.lte("reimb_date", to); }
+    const [{ data: hours, error }, { data: reimbs }] = await Promise.all([hq, rq]);
+    if (error) {
+      document.getElementById("report-msg").className = "form-msg error";
+      document.getElementById("report-msg").textContent = "Could not load hours: " + error.message;
+      return;
+    }
+
+    const byProgram = {};
+    const byCoach = {};
+    function coach(id) {
+      return (byCoach[id] = byCoach[id] || { programs: {}, travelDays: 0, reimbCents: 0, reimbs: [] });
+    }
+    (hours || []).forEach(function (r) {
+      const h = parseFloat(r.hours) || 0;
+      const type = r.session_type === "tournament" ? "tournament" : r.session_type === "meeting" ? "meeting" : "practice";
+      const pay = h * rateInEffect(rateHistory, r.coach_id, r.session_date, rateByCoachId[r.coach_id]);
+      const c = coach(r.coach_id);
+      const cp = (c.programs[r.team_slug] = c.programs[r.team_slug] || blank());
+      cp[type] += h; cp.payCents += pay;
+      const p = (byProgram[r.team_slug] = byProgram[r.team_slug] || blank());
+      p[type] += h; p.payCents += pay;
+      c.travelDays += r.travel_days || 0;
+    });
+    (reimbs || []).forEach(function (r) {
+      const c = coach(r.coach_id);
+      c.reimbCents += r.amount_cents;
+      c.reimbs.push(r);
+    });
+    report = { byProgram: byProgram, byCoach: byCoach };
+    render();
+  }
+
+  function render() {
+    const progSlugs = Object.keys(report.byProgram).sort(function (a, b) { return programName(a).localeCompare(programName(b)); });
+    let tot = blank();
+    let html = '<table class="report-table"><thead><tr><th>Program</th><th>Practice hrs</th><th>Meeting hrs</th><th>Tournament hrs</th><th>Total hrs</th><th>Hourly pay</th></tr></thead><tbody>';
+    progSlugs.forEach(function (slug) {
+      const p = report.byProgram[slug];
+      ["practice", "meeting", "tournament", "payCents"].forEach(function (k) { tot[k] += p[k]; });
+      html += "<tr><td>" + escapeHtml(programName(slug)) + "</td><td>" + hrs(p.practice) + "</td><td>" + hrs(p.meeting) + "</td><td>" + hrs(p.tournament) +
+        "</td><td>" + hrs(p.practice + p.meeting + p.tournament) + "</td><td>" + money(Math.round(p.payCents)) + "</td></tr>";
+    });
+    html += '<tr class="grand"><td>All programs</td><td>' + hrs(tot.practice) + "</td><td>" + hrs(tot.meeting) + "</td><td>" + hrs(tot.tournament) +
+      "</td><td>" + hrs(tot.practice + tot.meeting + tot.tournament) + "</td><td>" + money(Math.round(tot.payCents)) + "</td></tr></tbody></table>";
+    document.getElementById("by-program").innerHTML = progSlugs.length ? html : '<p class="muted">No hours logged in this date range.</p>';
+
+    const coachIds = Object.keys(report.byCoach).sort(function (a, b) { return (nameById[a] || "").localeCompare(nameById[b] || ""); });
+    let grand = { hours: 0, payCents: 0, travelCents: 0, reimbCents: 0 };
+    html = '<table class="report-table"><thead><tr><th>Coach / Program</th><th>Practice hrs</th><th>Meeting hrs</th><th>Tournament hrs</th><th>Total hrs</th><th>Pay</th></tr></thead><tbody>';
+    coachIds.forEach(function (id) {
+      const c = report.byCoach[id];
+      html += '<tr class="coach-head"><td colspan="6">' + escapeHtml(nameById[id] || "Coach") +
+        (rateByCoachId[id] != null ? ' <span class="muted" style="font-weight:400;">(current rate ' + money(rateByCoachId[id]) + "/hr)</span>" : "") + "</td></tr>";
+      let h = 0, pay = 0;
+      Object.keys(c.programs).sort(function (a, b) { return programName(a).localeCompare(programName(b)); }).forEach(function (slug) {
+        const p = c.programs[slug];
+        const t = p.practice + p.meeting + p.tournament;
+        h += t; pay += p.payCents;
+        html += "<tr><td>&nbsp;&nbsp;" + escapeHtml(programName(slug)) + "</td><td>" + hrs(p.practice) + "</td><td>" + hrs(p.meeting) + "</td><td>" + hrs(p.tournament) +
+          "</td><td>" + hrs(t) + "</td><td>" + money(Math.round(p.payCents)) + "</td></tr>";
+      });
+      const travelCents = c.travelDays * TRAVEL_DAY_CENTS;
+      if (c.travelDays) html += "<tr><td>&nbsp;&nbsp;Travel (" + c.travelDays + " day" + (c.travelDays === 1 ? "" : "s") + ' × $75)</td><td colspan="4"></td><td>' + money(travelCents) + "</td></tr>";
+      c.reimbs.forEach(function (r) {
+        html += "<tr><td>&nbsp;&nbsp;Other reimbursement: " + escapeHtml(r.description) + " (" + fmtDate(r.reimb_date) + ')</td><td colspan="4"></td><td>' + money(r.amount_cents) + "</td></tr>";
+      });
+      const total = Math.round(pay) + travelCents + c.reimbCents;
+      html += '<tr class="subtotal"><td>Total for ' + escapeHtml(nameById[id] || "coach") + '</td><td colspan="3"></td><td>' + hrs(h) + "</td><td>" + money(total) + "</td></tr>";
+      grand.hours += h; grand.payCents += Math.round(pay); grand.travelCents += travelCents; grand.reimbCents += c.reimbCents;
+    });
+    html += '<tr class="grand"><td>All coaches (hourly ' + money(grand.payCents) + " + travel " + money(grand.travelCents) + " + other " + money(grand.reimbCents) +
+      ')</td><td colspan="3"></td><td>' + hrs(grand.hours) + "</td><td>" + money(grand.payCents + grand.travelCents + grand.reimbCents) + "</td></tr></tbody></table>";
+    document.getElementById("by-coach").innerHTML = coachIds.length ? html : '<p class="muted">Nothing logged in this date range.</p>';
+  }
+
+  document.getElementById("export-btn").addEventListener("click", function () {
+    if (!report) return;
+    const lines = [["Coach", "Line", "Practice Hours", "Meeting Hours", "Tournament Hours", "Total Hours", "Amount"].join(",")];
+    Object.keys(report.byCoach).forEach(function (id) {
+      const c = report.byCoach[id];
+      const name = nameById[id] || "Coach";
+      Object.keys(c.programs).forEach(function (slug) {
+        const p = c.programs[slug];
+        lines.push([name, programName(slug), p.practice.toFixed(2), p.meeting.toFixed(2), p.tournament.toFixed(2),
+          (p.practice + p.meeting + p.tournament).toFixed(2), (Math.round(p.payCents) / 100).toFixed(2)].map(csvField).join(","));
+      });
+      if (c.travelDays) lines.push([name, "Travel (" + c.travelDays + " days)", "", "", "", "", (c.travelDays * 75).toFixed(2)].map(csvField).join(","));
+      c.reimbs.forEach(function (r) {
+        lines.push([name, "Other reimbursement: " + r.description + " (" + r.reimb_date + ")", "", "", "", "", (r.amount_cents / 100).toFixed(2)].map(csvField).join(","));
+      });
+    });
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "eca-coach-hours-report-" + (document.getElementById("from-date").value || "start") + "-to-" + (document.getElementById("to-date").value || "today") + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.getElementById("print-btn").addEventListener("click", function () { window.print(); });
+  ["from-date", "to-date"].forEach(function (id) { document.getElementById(id).addEventListener("change", load); });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById("from-date").value = params.get("from") || monthStart();
+    document.getElementById("to-date").value = params.get("to") || new Date().toLocaleDateString("en-CA");
+    const [{ data: profiles }, { data: teams }, { data: rates }] = await Promise.all([
+      supabaseClient.from("profiles").select("id, full_name, email"),
+      supabaseClient.from("schedules").select("team_slug, team_label"),
+      supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
+    ]);
+    (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
+    withTournamentTeams(teams).forEach(function (t) { teamLabels[t.team_slug] = t.team_label; });
+    (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
+    rateHistory = await loadCoachRateHistory();
+    load();
+  })();
+</script>
+</body>
+</html>

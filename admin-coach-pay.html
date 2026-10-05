@@ -76,6 +76,32 @@
       </div>
       <button type="button" id="this-month-btn" class="btn btn-outline-dark">This Month</button>
       <button type="button" id="export-btn" class="btn btn-outline-dark">Export CSV</button>
+      <a id="report-link" href="admin-coach-report.html" class="btn btn-outline-dark">Hours Report</a>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <h3 style="margin-top:0;">Add Other Reimbursement</h3>
+      <p class="muted" style="font-size:13px;">Mileage, supplies, entry fees or anything else a coach paid for &mdash; added to that coach's pay for the month it's dated in.</p>
+      <form id="reimb-form" class="pay-filters" style="margin-bottom:0;">
+        <div class="field" style="margin:0;min-width:170px;">
+          <label for="reimb-coach">Coach</label>
+          <select id="reimb-coach" required style="padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;background:#fff;"></select>
+        </div>
+        <div class="field" style="margin:0;">
+          <label for="reimb-date">Date</label>
+          <input type="date" id="reimb-date" required>
+        </div>
+        <div class="field" style="margin:0;">
+          <label for="reimb-amount">Amount ($)</label>
+          <input type="number" id="reimb-amount" step="0.01" min="0.01" required style="max-width:120px;">
+        </div>
+        <div class="field" style="margin:0;flex:1;min-width:180px;">
+          <label for="reimb-desc">What for</label>
+          <input type="text" id="reimb-desc" maxlength="500" placeholder="e.g. Mileage to Riverside tournament" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </form>
+      <div id="reimb-msg" class="form-msg"></div>
     </div>
 
     <div id="list-msg" class="form-msg"></div>
@@ -143,6 +169,7 @@
 
   var nameById = {};
   var rateByCoachId = {};
+  var currentUserId = null;
   var rateHistory = {}; // coach_id -> dated rates (js/coach-rates.js)
   var coachSummaries = []; // built fresh on every load()
 
@@ -151,6 +178,27 @@
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
   }
 
+  document.getElementById("reimb-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("reimb-msg");
+    const dollars = parseFloat(document.getElementById("reimb-amount").value);
+    if (!(dollars > 0)) return;
+    const { error } = await supabaseClient.from("coach_reimbursements").insert({
+      coach_id: document.getElementById("reimb-coach").value,
+      reimb_date: document.getElementById("reimb-date").value,
+      amount_cents: Math.round(dollars * 100),
+      description: document.getElementById("reimb-desc").value.trim(),
+      created_by: currentUserId,
+    });
+    msg.className = error ? "form-msg error" : "form-msg success";
+    msg.textContent = error ? "Could not save: " + error.message : "Reimbursement added.";
+    if (!error) {
+      document.getElementById("reimb-amount").value = "";
+      document.getElementById("reimb-desc").value = "";
+      load();
+    }
+  });
+
   async function load() {
     const listEl = document.getElementById("pay-list");
     const msgEl = document.getElementById("list-msg");
@@ -158,6 +206,7 @@
 
     const from = document.getElementById("from-date").value;
     const to = document.getElementById("to-date").value;
+    document.getElementById("report-link").href = "admin-coach-report.html?from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to);
 
     let hoursQuery = supabaseClient
       .from("coach_hours")
@@ -176,6 +225,14 @@
     const [{ data: hoursRows, error: hoursError }, { data: paymentRows, error: paymentsError }] =
       await Promise.all([hoursQuery, paymentsQuery]);
 
+    let reimbQuery = supabaseClient
+      .from("coach_reimbursements")
+      .select("id, coach_id, reimb_date, amount_cents, description")
+      .order("reimb_date", { ascending: true });
+    if (from) reimbQuery = reimbQuery.gte("reimb_date", from);
+    if (to) reimbQuery = reimbQuery.lte("reimb_date", to);
+    const { data: reimbRows } = await reimbQuery;
+
     if (hoursError || paymentsError) {
       msgEl.className = "form-msg error";
       msgEl.textContent = "Could not load: " + ((hoursError || paymentsError).message);
@@ -186,7 +243,7 @@
     const byCoach = {};
     function bucket(coachId) {
       return (byCoach[coachId] = byCoach[coachId] || {
-        practiceHours: 0, meetingHours: 0, tournamentHours: 0, travelDays: 0, hoursPayCents: 0, ratesUsed: {}, tournamentSessions: 0, payments: [],
+        practiceHours: 0, meetingHours: 0, tournamentHours: 0, travelDays: 0, hoursPayCents: 0, ratesUsed: {}, reimbursements: [], reimbCents: 0, tournamentSessions: 0, payments: [],
       });
     }
     (hoursRows || []).forEach(function (r) {
@@ -207,6 +264,11 @@
         b.practiceHours += hrs;
       }
     });
+    (reimbRows || []).forEach(function (r) {
+      const b = bucket(r.coach_id);
+      b.reimbursements.push(r);
+      b.reimbCents += r.amount_cents;
+    });
     (paymentRows || []).forEach(function (p) {
       bucket(p.coach_id).payments.push(p);
     });
@@ -223,13 +285,15 @@
       const rateCents = rateByCoachId[coachId] || 0;
       const hoursPayCents = Math.round(b.hoursPayCents);
       const travelPayCents = b.travelDays * 7500;
-      const totalOwedCents = hoursPayCents + travelPayCents;
+      const totalOwedCents = hoursPayCents + travelPayCents + b.reimbCents;
       const totalPaidCents = b.payments.reduce(function (s, p) { return s + p.amount_cents; }, 0);
       return {
         coachId: coachId,
         name: nameById[coachId] || "Coach",
         rateCents: rateCents,
         rateChanged: Object.keys(b.ratesUsed).length > 1,
+        reimbursements: b.reimbursements,
+        reimbCents: b.reimbCents,
         practiceHours: b.practiceHours,
         meetingHours: b.meetingHours,
         tournamentHours: b.tournamentHours,
@@ -273,10 +337,17 @@
           ].filter(Boolean).join(" + ") || "No hours logged") +
           " &middot; " + rateNote +
           (c.travelDays ? " &middot; " + c.travelDays + " travel day" + (c.travelDays === 1 ? "" : "s") + " (" + money(c.travelDays * 7500) + ")" : "") +
+          (c.reimbCents ? " &middot; " + money(c.reimbCents) + " other reimbursement" + (c.reimbursements.length === 1 ? "" : "s") : "") +
           "<br>" +
           '<span class="paid">' + money(c.totalPaidCents) + " paid</span>" + " &middot; " +
           '<span class="' + (balance > 0 ? "owed" : "paid") + '">' + (balance > 0 ? money(balance) + " still owed" : balance < 0 ? money(-balance) + " overpaid" : "fully paid") + "</span>" +
         "</div>" +
+        (c.reimbursements.length
+          ? '<div class="payment-history">' + c.reimbursements.map(function (r) {
+              return '<div class="payment-row"><span>' + fmtDate(r.reimb_date) + " &middot; Reimbursement &middot; " + escapeHtml(r.description) +
+                "</span><span>" + money(r.amount_cents) + ' <button type="button" data-delete-reimb="' + r.id + '">Remove</button></span></div>';
+            }).join("") + "</div>"
+          : "") +
         paymentsHtml +
         '<button type="button" class="btn btn-outline-dark" data-toggle-payment="' + c.coachId + '" style="margin-top:10px;padding:6px 12px;font-size:13px;">Record Payment</button>' +
         '<form class="record-payment-form" data-payment-form="' + c.coachId + '">' +
@@ -301,6 +372,15 @@
         "</div>"
       );
     }).join("");
+
+    listEl.querySelectorAll("[data-delete-reimb]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        if (!confirm("Remove this reimbursement?")) return;
+        const { error } = await supabaseClient.from("coach_reimbursements").delete().eq("id", btn.dataset.deleteReimb);
+        if (error) { alert("Could not remove: " + error.message); return; }
+        load();
+      });
+    });
 
     listEl.querySelectorAll("[data-toggle-payment]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -342,7 +422,7 @@
 
   document.getElementById("export-btn").addEventListener("click", function () {
     if (!coachSummaries.length) return;
-    const header = ["Coach", "Rate/hr", "Practice Hours", "Meeting Hours", "Tournament Hours", "Tournament Sessions", "Travel Days", "Travel Pay", "Total Owed", "Total Paid", "Balance"];
+    const header = ["Coach", "Rate/hr", "Practice Hours", "Meeting Hours", "Tournament Hours", "Tournament Sessions", "Travel Days", "Travel Pay", "Other Reimbursements", "Total Owed", "Total Paid", "Balance"];
     const lines = [header.map(csvField).join(",")];
     coachSummaries.forEach(function (c) {
       lines.push([
@@ -354,6 +434,7 @@
         c.tournamentSessions,
         c.travelDays,
         (c.travelDays * 75).toFixed(2),
+        (c.reimbCents / 100).toFixed(2),
         (c.totalOwedCents / 100).toFixed(2),
         (c.totalPaidCents / 100).toFixed(2),
         ((c.totalOwedCents - c.totalPaidCents) / 100).toFixed(2),
@@ -440,6 +521,7 @@
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
+    currentUserId = auth.session.user.id;
 
     document.getElementById("from-date").value = monthStart();
     document.getElementById("to-date").value = localToday();
@@ -450,6 +532,10 @@
     ]);
     rateHistory = await loadCoachRateHistory();
     (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
+    const { data: staff } = await supabaseClient.rpc("list_staff_profiles");
+    document.getElementById("reimb-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
+      (staff || []).map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");
+    document.getElementById("reimb-date").value = localToday();
     (rates || []).forEach(function (r) { rateByCoachId[r.coach_id] = r.hourly_rate_cents; });
 
     // Default to last month early in the month (that's the one being

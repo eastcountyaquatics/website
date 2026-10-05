@@ -13,6 +13,8 @@
 //
 // After deploying, register the webhook URL in the Stripe dashboard
 // (Developers -> Webhooks) for the checkout.session.completed,
+// checkout.session.async_payment_succeeded,
+// checkout.session.async_payment_failed,
 // customer.subscription.updated, customer.subscription.deleted, and
 // invoice.paid events, then copy the signing secret into
 // STRIPE_WEBHOOK_SECRET. invoice.paid is what records every Masters
@@ -136,13 +138,34 @@ async function dispatchEvent(
     return await handleMastersInvoicePaid(supabase, event.data.object as Stripe.Invoice);
   }
 
-  if (event.type !== "checkout.session.completed") {
+  // A bank (ACH) payment finishes checkout before the money actually moves:
+  // checkout.session.completed arrives with payment_status "unpaid", and
+  // a few business days later either async_payment_succeeded (record it
+  // exactly like a card payment) or async_payment_failed (nothing to
+  // record -- let the club know).
+  if (event.type === "checkout.session.async_payment_failed") {
+    const failed = event.data.object as Stripe.Checkout.Session;
+    await sendReceiptEmail(
+      "eastcountyaquatics@gmail.com",
+      "A bank payment failed",
+      `A bank (ACH) payment for checkout ${failed.id} failed and was not recorded. ` +
+        `Payer: ${failed.customer_details?.email || failed.customer_email || "unknown"}. ` +
+        `Amount: $${((failed.amount_total ?? 0) / 100).toFixed(2)}. Check the Stripe dashboard for details.`
+    );
+    return new Response("async payment failed", { status: 200 });
+  }
+
+  if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") {
     // Not an event we care about; acknowledge so Stripe stops retrying.
     await recordWebhookEvent(supabase, event, "ignored");
     return new Response("ignored", { status: 200 });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
+
+  if (event.type === "checkout.session.completed" && session.payment_status === "unpaid") {
+    return new Response("awaiting bank payment", { status: 200 });
+  }
 
   // Tournament invite payments carry a different metadata shape (no
   // Supabase user_id, since the family never logs in) -- handle that

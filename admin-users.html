@@ -46,7 +46,7 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
-    <p class="muted"><strong>Managers</strong> can do everything. <strong>Coaches</strong> get Schedules and the Roster. <strong>Head Coaches</strong> get Schedules, Attendance, Roster, Tournaments, and Team Interest &mdash; but only for the team(s) they're assigned to below. <strong>Assistant Coaches</strong> can take attendance, log their own hours, and view (not edit) the Roster, Schedules, and Tournaments, club-wide.</p>
+    <p class="muted"><strong>Managers</strong> (including Founders and Finance) can do everything. <strong>Head Coaches</strong> get the Coaches, Teams and Tournaments sections. <strong>Assistant Coaches</strong> get the Coaches and Teams sections. <strong>Coaches</strong> get the Coaches section. Everyone but the Manager sees and logs only their own hours.</p>
 
     <div class="admin-form" style="margin-top:24px;">
       <h3>Assign Access</h3>
@@ -112,6 +112,26 @@
 
   var TRASH_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 
+  // What each role can actually do -- used in the confirmation shown after
+  // giving someone access, so it's clear what they now have.
+  var ROLE_ACCESS = {
+    owner: "Manager \u2014 full access to every part of the admin area.",
+    head_coach: "Head Coach \u2014 Coaches section (own hours, tournament hours, coach registration), Teams (Registered Athletes, Attendance) and Tournaments (Team Interest, Tournaments) for their assigned team(s).",
+    assistant_coach: "Assistant Coach \u2014 Coaches section (own hours, tournament hours, coach registration) and Teams (Registered Athletes, Attendance).",
+    coach: "Coach \u2014 Coaches section only: their own hours, tournament hours and coach registration.",
+    "": "No admin access \u2014 regular family account only.",
+  };
+  function accessSummary(role, teamSlugs) {
+    let text = ROLE_ACCESS[role || ""] || role;
+    if (role === "head_coach" && teamSlugs && teamSlugs.length) {
+      text += " Teams: " + teamSlugs.map(function (slug) {
+        const t = allTeams.find(function (x) { return x.team_slug === slug; });
+        return t ? t.team_label : slug;
+      }).join(", ") + ".";
+    }
+    return text;
+  }
+
   var knownProfiles = [];
   var currentUserId = null;
   var allTeams = []; // {team_slug, team_label}
@@ -171,7 +191,7 @@
           '<div class="admin-list-item">' +
           "<div>" +
           "<h4>" + escapeHtml(p.email) + "</h4>" +
-          '<div class="muted" style="font-size:13px;">Will become ' + escapeHtml(p.role) + teamNote + " on sign-up</div>" +
+          '<div class="muted" style="font-size:13px;">Will become ' + escapeHtml({ owner: "Manager", head_coach: "Head Coach", assistant_coach: "Assistant Coach", coach: "Coach" }[p.role] || p.role) + teamNote + " on sign-up</div>" +
           "</div>" +
           '<div class="admin-list-actions">' +
           '<button data-cancel="' + escapeHtml(p.email) + '" class="danger icon-btn" title="Remove" aria-label="Remove ' + escapeHtml(p.email) + '">' + TRASH_ICON + "</button>" +
@@ -244,8 +264,8 @@
     // textContent escapes on its own; escapeHtml here would render a literal
     // "&amp;" for an address containing an ampersand.
     msg.textContent = existing
-      ? email + " is now " + role + "."
-      : "Saved. " + email + " becomes " + role + " as soon as they sign up.";
+      ? email + " now has access as " + accessSummary(role, selectedTeams)
+      : "Saved. When " + email + " signs up they'll have access as " + accessSummary(role, selectedTeams);
     document.getElementById("assign-form").reset();
     loadUsers();
     loadPending();
@@ -331,7 +351,8 @@
         }
         sel.dataset.savedRole = sel.value;
         msg.className = "form-msg success";
-        msg.textContent = "Role updated.";
+        const who = (knownProfiles.find(function (p) { return p.id === sel.dataset.user; }) || {}).email || "This account";
+        msg.textContent = who + " now has access as " + accessSummary(newRole || "", headCoachTeamsByProfile[sel.dataset.user]);
         const teamsWrap = document.querySelector('[data-teams-wrap="' + sel.dataset.user + '"]');
         if (teamsWrap) {
           teamsWrap.style.display = newRole === "head_coach" ? "block" : "none";

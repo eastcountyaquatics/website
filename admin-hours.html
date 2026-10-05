@@ -347,7 +347,7 @@
       const { data: staff } = await supabaseClient.rpc("list_staff_profiles");
       document.getElementById("log-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
         (staff || []).map(function (c) {
-          return '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>";
+          return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>";
         }).join("");
       document.getElementById("log-coach").required = true;
       document.getElementById("log-coach-wrap").style.display = "block";

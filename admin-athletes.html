@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roster | Admin | San Diego East County Aquatics</title>
+<title>Registered Athletes | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
@@ -60,7 +60,7 @@
 
 <section class="admin-header">
   <div class="container">
-    <h1>Roster</h1>
+    <h1>Registered Athletes</h1>
     <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
   </div>
 </section>
@@ -79,7 +79,7 @@
     </div>
 
     <div class="admin-form" id="export-panel" style="display:none;margin-bottom:24px;">
-      <h3>Export Roster</h3>
+      <h3>Export Registered Athletes</h3>
       <p class="muted" style="font-size:13px;margin-bottom:10px;">Pick a team to export just that roster (e.g. for a tournament), and only the columns you need &mdash; useful for a quick USWP#/name list rather than the full record.</p>
       <div class="field">
         <label for="export-team-filter">Team</label>
@@ -185,6 +185,8 @@
     return j !== -1 ? j : 999;
   }
 
+  var isManager = false;
+
   function render(filterText) {
     const term = (filterText || "").trim().toLowerCase();
     const filtered = !term
@@ -265,6 +267,9 @@
               '<span class="team-save-msg" data-team-msg="' + a.id + '"></span>'
             : escapeHtml(teamLabelFor(a))) +
           "</dd>" +
+          (isManager
+            ? '<dt></dt><dd><button type="button" class="btn btn-outline-dark" data-delete-athlete="' + a.id + '" style="padding:6px 14px;font-size:13px;color:#c0392b;border-color:#f0c4c0;">Delete Athlete</button></dd>'
+            : "") +
           "</dl>" +
           "</div>"
         );
@@ -306,6 +311,26 @@
         const athlete = allAthletes.find(function (x) { return x.id === id; });
         if (athlete) athlete.coach_notes = value;
         msgEl.textContent = "Saved.";
+      });
+    });
+
+    listEl.querySelectorAll("[data-delete-athlete]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const id = btn.dataset.deleteAthlete;
+        const athlete = allAthletes.find(function (x) { return x.id === id; });
+        const name = athlete ? athlete.full_name : "this athlete";
+        const paid = athlete && athlete.registrations.length;
+        if (!confirm("Permanently delete " + name + "? Their attendance, RSVPs and team responses are removed too." +
+          (paid ? "\n\nTheir payment records are kept (just no longer linked to an athlete)." : "") +
+          "\n\nThis can't be undone.")) return;
+        btn.disabled = true;
+        const { error } = await supabaseClient.from("athletes").delete().eq("id", id);
+        if (error) {
+          btn.disabled = false;
+          alert("Could not delete: " + error.message);
+          return;
+        }
+        loadRoster();
       });
     });
 
@@ -561,6 +586,7 @@
     const auth = await requireRole(["owner", "head_coach", "assistant_coach"]);
     if (!auth) return;
     canEdit = auth.role !== "assistant_coach";
+    isManager = auth.role === "owner";
 
     // Team list comes from the schedules table so it stays in sync with the
     // club's real teams rather than being hardcoded here.

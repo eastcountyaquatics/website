@@ -185,10 +185,9 @@
     teamSelect.innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
 
-    // Assistant coaches can only log their own hours (see coach_hours RLS),
-    // so skip the picker entirely and just lock it to themselves -- a
-    // dropdown full of names they'd get rejected for picking is confusing.
-    const hoursRoster = myRole === "assistant_coach"
+    // Everyone but the Manager logs hours only for themselves, so the
+    // picker is locked to their own name.
+    const hoursRoster = myRole !== "owner"
       ? coachRoster.filter(function (c) { return c.profile_id === currentUserId; })
       : coachRoster;
     const coachSelect = document.getElementById("hours-coach-select");
@@ -197,7 +196,7 @@
     if (hoursRoster.length === 0) {
       coachSelect.innerHTML = '<option value="">No coaches yet</option>';
       coachSelect.disabled = true;
-    } else if (myRole === "assistant_coach") {
+    } else if (myRole !== "owner") {
       coachSelect.value = currentUserId;
       coachSelect.disabled = true;
     }

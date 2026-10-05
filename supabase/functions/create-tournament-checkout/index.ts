@@ -83,6 +83,10 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // Card and bank account (ACH) only -- the club turned off the other
+      // wallets/pay-later options. Bank payments clear in a few business days;
+      // stripe-webhook waits for checkout.session.async_payment_succeeded.
+      payment_method_types: ["card", "us_bank_account"],
       line_items: [
         {
           price_data: {

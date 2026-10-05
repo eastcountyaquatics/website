@@ -49,10 +49,22 @@ Deno.serve(async (req) => {
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     const isOwner = profile?.role === "owner";
 
-    let query = supabase.from("masters_subscriptions").select("*");
+    // Only the current membership -- a member who canceled and rejoined has
+    // an old canceled row too, which would otherwise make this ambiguous.
+    let query = supabase.from("masters_subscriptions").select("*").in("status", ["pending", "active", "paused", "past_due"]);
     query = body.subscription_id && isOwner ? query.eq("id", body.subscription_id) : query.eq("user_id", user.id);
     const { data: sub, error: subError } = await query.maybeSingle();
     if (subError || !sub) return json({ error: "Masters subscription not found" }, 404);
+
+    // Free coach memberships have no Stripe subscription -- just update
+    // the status directly.
+    if (sub.comped) {
+      const compStatus = action === "pause" ? "paused" : action === "resume" ? "active" : "canceled";
+      const { error: compError } = await supabase.from("masters_subscriptions").update({ status: compStatus }).eq("id", sub.id);
+      if (compError) return json({ error: compError.message }, 500);
+      return json({ ok: true, status: compStatus });
+    }
+
     if (!sub.stripe_subscription_id) {
       return json({ error: "This membership isn't linked to a Stripe subscription yet" }, 422);
     }

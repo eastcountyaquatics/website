@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const athleteIds = [...new Set(items.map((i: any) => i.athlete_id))];
     const { data: athletes, error: athletesError } = await supabase
       .from("athletes")
-      .select("id, full_name")
+      .select("id, full_name, is_self")
       .in("id", athleteIds);
     if (athletesError || !athletes || athletes.length !== athleteIds.length) {
       return json({ error: "One or more athletes could not be verified" }, 400);
@@ -71,8 +71,14 @@ Deno.serve(async (req) => {
     }
     const optionById = new Map(options.map((o: any) => [o.id, o]));
 
+    // Coaches (any staff role) register THEMSELVES free -- the athlete
+    // record they marked "this is me". Their kids still pay.
+    const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    const isStaff = !!callerProfile?.role;
+
     const lineItems = [];
     const registrations = [];
+    const freeRegistrations = [];
     for (const item of items) {
       const option = optionById.get(item.registration_option_id);
       const athlete = athleteById.get(item.athlete_id);
@@ -82,13 +88,60 @@ Deno.serve(async (req) => {
       if (!option.is_open) {
         return json({ error: `"${option.label}" is not currently open for registration` }, 400);
       }
-      lineItems.push({ price: option.stripe_price_id, quantity: 1 });
-      registrations.push({
+      const reg = {
         athlete_id: athlete.id,
         athlete_name: athlete.full_name,
         registration_option_id: option.id,
         registration_label: option.label,
-      });
+      };
+      if (isStaff && athlete.is_self) {
+        freeRegistrations.push(reg);
+        continue;
+      }
+      lineItems.push({ price: option.stripe_price_id, quantity: 1 });
+      registrations.push(reg);
+    }
+
+    const siteUrl0 = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
+
+    if (freeRegistrations.length) {
+      // Recorded straight away as paid at $0 -- no Stripe involved. Written
+      // with the service role (families can't insert purchases directly).
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const c = body.consent && typeof body.consent === "object" ? body.consent : {};
+      const freeConsent = {
+        heard_about: typeof c.heard_about === "string" ? c.heard_about.slice(0, 60) : null,
+        referral_name: typeof c.referral_name === "string" ? c.referral_name.slice(0, 120) : null,
+        agreed_at: typeof c.agreed_at === "string" ? c.agreed_at.slice(0, 40) : null,
+      };
+      for (const r of freeRegistrations) {
+        const { data: existing } = await admin
+          .from("purchases")
+          .select("id")
+          .eq("athlete_id", r.athlete_id)
+          .eq("registration_option_id", r.registration_option_id)
+          .eq("status", "paid")
+          .limit(1)
+          .maybeSingle();
+        if (existing) continue;
+        const { error: freeError } = await admin.from("purchases").insert({
+          user_id: user.id,
+          athlete_id: r.athlete_id,
+          registration_option_id: r.registration_option_id,
+          description: `${r.registration_label} — ${r.athlete_name} (free — coach)`,
+          amount_cents: 0,
+          currency: "usd",
+          status: "paid",
+          consent_responses: freeConsent,
+        });
+        if (freeError) {
+          console.error("Could not record free coach registration", freeError);
+          return json({ error: "Could not record your free coach registration. Please try again." }, 500);
+        }
+      }
+      if (!lineItems.length) {
+        return json({ url: `${siteUrl0}/dashboard.html?checkout=free` });
+      }
     }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {

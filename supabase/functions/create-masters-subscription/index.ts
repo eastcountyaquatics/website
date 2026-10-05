@@ -57,6 +57,21 @@ Deno.serve(async (req) => {
       return json({ error: "You already have a Masters membership. Manage it below instead of starting a new one." }, 409);
     }
 
+    // Coaches (any staff role) get Masters free: a comped membership with
+    // no Stripe subscription behind it.
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    if (profile?.role) {
+      const { error: compError } = await supabase.from("masters_subscriptions").insert({
+        user_id: user.id,
+        tier,
+        status: "active",
+        comped: true,
+      });
+      if (compError) return json({ error: "Could not start your free coach membership: " + compError.message }, 500);
+      const site = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
+      return json({ url: `${site}/dashboard.html?masters=success` });
+    }
+
     const { data: priceTier } = await supabase
       .from("masters_price_tiers")
       .select("stripe_price_id, label")

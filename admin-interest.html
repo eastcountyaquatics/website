@@ -72,6 +72,10 @@
           <textarea id="ann-body" rows="3"></textarea>
         </div>
         <div class="field">
+          <label for="ann-cost">Estimated Cost (optional)</label>
+          <input type="text" id="ann-cost" maxlength="200" placeholder="e.g. About $150 plus travel">
+        </div>
+        <div class="field">
           <label for="ann-deadline">Respond By (optional)</label>
           <input type="date" id="ann-deadline">
         </div>
@@ -139,7 +143,7 @@
     const listEl = document.getElementById("ann-list");
     const { data, error } = await supabaseClient
       .from("team_announcements")
-      .select("id, team_slug, title, body, deadline, archived, created_at")
+      .select("id, team_slug, title, body, deadline, estimated_cost, archived, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -169,6 +173,7 @@
         '<div style="display:flex;justify-content:space-between;gap:10px;">' +
         "<div><h4>" + escapeHtml(a.title) + (a.archived ? ' <span class="muted" style="font-weight:400;">(archived)</span>' : "") + "</h4>" +
         '<div class="muted" style="font-size:13px;">' + escapeHtml(teamLabel(a.team_slug)) +
+        (a.estimated_cost ? " &middot; est. cost " + escapeHtml(a.estimated_cost) : "") +
         (a.deadline ? " &middot; respond by " + formatDate(a.deadline) : "") + "</div></div>" +
         '<div class="admin-list-actions">' +
         '<button data-mark-yes="' + a.id + '" data-team="' + escapeHtml(a.team_slug) + '">Mark Yes</button>' +
@@ -289,6 +294,7 @@
       title: document.getElementById("ann-title").value.trim(),
       body: document.getElementById("ann-body").value.trim() || null,
       deadline: document.getElementById("ann-deadline").value || null,
+      estimated_cost: document.getElementById("ann-cost").value.trim() || null,
     };
 
     const { error } = await supabaseClient.from("team_announcements").insert(payload);

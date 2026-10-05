@@ -75,9 +75,18 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:640px;">
+    <div class="notice" id="adc-admin-box" style="display:none;margin-bottom:16px;">
+      <strong>Manager:</strong> set the tournament year everyone sees on this page.
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+        <select id="adc-admin-year" style="padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;"></select>
+        <button type="button" id="adc-admin-save" class="btn btn-primary" style="padding:8px 16px;">Save</button>
+        <span id="adc-admin-msg" style="font-size:13px;"></span>
+      </div>
+    </div>
     <div class="adc-year-row">
       <label for="adc-year-select">Tournament Year</label>
       <select id="adc-year-select"></select>
+      <strong id="adc-year-fixed" style="display:none;font-size:18px;"></strong>
     </div>
     <div class="table-wrap" style="overflow-x:auto;">
       <table class="schedule adc-chart">
@@ -105,7 +114,7 @@
             <label for="adc-dob">Date of Birth</label>
             <input type="date" id="adc-dob" required>
           </div>
-          <div class="field" style="margin:0;">
+          <div class="field" style="margin:0;" id="adc-calc-year-field">
             <label for="adc-calc-year">Tournament Year</label>
             <select id="adc-calc-year"></select>
           </div>
@@ -216,6 +225,57 @@
   yearSelect.addEventListener("change", function () {
     renderChart(parseInt(this.value, 10));
   });
+
+  // The Manager can pin the tournament year for everyone (site_settings
+  // "age_calculator_year"); visitors then see that year fixed instead of
+  // a dropdown. "Let visitors choose" clears it.
+  function applyFixedYear(year) {
+    const fixed = !!year;
+    yearSelect.style.display = fixed ? "none" : "";
+    document.getElementById("adc-year-fixed").style.display = fixed ? "" : "none";
+    document.getElementById("adc-calc-year-field").style.display = fixed ? "none" : "";
+    if (fixed) {
+      document.getElementById("adc-year-fixed").textContent = year;
+      yearSelect.innerHTML = yearOptionsHtml(year);
+      calcYearSelect.innerHTML = yearOptionsHtml(year);
+      yearSelect.value = String(year);
+      calcYearSelect.value = String(year);
+    }
+    renderChart(fixed ? year : parseInt(yearSelect.value, 10));
+  }
+
+  (async function () {
+    try {
+      const { data } = await supabaseClient.from("site_settings").select("value").eq("key", "age_calculator_year").maybeSingle();
+      const year = data && data.value ? parseInt(data.value, 10) : null;
+      if (year) applyFixedYear(year);
+
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session || (await getUserRole(session.user.id)) !== "owner") return;
+      const adminSelect = document.getElementById("adc-admin-year");
+      adminSelect.innerHTML = '<option value="">Let visitors choose</option>' + yearOptionsHtml(year || currentYear);
+      adminSelect.value = year ? String(year) : "";
+      document.getElementById("adc-admin-box").style.display = "block";
+      document.getElementById("adc-admin-save").addEventListener("click", async function () {
+        const chosen = adminSelect.value ? parseInt(adminSelect.value, 10) : null;
+        const { error } = await supabaseClient.from("site_settings").upsert(
+          { key: "age_calculator_year", value: chosen, updated_at: new Date().toISOString() },
+          { onConflict: "key" }
+        );
+        const msg = document.getElementById("adc-admin-msg");
+        msg.textContent = error ? "Could not save: " + error.message : "Saved.";
+        if (!error) {
+          if (!chosen) {
+            yearSelect.innerHTML = yearOptionsHtml(currentYear);
+            calcYearSelect.innerHTML = yearOptionsHtml(currentYear);
+          }
+          applyFixedYear(chosen);
+        }
+      });
+    } catch (e) {
+      // Page works fine with the visitor-chosen year if settings can't load.
+    }
+  })();
 
   document.getElementById("adc-calc-form").addEventListener("submit", function (e) {
     e.preventDefault();

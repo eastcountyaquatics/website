@@ -94,11 +94,9 @@
           </div>
         </div>
         <div class="field">
-          <label for="t-team-slug">Team</label>
-          <select id="t-team-slug" required>
-            <option value="" disabled selected>Choose a team&hellip;</option>
-          </select>
-          <p class="muted" style="font-size:12px;margin-top:4px;">Lets that team's families RSVP and builds a roster below.</p>
+          <label>Team(s)</label>
+          <div id="t-team-boxes" style="display:flex;flex-wrap:wrap;gap:6px 16px;padding:6px 0;"></div>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Check every team going to this tournament &mdash; their families can RSVP and the roster below includes all of them.</p>
         </div>
         <div class="field">
           <label for="t-rsvp-deadline">RSVP Deadline</label>
@@ -129,7 +127,7 @@
         <div class="field" id="t-age-as-of-wrap" style="display:none;">
           <label for="t-age-as-of">Age As Of</label>
           <input type="date" id="t-age-as-of">
-          <p class="muted" style="font-size:12px;margin-top:4px;">Defaults to the tournament's start date &mdash; change it if the age cutoff should be a different date.</p>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Defaults to the August 1 following the tournament start &mdash; change it if the age cutoff should be a different date.</p>
         </div>
         <div class="field">
           <label for="t-description">Description (optional)</label>
@@ -195,9 +193,26 @@
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
     teams = withTournamentTeams(data);
-    const select = document.getElementById("t-team-slug");
-    select.innerHTML = '<option value="" disabled' + (document.getElementById("t-id").value ? "" : " selected") + '>Choose a team&hellip;</option>' +
-      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+    document.getElementById("t-team-boxes").innerHTML = teams.map(function (t) {
+      return '<label style="display:flex;align-items:center;gap:5px;font-weight:400;"><input type="checkbox" class="t-team-box" value="' +
+        escapeHtml(t.team_slug) + '" style="width:auto;"> ' + escapeHtml(t.team_label) + "</label>";
+    }).join("");
+  }
+  function selectedTeams() {
+    return Array.prototype.map.call(document.querySelectorAll(".t-team-box:checked"), function (b) { return b.value; });
+  }
+  function setSelectedTeams(slugs) {
+    document.querySelectorAll(".t-team-box").forEach(function (b) { b.checked = (slugs || []).indexOf(b.value) !== -1; });
+  }
+  function tournamentTeams(t) {
+    return t.team_slugs && t.team_slugs.length ? t.team_slugs : (t.team_slug ? [t.team_slug] : []);
+  }
+  // Tournament ages default to the August 1 on or after the start date
+  // (USA Water Polo's age-group cutoff), not the start date itself.
+  function nextAugustFirst(dateStr) {
+    if (!dateStr) return "";
+    const year = parseInt(dateStr.slice(0, 4), 10);
+    return dateStr <= year + "-08-01" ? year + "-08-01" : (year + 1) + "-08-01";
   }
   function teamLabel(slug) {
     const t = teams.find(function (x) { return x.team_slug === slug; });
@@ -242,7 +257,7 @@
           "<h4>" + escapeHtml(t.name) + " " +
           '<span class="status-pill ' + t.status + '">' + (t.status === "interest" ? "Interest Form" : "Live") + "</span>" +
           (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatTournamentDates(t) + (t.team_slug ? " &middot; " + escapeHtml(teamLabel(t.team_slug)) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + (t.max_age ? " &middot; " + t.max_age + "U max" : "") + "</div>" +
+          '<div class="muted" style="font-size:13px;">' + formatTournamentDates(t) + (tournamentTeams(t).length ? " &middot; " + escapeHtml(tournamentTeams(t).map(teamLabel).join(", ")) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + (t.max_age ? " &middot; " + t.max_age + "U max" : "") + "</div>" +
           "</div>" +
           (canEdit
             ? '<div class="admin-list-actions">' +
@@ -296,12 +311,12 @@
   document.getElementById("t-max-age").addEventListener("input", function () {
     document.getElementById("t-age-as-of-wrap").style.display = this.value ? "block" : "none";
     if (this.value && !document.getElementById("t-age-as-of").value) {
-      document.getElementById("t-age-as-of").value = document.getElementById("t-event-date").value;
+      document.getElementById("t-age-as-of").value = nextAugustFirst(document.getElementById("t-event-date").value);
     }
   });
   document.getElementById("t-event-date").addEventListener("change", function () {
     const ageAsOf = document.getElementById("t-age-as-of");
-    if (!ageAsOf.dataset.touched) ageAsOf.value = this.value;
+    if (!ageAsOf.dataset.touched) ageAsOf.value = nextAugustFirst(this.value);
   });
   document.getElementById("t-age-as-of").addEventListener("input", function () { this.dataset.touched = "1"; });
 
@@ -333,7 +348,7 @@
     document.getElementById("t-status").value = t.status || "live";
     document.getElementById("t-name").value = t.name;
     document.getElementById("t-event-date").value = t.event_date;
-    document.getElementById("t-team-slug").value = t.team_slug || "";
+    setSelectedTeams(tournamentTeams(t));
     document.getElementById("t-rsvp-deadline").value = t.rsvp_deadline || "";
     document.getElementById("t-location").value = t.location || "";
     document.getElementById("t-travel").checked = !!t.travel_days;
@@ -342,7 +357,7 @@
     document.getElementById("t-travel-days").dataset.touched = t.travel_days ? "1" : "";
     document.getElementById("t-cost-note").value = t.estimated_cost_note || "";
     document.getElementById("t-max-age").value = t.max_age || "";
-    document.getElementById("t-age-as-of").value = t.age_as_of || t.event_date;
+    document.getElementById("t-age-as-of").value = t.age_as_of || nextAugustFirst(t.event_date);
     document.getElementById("t-age-as-of").dataset.touched = t.age_as_of ? "1" : "";
     document.getElementById("t-age-as-of-wrap").style.display = t.max_age ? "block" : "none";
     document.getElementById("t-description").value = t.description || "";
@@ -364,6 +379,7 @@
 
   function resetTournamentForm() {
     document.getElementById("tournament-form").reset();
+    setSelectedTeams([]);
     document.getElementById("t-id").value = "";
     document.getElementById("t-age-as-of").dataset.touched = "";
     document.getElementById("t-age-as-of-wrap").style.display = "none";
@@ -383,6 +399,12 @@
     const msg = document.getElementById("tournament-form-msg");
     msg.className = "form-msg";
 
+    if (!selectedTeams().length) {
+      msg.className = "form-msg error";
+      msg.textContent = "Check at least one team.";
+      return;
+    }
+
     const activeMode = document.querySelector("[data-datemode].active").dataset.datemode;
     const extraDates = activeMode === "multiple"
       ? Array.from(document.querySelectorAll("[data-extra-date]")).map(function (i) { return i.value; }).filter(Boolean)
@@ -394,13 +416,14 @@
       event_date: document.getElementById("t-event-date").value,
       end_date: activeMode === "range" ? (document.getElementById("t-end-date").value || null) : null,
       additional_dates: extraDates,
-      team_slug: document.getElementById("t-team-slug").value || null,
+      team_slug: selectedTeams()[0] || null,
+      team_slugs: selectedTeams(),
       rsvp_deadline: document.getElementById("t-rsvp-deadline").value || null,
       location: document.getElementById("t-location").value.trim() || null,
       travel_days: document.getElementById("t-travel").checked ? (parseInt(document.getElementById("t-travel-days").value, 10) || 1) : null,
       estimated_cost_note: document.getElementById("t-cost-note").value.trim() || null,
       max_age: document.getElementById("t-max-age").value ? parseInt(document.getElementById("t-max-age").value, 10) : null,
-      age_as_of: document.getElementById("t-max-age").value ? (document.getElementById("t-age-as-of").value || document.getElementById("t-event-date").value) : null,
+      age_as_of: document.getElementById("t-max-age").value ? (document.getElementById("t-age-as-of").value || nextAugustFirst(document.getElementById("t-event-date").value)) : null,
       description: document.getElementById("t-description").value.trim() || null,
       requirements: document.getElementById("t-requirements").value.trim() || null,
       shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,

@@ -562,10 +562,10 @@
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const tournamentCols = "id, name, status, event_date, team_slug, rsvp_deadline, location, estimated_cost_note";
+    const tournamentCols = "id, name, status, event_date, team_slug, team_slugs, rsvp_deadline, location, estimated_cost_note";
     const [byTeamRes, byInviteRes] = await Promise.all([
       teamSlugs.length
-        ? supabaseClient.from("tournaments").select(tournamentCols).eq("is_published", true).in("team_slug", teamSlugs).gte("event_date", today)
+        ? supabaseClient.from("tournaments").select(tournamentCols).eq("is_published", true).overlaps("team_slugs", teamSlugs).gte("event_date", today)
         : Promise.resolve({ data: [] }),
       // A direct invite always shows the tournament to that athlete's family,
       // even if the tournament's own team doesn't match any of their teams
@@ -595,7 +595,8 @@
     tlist.forEach(function (t) {
       myAthletes.forEach(function (a) {
         const key = t.id + ":" + a.id;
-        const isOwnTeam = tournamentTeamSlugsFor(a.team_slug).indexOf(t.team_slug) !== -1;
+        const mySlugs = tournamentTeamSlugsFor(a.team_slug);
+        const isOwnTeam = (t.team_slugs && t.team_slugs.length ? t.team_slugs : [t.team_slug]).some(function (s) { return mySlugs.indexOf(s) !== -1; });
         const invite = inviteByKey[key];
         if (!isOwnTeam && !invite) return;
         cards.push({ t: t, a: a, rsvp: rsvpByKey[key], invite: invite, crossTeam: !isOwnTeam });
@@ -633,7 +634,9 @@
           '<h4 style="margin-bottom:2px;">' + escapeHtml(c.t.name) +
           (statusLabel ? ' <span class="response-pill ' + statusLabel.toLowerCase() + '" style="vertical-align:middle;">' + statusLabel + "</span>" : "") + "</h4>" +
           '<p class="muted" style="margin-bottom:' + (c.t.estimated_cost_note ? "2px" : "10px") + ';">' + escapeHtml(c.a.full_name) + " &middot; " + formatDate(c.t.event_date) +
-          (c.t.team_slug ? " &middot; " + escapeHtml(teamLabelForSlug(c.t.team_slug)) : "") +
+          ((c.t.team_slugs && c.t.team_slugs.length ? c.t.team_slugs : (c.t.team_slug ? [c.t.team_slug] : [])).length
+            ? " &middot; " + escapeHtml((c.t.team_slugs && c.t.team_slugs.length ? c.t.team_slugs : [c.t.team_slug]).map(teamLabelForSlug).join(", "))
+            : "") +
           (c.t.location ? " &middot; " + escapeHtml(c.t.location) : "") +
           (c.t.rsvp_deadline ? " &middot; RSVP by " + formatDate(c.t.rsvp_deadline) : "") + "</p>" +
           (c.crossTeam ? '<p class="muted" style="margin-bottom:8px;font-size:12.5px;">' + escapeHtml(c.a.full_name) + " has been invited to this tournament individually &mdash; accepting only adds them to this tournament's roster and does not change their team.</p>" : "") +
@@ -755,7 +758,7 @@
 
     const { data: announcements } = await supabaseClient
       .from("team_announcements")
-      .select("id, team_slug, title, body, deadline, created_at")
+      .select("id, team_slug, title, body, deadline, estimated_cost, created_at")
       .in("team_slug", teamSlugs)
       .eq("archived", false)
       .order("created_at", { ascending: false });
@@ -785,6 +788,7 @@
       return '<div class="card" style="margin-bottom:12px;">' +
         "<h4>" + escapeHtml(c.ann.title) + "</h4>" +
         (c.ann.body ? '<p class="muted" style="font-size:14px;">' + escapeHtml(c.ann.body) + "</p>" : "") +
+        (c.ann.estimated_cost ? '<p class="muted" style="font-size:12.5px;"><strong>Estimated cost:</strong> ' + escapeHtml(c.ann.estimated_cost) + "</p>" : "") +
         (c.ann.deadline ? '<p class="muted" style="font-size:12.5px;">' + (overdue ? "Was due " : "Respond by ") + formatDate(c.ann.deadline) + "</p>" : "") +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px;">' +
         "<strong>" + escapeHtml(c.a.full_name) + "</strong>" +

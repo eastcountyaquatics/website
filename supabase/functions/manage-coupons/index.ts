@@ -84,30 +84,40 @@ Deno.serve(async (req) => {
         return json({ error: "Code must be 3-40 letters/numbers/dashes/underscores" }, 400);
       }
 
-      // Every code must be scoped to exactly one tournament or registration
-      // option ("team session") -- there is no unrestricted/global code
-      // through this workflow. Stripe has no native concept of "this
-      // tournament", so the scope lives in the coupon's own metadata and
-      // checkout (create-checkout-session / create-tournament-checkout)
-      // checks it against what's actually being purchased before applying
-      // the discount.
+      // A code is scoped to one tournament, one registration option
+      // ("team session"), every session ("all_sessions" -- e.g. a sibling
+      // discount), or every session and tournament ("all" -- e.g. coaches'
+      // kids, so it never has to be re-created per event). Stripe has no
+      // native concept of "this tournament", so the scope lives in the
+      // coupon's own metadata and checkout (create-checkout-session /
+      // create-tournament-checkout) checks it against what's actually being
+      // purchased before applying the discount.
       const scopeType = String(body.scope_type || "");
       const scopeId = String(body.scope_id || "").trim();
-      if (scopeType !== "tournament" && scopeType !== "registration_option") {
-        return json({ error: "Choose whether this code applies to a tournament or a team registration session" }, 400);
+      const allScopes: Record<string, string> = {
+        all_sessions: "All sessions",
+        all: "All sessions and tournaments",
+      };
+      let scopeLabel = "";
+      if (allScopes[scopeType]) {
+        scopeLabel = allScopes[scopeType];
+      } else {
+        if (scopeType !== "tournament" && scopeType !== "registration_option") {
+          return json({ error: "Choose what this code applies to" }, 400);
+        }
+        if (!scopeId) {
+          return json({ error: "Choose which tournament or session this code applies to" }, 400);
+        }
+        const scopeTable = scopeType === "tournament" ? "tournaments" : "registration_options";
+        const scopeLabelCol = scopeType === "tournament" ? "name" : "label";
+        const { data: scopeRow } = await supabase.from(scopeTable).select(scopeLabelCol).eq("id", scopeId).maybeSingle();
+        if (!scopeRow) return json({ error: "That tournament or session could not be found" }, 400);
+        scopeLabel = String((scopeRow as Record<string, unknown>)[scopeLabelCol] || "");
       }
-      if (!scopeId) {
-        return json({ error: "Choose which tournament or session this code applies to" }, 400);
-      }
-      const scopeTable = scopeType === "tournament" ? "tournaments" : "registration_options";
-      const scopeLabelCol = scopeType === "tournament" ? "name" : "label";
-      const { data: scopeRow } = await supabase.from(scopeTable).select(scopeLabelCol).eq("id", scopeId).maybeSingle();
-      if (!scopeRow) return json({ error: "That tournament or session could not be found" }, 400);
-      const scopeLabel = String((scopeRow as Record<string, unknown>)[scopeLabelCol] || "");
 
       const couponParams: Stripe.CouponCreateParams = {
         duration: "once",
-        metadata: { scope_type: scopeType, scope_id: scopeId, scope_label: scopeLabel },
+        metadata: { scope_type: scopeType, scope_id: allScopes[scopeType] ? "" : scopeId, scope_label: scopeLabel },
       };
       if (body.discount_type === "percent") {
         const pct = Number(body.value);

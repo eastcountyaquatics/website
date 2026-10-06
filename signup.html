@@ -150,7 +150,8 @@
     }
 
     if (data.session) {
-      window.location.href = "dashboard.html";
+      // From the homepage "Start Free Trial" button: land on the trial section.
+      window.location.href = new URLSearchParams(window.location.search).get("trial") ? "dashboard.html#free-trial" : "dashboard.html";
       return;
     }
 

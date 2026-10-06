@@ -58,9 +58,9 @@ Deno.serve(async (req) => {
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
     const returnUrl = `${siteUrl}/tournament-invite.html?token=${encodeURIComponent(token)}`;
 
-    // Same rule as registration checkout: a code only works for the
-    // specific tournament it was created for, checked server-side against
-    // the coupon's own metadata rather than trusted from the client.
+    // Same rule as registration checkout: a code works for the specific
+    // tournament it was created for, or for everything ("all"), checked
+    // server-side against the coupon's own metadata.
     let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
     if (discountCode) {
       const promoCodes = await stripe.promotionCodes.list({
@@ -73,8 +73,9 @@ Deno.serve(async (req) => {
         return json({ error: `Discount code "${discountCode}" was not recognized or has expired.` }, 400);
       }
       const promo = promoCodes.data[0];
-      const appliesHere = promo.coupon.metadata?.scope_type === "tournament" &&
-        promo.coupon.metadata?.scope_id === tournament.id;
+      const appliesHere = promo.coupon.metadata?.scope_type === "all" ||
+        (promo.coupon.metadata?.scope_type === "tournament" &&
+          promo.coupon.metadata?.scope_id === tournament.id);
       if (!appliesHere) {
         return json({ error: `Discount code "${discountCode}" doesn't apply to this tournament.` }, 400);
       }

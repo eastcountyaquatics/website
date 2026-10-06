@@ -221,6 +221,14 @@
       return ix - iy;
     });
 
+    // 2-week free trial started from the family's My Account.
+    function trialPill(a) {
+      if (!a.trial_expires_on) return "";
+      const active = a.trial_expires_on >= new Date().toLocaleDateString("en-CA");
+      return ' <span class="status-pill ' + (active ? "paid" : "pending") + '" style="font-size:11px;">' +
+        (active ? "Free Trial &middot; expires " : "Free Trial expired ") + formatDate(a.trial_expires_on + "T00:00:00") + "</span>";
+    }
+
     function renderAthlete(a) {
         const age = calcAge(a.birthdate);
         const regList = a.registrations.length
@@ -233,7 +241,7 @@
         return (
           '<div class="roster-row" data-id="' + a.id + '">' +
           '<div class="roster-row-head">' +
-          "<h4>" + escapeHtml(a.full_name) + (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") + "</h4>" +
+          "<h4>" + escapeHtml(a.full_name) + (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") + trialPill(a) + "</h4>" +
           '<span class="muted" style="font-size:13px;">' + escapeHtml(a.parent_name || a.parent_email || "") + "</span>" +
           "</div>" +
           '<dl class="roster-detail">' +
@@ -407,6 +415,8 @@
         school: a.school,
         uswp_number: a.uswp_number,
         team_slug: a.team_slug,
+        trial_started_on: a.trial_started_on,
+        trial_expires_on: a.trial_expires_on,
         emergency_contact_name: a.emergency_contact_name,
         emergency_contact_relationship: a.emergency_contact_relationship,
         emergency_contact2_relationship: a.emergency_contact2_relationship,
@@ -457,6 +467,7 @@
     { key: "birthdate", label: "Birthdate", get: function (a) { return a.birthdate || ""; }, defaultOn: false },
     { key: "sex", label: "Sex", get: function (a) { return a.sex || ""; }, defaultOn: false },
     { key: "school", label: "School", get: function (a) { return a.school || ""; }, defaultOn: false },
+    { key: "trial", label: "Free Trial", get: function (a) { return a.trial_expires_on ? a.trial_started_on + " to " + a.trial_expires_on : ""; }, defaultOn: false },
     { key: "parent_name", label: "Parent Name", get: function (a) { return a.parent_name || ""; }, defaultOn: true },
     { key: "parent_email", label: "Parent Email", get: function (a) { return a.parent_email || ""; }, defaultOn: true },
     { key: "parent_phone", label: "Parent Phone", get: function (a) { return a.parent_phone || ""; }, defaultOn: false },

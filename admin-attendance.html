@@ -170,7 +170,7 @@
   async function init() {
     const [{ data: teamRows }, { data: athleteRows }, { data: coachRows }] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
-      supabaseClient.from("athletes").select("id, full_name, birthdate, sex, team_slug"),
+      supabaseClient.from("athletes").select("id, full_name, birthdate, sex, team_slug, trial_expires_on"),
       // Everyone with real coach/owner access, straight from profiles.role --
       // not the separate "About Us" coaches bio table -- so a brand-new
       // coach shows up here the moment they have access, with nothing to
@@ -286,7 +286,11 @@
         const present = presentIds.has(a.id);
         return (
           '<div class="attendance-row' + (present ? " present" : "") + '" data-row="' + a.id + '">' +
-          '<span class="att-name">' + escapeHtml(a.full_name) + "</span>" +
+          '<span class="att-name">' + escapeHtml(a.full_name) +
+          (a.trial_expires_on
+            ? ' <span class="muted" style="font-size:12px;font-weight:400;">(' + (a.trial_expires_on >= new Date().toLocaleDateString("en-CA") ? "free trial until " : "trial expired ") +
+              new Date(a.trial_expires_on + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ")</span>"
+            : "") + "</span>" +
           '<button type="button" class="att-toggle" data-athlete="' + a.id + '" aria-pressed="' + present + '">' +
           (present ? "\u2713 Present" : "Mark Present") + "</button>" +
           "</div>"

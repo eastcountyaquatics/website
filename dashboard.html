@@ -109,7 +109,6 @@
             <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
               <input type="checkbox" id="athlete_is_self" style="width:auto;"> This athlete is me (I&rsquo;m registering myself)
             </label>
-            <p class="muted" style="font-size:12px;margin-top:4px;">Coaches register themselves for free.</p>
           </div>
           <div class="field">
             <label for="athlete_birthdate">Birthdate</label>
@@ -211,6 +210,19 @@
   </div>
 </section>
 
+<section class="section-tight" id="free-trial">
+  <div class="container">
+    <div class="dash-grid" style="grid-template-columns:1fr;">
+      <div class="dash-card">
+        <h3>2-Week Free Trial <span class="muted" style="font-weight:400;font-size:14px;">(new athletes only)</span></h3>
+        <p class="muted" style="margin-bottom:14px;">New to ECA? Your athlete can practice free for 2 weeks starting the day you sign up here. Find practice times on the <a href="teams.html" style="color:var(--blue);font-weight:700;">Teams page</a> under your athlete&rsquo;s age group. A free <a href="https://www.usawaterpolo.com" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;">USA Water Polo trial membership</a> is required to get in the pool. Does not apply to Splashball.</p>
+        <div id="trial-msg" class="form-msg"></div>
+        <div id="trial-section"><p class="muted">Loading&hellip;</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="section-tight">
   <div class="container">
     <div class="dash-grid" style="grid-template-columns:1fr;">
@@ -229,6 +241,7 @@
       <div class="dash-card">
         <h3>Masters Membership</h3>
         <p class="muted" style="margin-bottom:14px;">A separate monthly subscription from team registration &mdash; billed to you directly, and you can pause it anytime. See <a href="masters.html" style="color:var(--blue);font-weight:700;">the Masters page</a> for practice details.</p>
+        <p class="muted" style="margin:-6px 0 14px;font-size:13px;"><strong>Coaches register themselves for free.</strong> Signed in with your coach account, just click <em>Join Free</em>.</p>
         <div id="masters-msg" class="form-msg"></div>
         <div id="masters-section"><p class="muted">Loading&hellip;</p></div>
       </div>
@@ -400,12 +413,6 @@
       banner.innerHTML =
         '<div class="container" style="padding-top:20px;"><div class="notice" style="border-color:var(--blue);background:#eef1ff;color:#1a1a4d;">' +
         "You're registered! Your payment was received &mdash; see it below under Purchases." +
-        "</div></div>";
-      banner.style.display = "block";
-    } else if (status === "free") {
-      banner.innerHTML =
-        '<div class="container" style="padding-top:20px;"><div class="notice" style="border-color:var(--blue);background:#eef1ff;color:#1a1a4d;">' +
-        "You're registered &mdash; free for coaches. See it below under Purchases." +
         "</div></div>";
       banner.style.display = "block";
     } else if (status === "cancelled") {
@@ -972,7 +979,7 @@
   async function loadAthletes() {
     const { data, error } = await supabaseClient
       .from("athletes")
-      .select("id, full_name, birthdate, sex, school, team_slug, uswp_number, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, emergency_contact_relationship, emergency_contact2_relationship, is_self, notes")
+      .select("id, full_name, birthdate, sex, school, team_slug, uswp_number, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, emergency_contact_relationship, emergency_contact2_relationship, is_self, notes, trial_started_on, trial_expires_on")
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -993,6 +1000,7 @@
             '<h4 style="margin:0;font-size:15px;">' +
             escapeHtml(a.full_name) +
             (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") +
+            trialPill(a) +
             "</h4>" +
             '<div class="admin-list-actions"><button data-edit-athlete="' + a.id + '">Edit</button><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
             "</div>" +
@@ -1045,6 +1053,71 @@
     }
     // Refresh the checkbox lists on any already-rendered registration cards.
     loadRegistrationOptions();
+    loadFreeTrialSection();
+  }
+
+  // 2-week free trial (start_free_trial RPC): one per athlete, youth only,
+  // never for an athlete who has already paid for a session. The trial
+  // dates live on the athlete, so the club sees them on Registered Athletes.
+  function localIsoToday() {
+    return new Date().toLocaleDateString("en-CA");
+  }
+  function trialPill(a) {
+    if (!a.trial_expires_on) return "";
+    const active = a.trial_expires_on >= localIsoToday();
+    return ' <span class="status-pill ' + (active ? "paid" : "pending") + '" style="font-size:11px;">' +
+      (active ? "Free trial until " : "Free trial ended ") + formatDate(a.trial_expires_on + "T00:00:00") + "</span>";
+  }
+
+  async function loadFreeTrialSection() {
+    const wrap = document.getElementById("trial-section");
+    if (!myAthletes.length) {
+      wrap.innerHTML = '<p class="muted">Add your athlete above first, then start their free trial here.</p>';
+      return;
+    }
+    const { data: paidRows } = await supabaseClient
+      .from("purchases").select("athlete_id")
+      .in("athlete_id", myAthletes.map(function (a) { return a.id; }))
+      .eq("status", "paid");
+    const paidIds = (paidRows || []).map(function (p) { return p.athlete_id; });
+
+    wrap.innerHTML = myAthletes.map(function (a) {
+      const age = calcAge(a.birthdate);
+      let right;
+      if (a.trial_expires_on) {
+        right = trialPill(a) + (a.trial_expires_on < localIsoToday() && paidIds.indexOf(a.id) === -1
+          ? '<div class="muted" style="font-size:12.5px;margin-top:4px;">Register above to keep playing.</div>' : "");
+      } else if (paidIds.indexOf(a.id) !== -1) {
+        right = '<span class="muted" style="font-size:13px;">Already registered</span>';
+      } else if (age === null) {
+        right = '<span class="muted" style="font-size:13px;">Add a birthdate first</span>';
+      } else if (age > 18) {
+        right = '<span class="muted" style="font-size:13px;">Adults: see Masters below</span>';
+      } else {
+        right = '<button type="button" class="btn btn-primary" data-start-trial="' + a.id + '" style="padding:8px 14px;font-size:14px;">Start Free Trial</button>';
+      }
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid #e3e6f0;border-radius:8px;padding:12px 16px;margin-bottom:10px;">' +
+        "<strong>" + escapeHtml(a.full_name) + "</strong><div style=\"text-align:right;\">" + right + "</div></div>";
+    }).join("");
+
+    wrap.querySelectorAll("[data-start-trial]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const a = myAthletes.find(function (x) { return x.id === btn.dataset.startTrial; });
+        if (!confirm("Start " + (a ? a.full_name : "this athlete") + "'s 2-week free trial today? It can only be used once.")) return;
+        const msg = document.getElementById("trial-msg");
+        btn.disabled = true;
+        const { data, error } = await supabaseClient.rpc("start_free_trial", { p_athlete_id: btn.dataset.startTrial });
+        if (error) {
+          btn.disabled = false;
+          msg.className = "form-msg error";
+          msg.textContent = error.message;
+          return;
+        }
+        msg.className = "form-msg success";
+        msg.textContent = "Free trial started! " + (a ? a.full_name : "Your athlete") + " can practice through " + formatDate(data + "T00:00:00") + ".";
+        loadAthletes();
+      });
+    });
   }
 
   function startEditAthlete(a) {
@@ -1111,19 +1184,20 @@
     loadAthletes();
   });
 
-  // Is this athlete in the age group a program is for? Programs with no
-  // team tags are open to every youth athlete. Splashball takes 8 & under.
-  // Anyone 19+ (as of the Aug 1 cutoff) has aged out of youth programs --
-  // Masters is their program.
+  // Is this athlete in the age group a program is for? Only programs tagged
+  // with the athlete's team are offered -- a program with no age groups
+  // tagged is offered to nobody until the club tags it (it used to be open
+  // to everyone, which put a 10U athlete under a high school program).
+  // Splashball takes 8 & under. Programs tagged "Masters" are for adults
+  // 19+ (as of the Aug 1 cutoff); everything else is youth-only.
   function athleteFitsProgram(a, optionTeams) {
+    if (!optionTeams.length) return false;
     const age = calcAge(a.birthdate);
-    if (age !== null && age > 18) return false;
-    if (!optionTeams.length) return true;
-    if (optionTeams.indexOf("splashball") !== -1 && age !== null && age <= 8) return true;
+    if (age === null) return false; // needs a birthdate to know the age group
+    if (age > 18) return optionTeams.indexOf("masters") !== -1;
+    if (optionTeams.indexOf("splashball") !== -1 && age <= 8) return true;
     if (a.team_slug) return optionTeams.indexOf(a.team_slug) !== -1;
-    const derived = deriveTeamSlug(age, a.sex);
-    if (!derived) return true; // missing birthdate/sex -- can't tell, so don't hide them
-    return optionTeams.indexOf(derived) !== -1;
+    return optionTeams.indexOf(deriveTeamSlug(age, a.sex)) !== -1;
   }
 
   function mastersNote() {
@@ -1155,8 +1229,19 @@
       return;
     }
 
+    // Once a family has athletes on file, only the programs at least one of
+    // them fits are listed -- a 10U family never sees the high school
+    // program. With no athletes yet, everything open is shown as a preview.
+    const shown = !myAthletes.length ? options : options.filter(function (o) {
+      return myAthletes.some(function (a) { return athleteFitsProgram(a, o.team_slugs || []); });
+    });
+    if (!shown.length) {
+      wrap.innerHTML = '<p class="muted" style="text-align:center;">No programs are open for your athletes&rsquo; age groups right now &mdash; check back soon.</p>' + mastersNote();
+      return;
+    }
+
     wrap.innerHTML = '<div class="grid grid-3">' +
-      options
+      shown
         .map(function (o) {
           const amount = formatAmount(o.amount_cents, "usd");
           // Only athletes in this program's age group are offered -- age is
@@ -1175,7 +1260,6 @@
                       '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
                       '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
                       escapeHtml(a.full_name) +
-                      (isStaffAccount && a.is_self ? ' <span class="status-pill paid" style="font-size:11px;">Free for coaches</span>' : "") +
                       "</label>"
                     );
                   })
@@ -1376,7 +1460,7 @@
     document.getElementById("dash-greeting").textContent = "Welcome back";
     document.getElementById("dash-email").textContent = user.email;
 
-    // Staff (any admin role) register themselves and join Masters free.
+    // Staff (any admin role) join Masters free. Team sessions are paid.
     const role = await getUserRole(user.id);
     isStaffAccount = !!role;
     if (role) document.getElementById("staff-admin-banner").style.display = "block";

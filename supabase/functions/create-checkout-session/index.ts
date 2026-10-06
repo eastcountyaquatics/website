@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const athleteIds = [...new Set(items.map((i: any) => i.athlete_id))];
     const { data: athletes, error: athletesError } = await supabase
       .from("athletes")
-      .select("id, full_name, is_self")
+      .select("id, full_name, birthdate, sex, team_slug")
       .in("id", athleteIds);
     if (athletesError || !athletes || athletes.length !== athleteIds.length) {
       return json({ error: "One or more athletes could not be verified" }, 400);
@@ -64,21 +64,15 @@ Deno.serve(async (req) => {
     const optionIds = [...new Set(items.map((i: any) => i.registration_option_id))];
     const { data: options, error: optionsError } = await supabase
       .from("registration_options")
-      .select("id, label, stripe_price_id, is_open")
+      .select("id, label, stripe_price_id, is_open, team_slugs")
       .in("id", optionIds);
     if (optionsError || !options) {
       return json({ error: "Could not load registration options" }, 400);
     }
     const optionById = new Map(options.map((o: any) => [o.id, o]));
 
-    // Coaches (any staff role) register THEMSELVES free -- the athlete
-    // record they marked "this is me". Their kids still pay.
-    const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-    const isStaff = !!callerProfile?.role;
-
     const lineItems = [];
     const registrations = [];
-    const freeRegistrations = [];
     for (const item of items) {
       const option = optionById.get(item.registration_option_id);
       const athlete = athleteById.get(item.athlete_id);
@@ -88,60 +82,17 @@ Deno.serve(async (req) => {
       if (!option.is_open) {
         return json({ error: `"${option.label}" is not currently open for registration` }, 400);
       }
+      if (!athleteFitsProgram(athlete, option.team_slugs || [])) {
+        return json({ error: `${athlete.full_name} isn't in the age group for "${option.label}".` }, 400);
+      }
       const reg = {
         athlete_id: athlete.id,
         athlete_name: athlete.full_name,
         registration_option_id: option.id,
         registration_label: option.label,
       };
-      if (isStaff && athlete.is_self) {
-        freeRegistrations.push(reg);
-        continue;
-      }
       lineItems.push({ price: option.stripe_price_id, quantity: 1 });
       registrations.push(reg);
-    }
-
-    const siteUrl0 = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
-
-    if (freeRegistrations.length) {
-      // Recorded straight away as paid at $0 -- no Stripe involved. Written
-      // with the service role (families can't insert purchases directly).
-      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const c = body.consent && typeof body.consent === "object" ? body.consent : {};
-      const freeConsent = {
-        heard_about: typeof c.heard_about === "string" ? c.heard_about.slice(0, 60) : null,
-        referral_name: typeof c.referral_name === "string" ? c.referral_name.slice(0, 120) : null,
-        agreed_at: typeof c.agreed_at === "string" ? c.agreed_at.slice(0, 40) : null,
-      };
-      for (const r of freeRegistrations) {
-        const { data: existing } = await admin
-          .from("purchases")
-          .select("id")
-          .eq("athlete_id", r.athlete_id)
-          .eq("registration_option_id", r.registration_option_id)
-          .eq("status", "paid")
-          .limit(1)
-          .maybeSingle();
-        if (existing) continue;
-        const { error: freeError } = await admin.from("purchases").insert({
-          user_id: user.id,
-          athlete_id: r.athlete_id,
-          registration_option_id: r.registration_option_id,
-          description: `${r.registration_label} — ${r.athlete_name} (free — coach)`,
-          amount_cents: 0,
-          currency: "usd",
-          status: "paid",
-          consent_responses: freeConsent,
-        });
-        if (freeError) {
-          console.error("Could not record free coach registration", freeError);
-          return json({ error: "Could not record your free coach registration. Please try again." }, 500);
-        }
-      }
-      if (!lineItems.length) {
-        return json({ url: `${siteUrl0}/dashboard.html?checkout=free` });
-      }
     }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
@@ -177,14 +128,15 @@ Deno.serve(async (req) => {
         return json({ error: `Discount code "${consent.discount_code}" was not recognized or has expired. Remove it or double-check it to continue.` }, 400);
       }
       const promo = promoCodes.data[0];
-      // Every code is scoped to one tournament or registration option -- it
-      // never applies globally. Checked here, server-side, rather than
-      // trusting whatever the client sent, since the discount otherwise
-      // has nothing stopping it from being reused on an unrelated purchase.
+      // A code is scoped to one registration option, to every session
+      // ("all_sessions", e.g. a sibling discount), or to every session and
+      // tournament ("all", e.g. coaches' kids). Checked here, server-side,
+      // rather than trusting whatever the client sent.
       const scopeType = promo.coupon.metadata?.scope_type;
       const scopeId = promo.coupon.metadata?.scope_id;
-      const appliesHere = scopeType === "registration_option" && !!scopeId &&
-        registrations.some((r) => r.registration_option_id === scopeId);
+      const appliesHere = scopeType === "all" || scopeType === "all_sessions" ||
+        (scopeType === "registration_option" && !!scopeId &&
+          registrations.some((r) => r.registration_option_id === scopeId));
       if (!appliesHere) {
         return json({ error: `Discount code "${consent.discount_code}" doesn't apply to this registration.` }, 400);
       }
@@ -230,6 +182,29 @@ Deno.serve(async (req) => {
     return json({ error: "Something went wrong creating checkout" }, 500);
   }
 });
+
+// Same rule as dashboard.html's athleteFitsProgram / js/team-age.js: age
+// group by age on Aug 1 of the year after the season starts; a staff-set
+// team overrides it; Splashball is 8 & under; 19+ only fits "masters".
+function athleteFitsProgram(
+  a: { birthdate: string | null; sex: string | null; team_slug: string | null },
+  optionTeams: string[],
+): boolean {
+  if (!optionTeams.length || !a.birthdate) return false;
+  const now = new Date();
+  const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const [y, m, d] = a.birthdate.split("-").map(Number);
+  let age = seasonYear + 1 - y;
+  if (m > 8 || (m === 8 && d > 1)) age--;
+  if (age > 18) return optionTeams.includes("masters");
+  if (optionTeams.includes("splashball") && age <= 8) return true;
+  if (a.team_slug) return optionTeams.includes(a.team_slug);
+  const bracket = age <= 8 ? "8u" : age <= 10 ? "10u" : age <= 12 ? "12u" : age <= 14 ? "14u" : age <= 16 ? "16u" : "18u";
+  if (bracket === "8u" || bracket === "10u") return optionTeams.includes(bracket + "-coed");
+  const sex = (a.sex || "").toLowerCase();
+  const slug = sex === "male" ? bracket + "-boys" : sex === "female" ? bracket + "-girls" : null;
+  return !!slug && optionTeams.includes(slug);
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

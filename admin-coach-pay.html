@@ -81,7 +81,7 @@
 
     <div class="card" style="margin-bottom:20px;">
       <h3 style="margin-top:0;">Add Other Reimbursement</h3>
-      <p class="muted" style="font-size:13px;">Mileage, supplies, entry fees or anything else a coach paid for &mdash; added to that coach's pay for the month it's dated in.</p>
+      <p class="muted" style="font-size:13px;">Equipment, supplies, hotel, USWP Membership, etc. &mdash; added to that coach's pay for the month it's dated in. A receipt is required.</p>
       <form id="reimb-form" class="pay-filters" style="margin-bottom:0;">
         <div class="field" style="margin:0;min-width:170px;">
           <label for="reimb-coach">Coach</label>
@@ -97,7 +97,11 @@
         </div>
         <div class="field" style="margin:0;flex:1;min-width:180px;">
           <label for="reimb-desc">What for</label>
-          <input type="text" id="reimb-desc" maxlength="500" placeholder="e.g. Mileage to Riverside tournament" required>
+          <input type="text" id="reimb-desc" maxlength="500" placeholder="e.g. USWP Renewal" required>
+        </div>
+        <div class="field" style="margin:0;min-width:200px;">
+          <label for="reimb-receipt">Receipt</label>
+          <input type="file" id="reimb-receipt" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" required>
         </div>
         <button type="submit" class="btn btn-primary">Add</button>
       </form>
@@ -183,18 +187,53 @@
     const msg = document.getElementById("reimb-msg");
     const dollars = parseFloat(document.getElementById("reimb-amount").value);
     if (!(dollars > 0)) return;
+    const coachId = document.getElementById("reimb-coach").value;
+    const fileInput = document.getElementById("reimb-receipt");
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) {
+      msg.className = "form-msg error";
+      msg.textContent = "Attach the receipt (photo or PDF).";
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      msg.className = "form-msg error";
+      msg.textContent = "That file is over 10 MB — take a smaller photo or PDF.";
+      return;
+    }
+    const submitBtn = e.submitter || this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    msg.className = "form-msg";
+    msg.textContent = "Uploading receipt…";
+
+    // Private bucket, receipts/<coach id>/... -- the Manager and that coach
+    // can open it (reimbursement_receipts migration).
+    const ext = (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "pdf";
+    const path = "receipts/" + coachId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+    const upload = await supabaseClient.storage.from("coach-documents").upload(path, file, { contentType: file.type || undefined });
+    if (upload.error) {
+      submitBtn.disabled = false;
+      msg.className = "form-msg error";
+      msg.textContent = "Could not upload the receipt: " + upload.error.message;
+      return;
+    }
+
     const { error } = await supabaseClient.from("coach_reimbursements").insert({
-      coach_id: document.getElementById("reimb-coach").value,
+      coach_id: coachId,
       reimb_date: document.getElementById("reimb-date").value,
       amount_cents: Math.round(dollars * 100),
       description: document.getElementById("reimb-desc").value.trim(),
+      receipt_path: path,
       created_by: currentUserId,
     });
+    submitBtn.disabled = false;
     msg.className = error ? "form-msg error" : "form-msg success";
     msg.textContent = error ? "Could not save: " + error.message : "Reimbursement added.";
-    if (!error) {
+    if (error) {
+      await supabaseClient.storage.from("coach-documents").remove([path]);
+    } else {
       document.getElementById("reimb-amount").value = "";
       document.getElementById("reimb-desc").value = "";
+      fileInput.value = "";
       load();
     }
   });
@@ -227,7 +266,7 @@
 
     let reimbQuery = supabaseClient
       .from("coach_reimbursements")
-      .select("id, coach_id, reimb_date, amount_cents, description")
+      .select("id, coach_id, reimb_date, amount_cents, description, receipt_path")
       .order("reimb_date", { ascending: true });
     if (from) reimbQuery = reimbQuery.gte("reimb_date", from);
     if (to) reimbQuery = reimbQuery.lte("reimb_date", to);
@@ -345,7 +384,9 @@
         (c.reimbursements.length
           ? '<div class="payment-history">' + c.reimbursements.map(function (r) {
               return '<div class="payment-row"><span>' + fmtDate(r.reimb_date) + " &middot; Reimbursement &middot; " + escapeHtml(r.description) +
-                "</span><span>" + money(r.amount_cents) + ' <button type="button" data-delete-reimb="' + r.id + '">Remove</button></span></div>';
+                "</span><span>" + money(r.amount_cents) +
+                (r.receipt_path ? ' <button type="button" data-receipt="' + escapeHtml(r.receipt_path) + '">Receipt</button>' : "") +
+                ' <button type="button" data-delete-reimb="' + r.id + '">Remove</button></span></div>';
             }).join("") + "</div>"
           : "") +
         paymentsHtml +
@@ -373,11 +414,21 @@
       );
     }).join("");
 
+    listEl.querySelectorAll("[data-receipt]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const { data, error } = await supabaseClient.storage.from("coach-documents").createSignedUrl(btn.dataset.receipt, 120);
+        if (error || !data) { alert("Could not open the receipt: " + (error ? error.message : "unknown error")); return; }
+        window.open(data.signedUrl, "_blank", "noopener");
+      });
+    });
+
     listEl.querySelectorAll("[data-delete-reimb]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
         if (!confirm("Remove this reimbursement?")) return;
+        const receiptBtn = btn.parentNode.querySelector("[data-receipt]");
         const { error } = await supabaseClient.from("coach_reimbursements").delete().eq("id", btn.dataset.deleteReimb);
         if (error) { alert("Could not remove: " + error.message); return; }
+        if (receiptBtn) await supabaseClient.storage.from("coach-documents").remove([receiptBtn.dataset.receipt]);
         load();
       });
     });

@@ -72,12 +72,14 @@
         <div class="field">
           <label for="scope_type">Applies To</label>
           <select id="scope_type" required>
-            <option value="tournament">Tournament</option>
-            <option value="registration_option">Session</option>
+            <option value="tournament">One Tournament</option>
+            <option value="registration_option">One Session</option>
+            <option value="all_sessions">All Sessions (not tournaments)</option>
+            <option value="all">All Sessions and Tournaments</option>
           </select>
-          <p class="muted" style="font-size:12px;margin-top:4px;">Every code must be tied to one specific tournament or session &mdash; there are no club-wide codes.</p>
+          <p class="muted" style="font-size:12px;margin-top:4px;">&ldquo;All&rdquo; codes keep working for every new session (and tournament) without re-creating them &mdash; e.g. coaches&rsquo; kids, or a sibling code like ECASIBLING2 for all sessions. Pair them with <strong>Unlimited</strong> max uses.</p>
         </div>
-        <div class="field">
+        <div class="field" id="scope-id-field">
           <label for="scope_id">Which One</label>
           <select id="scope_id" required><option value="">Loading&hellip;</option></select>
         </div>
@@ -154,9 +156,17 @@
     renderScopeIdOptions();
   }
 
+  function isAllScope(type) {
+    return type === "all" || type === "all_sessions";
+  }
+
   function renderScopeIdOptions() {
     const type = document.getElementById("scope_type").value;
     const select = document.getElementById("scope_id");
+    const allScope = isAllScope(type);
+    document.getElementById("scope-id-field").style.display = allScope ? "none" : "";
+    select.required = !allScope;
+    if (allScope) return;
     const list = type === "tournament" ? tournamentOptions : registrationOptions;
     if (!list.length) {
       select.innerHTML = '<option value="">None yet &mdash; create one first</option>';
@@ -214,8 +224,9 @@
     const msg = document.getElementById("form-msg");
     msg.className = "form-msg";
 
-    const scopeId = document.getElementById("scope_id").value;
-    if (!scopeId) {
+    const scopeType = document.getElementById("scope_type").value;
+    const scopeId = isAllScope(scopeType) ? "" : document.getElementById("scope_id").value;
+    if (!scopeId && !isAllScope(scopeType)) {
       msg.className = "form-msg error";
       msg.textContent = "Choose which tournament or session this code applies to.";
       return;
@@ -226,7 +237,7 @@
       code: document.getElementById("code").value.trim(),
       discount_type: document.getElementById("discount_type").value,
       value: parseFloat(document.getElementById("value").value),
-      scope_type: document.getElementById("scope_type").value,
+      scope_type: scopeType,
       scope_id: scopeId,
       max_redemptions: document.getElementById("max_redemptions").value,
       expires_at: document.getElementById("expires_at").value || null,
@@ -250,6 +261,7 @@
     msg.className = "form-msg success";
     msg.textContent = "Created " + data.code + ".";
     document.getElementById("coupon-form").reset();
+    renderScopeIdOptions();
     loadCoupons();
   });
 

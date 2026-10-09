@@ -125,6 +125,7 @@
 <script src="js/team-age.js"></script>
 <script src="js/active-athletes.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/coach-reg-gate.js"></script>
 <script src="js/main.js"></script>
 <script>
   // YYYY-MM-DD in the viewer's own time zone. toISOString() is UTC, which
@@ -467,6 +468,7 @@
   (async function () {
     const auth = await requireRole(["owner", "head_coach", "assistant_coach"]);
     if (!auth) return;
+    if (!(await requireCoachRegistration(auth.role, "admin-attendance.html"))) return;
     currentUserId = auth.session.user.id;
     myRole = auth.role;
     init();

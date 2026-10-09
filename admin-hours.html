@@ -119,6 +119,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/coach-reg-gate.js"></script>
 <script src="js/main.js"></script>
 <script src="js/coach-rates.js"></script>
 <script>
@@ -325,6 +326,7 @@
   (async function () {
     const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
+    if (!(await requireCoachRegistration(auth.role, "admin-hours.html"))) return;
     isOwner = auth.role === "owner";
     if (isOwner) document.getElementById("report-btn").style.display = "";
 

@@ -64,7 +64,7 @@
     <div class="auth-switch">
       <a href="forgot-password.html">Forgot your password?</a>
     </div>
-    <div class="auth-switch">Don't have an account? <a href="signup.html">Create one</a></div>
+    <div class="auth-switch">Don't have an account? <a href="signup.html" id="signup-link">Create one</a></div>
   </div>
 </div>
 
@@ -143,8 +143,14 @@
       data: { session },
     } = await authClient.auth.getSession();
     const role = session ? await getUserRole(session.user.id, authClient) : null;
-    window.location.href = role ? "admin.html" : "dashboard.html";
+    window.location.href = safeNextPage() || (role ? "admin.html" : "dashboard.html");
   });
+
+  // Arrived from a free-trial link: a brand-new family signs up and lands
+  // on the trial section too.
+  if ((safeNextPage() || "").indexOf("#free-trial") !== -1) {
+    document.getElementById("signup-link").href = "signup.html?trial=1";
+  }
 </script>
 </body>
 </html>

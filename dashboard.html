@@ -217,7 +217,7 @@
     <div class="dash-grid" style="grid-template-columns:1fr;">
       <div class="dash-card">
         <h3>2-Week Free Trial <span class="muted" style="font-weight:400;font-size:14px;">(new athletes only)</span></h3>
-        <p class="muted" style="margin-bottom:14px;">New to ECA? Your athlete can practice free for 2 weeks starting the day you sign up here. Find practice times on the <a href="teams.html" style="color:var(--blue);font-weight:700;">Teams page</a> under your athlete&rsquo;s age group. A free <a href="https://www.usawaterpolo.com" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;">USA Water Polo trial membership</a> is required to get in the pool. Does not apply to Splashball.</p>
+        <p class="muted" style="margin-bottom:14px;">New to ECA? Your athlete can practice free for 2 weeks starting the day you sign up here. If the athlete would like to continue after the trial, the current session will be prorated. Please reach out to our Finance Director at <a href="mailto:Finance.SD.ECA@gmail.com" style="color:var(--blue);font-weight:700;">Finance.SD.ECA@gmail.com</a> to receive a coupon code to register after the trial. Find practice times on the <a href="teams.html" style="color:var(--blue);font-weight:700;">Teams page</a> under your athlete&rsquo;s age group. A free <a href="https://www.usawaterpolo.com" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;">USA Water Polo trial membership</a> is required to get in the pool. Does not apply to Splashball.</p>
         <div id="trial-msg" class="form-msg"></div>
         <div id="trial-section"><p class="muted">Loading&hellip;</p></div>
       </div>
@@ -384,6 +384,7 @@
 <script src="js/fn-error.js"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/coach-reg-gate.js"></script>
 <script src="js/main.js"></script>
 <script src="js/tournament-teams.js"></script>
 <script src="js/content-blocks.js"></script>
@@ -1524,6 +1525,7 @@
 
     // Staff (any admin role) join Masters free. Team sessions are paid.
     const role = await getUserRole(user.id);
+    if (!(await requireCoachRegistration(role, "dashboard.html"))) return;
     isStaffAccount = !!role;
     if (role) document.getElementById("staff-admin-banner").style.display = "block";
 

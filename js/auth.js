@@ -53,10 +53,19 @@ async function requireAuth() {
     data: { session },
   } = await supabaseClient.auth.getSession();
   if (!session) {
-    window.location.href = "login.html";
+    // Come back to this exact page (and #section) after signing in.
+    const here = (window.location.pathname.split("/").pop() || "dashboard.html") + window.location.search + window.location.hash;
+    window.location.href = "login.html?next=" + encodeURIComponent(here);
     return null;
   }
   return session;
+}
+
+// The page login.html should go to afterwards: only a page on this site
+// (e.g. "dashboard.html#free-trial"), never an outside address.
+function safeNextPage() {
+  const next = new URLSearchParams(window.location.search).get("next") || "";
+  return /^[a-z0-9-]+\.html(\?[a-z0-9=&%._-]*)?(#[a-z0-9-]+)?$/i.test(next) ? next : null;
 }
 
 // Call on admin pages. Redirects to login.html if signed out, or to

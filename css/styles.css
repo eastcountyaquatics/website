@@ -63,6 +63,10 @@ section{padding:72px 0;}
 }
 
 /* Header */
+/* In-page links (#coaches, #free-trial...) land below the sticky header
+   instead of under it. */
+html{scroll-padding-top:92px;}
+
 .site-header{
   position:sticky;top:0;z-index:100;
   background:var(--navy);

@@ -64,6 +64,7 @@
   <div class="container" style="max-width:680px;">
     <p class="muted" style="margin-bottom:20px;">Welcome to the ECA coaching staff! Please fill this out when you start, and again whenever something changes (new phone, renewed certification, etc.). Only the club manager can see what you submit.</p>
 
+    <div class="notice" id="reg-required" style="display:none;margin-bottom:16px;"><strong>One more step:</strong> please complete your coach registration. You&rsquo;ll go right back to the site when you&rsquo;re done.</div>
     <div id="reg-msg" class="form-msg"></div>
     <div class="card" id="reg-card">
       <form id="coach-reg-form">
@@ -229,6 +230,27 @@
     });
   });
 
+  // Signed-in coaches (sent here automatically from Admin / My Account --
+  // see js/coach-reg-gate.js) get their name and login email filled in.
+  // The email is locked to the login so the registration matches their
+  // account. Afterwards they go back to the page that sent them.
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = /^[a-z0-9-]+\.html$/.test(params.get("return") || "") ? params.get("return") : null;
+  let signedIn = false;
+  if (params.get("required")) document.getElementById("reg-required").style.display = "block";
+  (async function () {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    signedIn = true;
+    const { data: profile } = await supabaseClient.from("profiles").select("full_name, email, phone").eq("id", session.user.id).maybeSingle();
+    const email = (profile && profile.email) || session.user.email;
+    const emailInput = document.getElementById("cr-email");
+    emailInput.value = email;
+    emailInput.readOnly = true;
+    if (profile && profile.full_name && !document.getElementById("cr-name").value) document.getElementById("cr-name").value = profile.full_name;
+    if (profile && profile.phone && !document.getElementById("cr-phone").value) document.getElementById("cr-phone").value = profile.phone;
+  })();
+
   function val(id) {
     const v = document.getElementById(id).value.trim();
     return v || null;
@@ -325,6 +347,17 @@
       return;
     }
 
+    document.getElementById("reg-required").style.display = "none";
+    if (signedIn) {
+      const next = returnTo || "admin.html";
+      document.getElementById("reg-card").outerHTML =
+        '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
+        "<strong>Thanks &mdash; you're registered!</strong> Taking you back&hellip; " +
+        '<a href="' + next + '">Continue</a></div>';
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(function () { window.location.href = next; }, 1500);
+      return;
+    }
     document.getElementById("reg-card").outerHTML =
       '<div class="notice" style="border-left-color:#1c7a3a;background:#e9f8ee;color:#1c7a3a;">' +
       "<strong>Thanks &mdash; you're registered!</strong> Clint &amp; Marcy will be in touch. " +

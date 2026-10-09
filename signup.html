@@ -86,6 +86,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/coach-reg-gate.js"></script>
 <script src="js/main.js"></script><script>
   // A coach invite email links here with ?email=... so they land with it
   // already filled in -- using a different address would sign them up
@@ -150,13 +151,22 @@
     }
 
     if (data.session) {
+      // A coach (their access was set up ahead of time from their invite
+      // email) goes straight to the Coach Registration questionnaire.
+      const role = await getUserRole(data.session.user.id);
+      if (!(await requireCoachRegistration(role, "admin.html"))) return;
+      if (role) {
+        window.location.href = "admin.html";
+        return;
+      }
       // From the homepage "Start Free Trial" button: land on the trial section.
       window.location.href = new URLSearchParams(window.location.search).get("trial") ? "dashboard.html#free-trial" : "dashboard.html";
       return;
     }
 
     msg.className = "form-msg success";
-    msg.textContent = "Account created! Check your email to confirm your address, then sign in.";
+    msg.textContent = "Account created! Check your email to confirm your address, then sign in." +
+      " (Coaches: you'll fill out your coach registration right after you sign in.)";
     document.getElementById("signup-form").reset();
   });
 </script>

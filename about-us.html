@@ -248,7 +248,8 @@
         var gc = (a.team_group || "").localeCompare(b.team_group || "");
         if (gc !== 0) return gc;
       }
-      return (a.sort_order || 0) - (b.sort_order || 0);
+      // Alphabetical by first name within each group.
+      return (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" });
     });
 
     var founders = data.filter(function (c) { return c.team_group === "Club Founders"; });

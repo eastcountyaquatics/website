@@ -61,10 +61,13 @@ Deno.serve(async (req) => {
       if (!isHc) return json({ error: "You can only email your own team" }, 403);
     }
 
-    const { data: athletes } = await supabase
+    // Team = staff-assigned team, else the one birthdate/sex puts them on
+    // (adults 19+ are Masters) -- same rule as the site and
+    // public.athlete_team_slug. Most athletes have no assigned team_slug.
+    const { data: allAthletes } = await supabase
       .from("athletes")
-      .select("id, full_name, parent_id")
-      .eq("team_slug", announcement.team_slug);
+      .select("id, full_name, parent_id, team_slug, birthdate, sex");
+    const athletes = (allAthletes || []).filter((a) => athleteTeamSlug(a) === announcement.team_slug);
 
     const parentIds = Array.from(new Set((athletes || []).map((a) => a.parent_id).filter(Boolean)));
     if (parentIds.length === 0) {
@@ -127,6 +130,21 @@ Deno.serve(async (req) => {
     return json({ error: "Something went wrong sending the announcement email" }, 500);
   }
 });
+
+function athleteTeamSlug(a: { team_slug: string | null; birthdate: string | null; sex: string | null }): string | null {
+  if (a.team_slug) return a.team_slug;
+  if (!a.birthdate) return null;
+  const now = new Date();
+  const seasonYear = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const [y, m, d] = a.birthdate.split("-").map(Number);
+  let age = seasonYear + 1 - y;
+  if (m > 8 || (m === 8 && d > 1)) age--;
+  if (age > 18) return "masters";
+  const bracket = age <= 8 ? "8u" : age <= 10 ? "10u" : age <= 12 ? "12u" : age <= 14 ? "14u" : age <= 16 ? "16u" : "18u";
+  if (bracket === "8u" || bracket === "10u") return bracket + "-coed";
+  const sex = (a.sex || "").toLowerCase();
+  return sex === "male" ? bracket + "-boys" : sex === "female" ? bracket + "-girls" : null;
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

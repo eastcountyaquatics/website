@@ -479,10 +479,11 @@
   }
 
   function athleteResolvedTeamSlug(a) {
-    return a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
+    return athleteTournamentTeam(a);
   }
   function athleteResolvedTeamLabel(a) {
-    return a.team_slug ? teamLabel(a.team_slug) : deriveTeamLabel(calcAge(a.birthdate), a.sex);
+    const slug = athleteTournamentTeam(a);
+    return a.team_slug || slug === "masters" ? teamLabel(slug) : deriveTeamLabel(calcAge(a.birthdate), a.sex);
   }
 
   function setupInviteTeamSelect(t) {
@@ -499,7 +500,7 @@
     const listEl = document.getElementById("invite-team-roster-list");
     if (!slug) { wrapEl.style.display = "none"; return; }
     wrapEl.style.display = "block";
-    const players = (allAthletesCache || []).filter(function (a) { return athleteResolvedTeamSlug(a) === slug; });
+    const players = (allAthletesCache || []).filter(function (a) { return athleteOnTournamentTeams(a, [slug]); });
     if (!players.length) { listEl.innerHTML = '<p class="muted">No players on this team yet.</p>'; return; }
     listEl.innerHTML = players.map(inviteAthleteRowHtml).join("");
     wireInviteAthleteRows(listEl);
@@ -657,8 +658,12 @@
     }
     listEl.innerHTML = '<p class="muted">Loading&hellip;</p>';
 
-    const { data: rosterAthletes } = await supabaseClient
-      .from("athletes").select("id, full_name").in("team_slug", tournamentTeamList(t).reduce(function (all, slug) { return all.concat(regularTeamSlugsIn(slug)); }, [])).order("full_name", { ascending: true });
+    // Team membership is worked out the same way as everywhere else --
+    // assigned team, else birthdate/sex, adults = Masters -- not just the
+    // hand-assigned team_slug (most athletes don't have one).
+    const rosterAthletes = (allAthletesCache || (await loadAllAthletes())).filter(function (a) {
+      return athleteOnTournamentTeams(a, tournamentTeamList(t));
+    });
     const { data: rsvps } = await supabaseClient
       .from("tournament_rsvps").select("id, athlete_id, response, on_roster").eq("tournament_id", currentTournamentId);
     const rsvpByAthlete = {};

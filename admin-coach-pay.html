@@ -272,6 +272,15 @@
     if (to) reimbQuery = reimbQuery.lte("reimb_date", to);
     const { data: reimbRows } = await reimbQuery;
 
+    // Month-end sign-off status for every month in the range, shown on each
+    // coach's card (full history is in Month-End Hours Sign-Off below).
+    let signoffQuery = supabaseClient.from("coach_hours_signoffs").select("coach_id, period_month, status, responded_at");
+    if (from) signoffQuery = signoffQuery.gte("period_month", from.slice(0, 7) + "-01");
+    if (to) signoffQuery = signoffQuery.lte("period_month", to.slice(0, 7) + "-01");
+    const { data: signoffRows } = await signoffQuery;
+    const signoffsByCoach = {};
+    (signoffRows || []).forEach(function (r) { (signoffsByCoach[r.coach_id] = signoffsByCoach[r.coach_id] || []).push(r); });
+
     if (hoursError || paymentsError) {
       msgEl.className = "form-msg error";
       msgEl.textContent = "Could not load: " + ((hoursError || paymentsError).message);
@@ -368,6 +377,7 @@
       return (
         '<div class="coach-pay-card" data-coach-card="' + c.coachId + '">' +
         '<div class="coach-pay-head"><h3>' + escapeHtml(c.name) + '</h3><div class="coach-pay-total">' + money(c.totalOwedCents) + "</div></div>" +
+        signoffBadges(signoffsByCoach[c.coachId]) +
         '<div class="coach-pay-detail">' +
           ([
             c.practiceHours ? c.practiceHours.toFixed(2) + " practice hrs" : "",
@@ -508,6 +518,20 @@
   ["from-date", "to-date"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", load);
   });
+
+  // "Oct: ✓ Signed off Nov 2" per month, or "Sept: no sign-off sent".
+  function signoffBadges(rows) {
+    if (!rows || !rows.length) {
+      return '<div class="muted" style="font-size:12.5px;margin:-4px 0 6px;">Hours sign-off: not sent for this period yet</div>';
+    }
+    return '<div style="font-size:12.5px;margin:-4px 0 6px;">Hours sign-off: ' + rows
+      .sort(function (a, b) { return a.period_month.localeCompare(b.period_month); })
+      .map(function (r) {
+        const month = new Date(r.period_month + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+        return month + " " + (SIGNOFF_LABELS[r.status] || escapeHtml(r.status)) +
+          (r.responded_at ? ' <span class="muted">' + new Date(r.responded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span>" : "");
+      }).join(" &middot; ") + "</div>";
+  }
 
   // ---- Month-end sign-off -------------------------------------------------
   const SIGNOFF_LABELS = {

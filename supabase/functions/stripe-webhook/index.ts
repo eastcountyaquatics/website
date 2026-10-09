@@ -559,6 +559,9 @@ async function handleMastersCheckout(
   const { error } = await supabase.from("masters_subscriptions").upsert(
     {
       user_id: userId,
+      // Masters is per adult athlete on the account (older checkouts
+      // predate this and have no athlete).
+      athlete_id: session.metadata?.athlete_id || null,
       tier,
       stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
       stripe_subscription_id: session.subscription,
@@ -595,7 +598,7 @@ async function handleMastersInvoicePaid(
 
   const { data: sub } = await supabase
     .from("masters_subscriptions")
-    .select("user_id, tier")
+    .select("user_id, tier, athlete_id")
     .eq("stripe_subscription_id", subscriptionId)
     .maybeSingle();
   if (!sub) {
@@ -623,9 +626,13 @@ async function handleMastersInvoicePaid(
   }
 
   const tierLabel = sub.tier === "25_under" ? "25 & Under" : "26+";
+  const { data: player } = sub.athlete_id
+    ? await supabase.from("athletes").select("full_name").eq("id", sub.athlete_id).maybeSingle()
+    : { data: null };
   const { error } = await supabase.from("purchases").insert({
     user_id: sub.user_id,
-    description: `Masters Membership (${tierLabel})`,
+    athlete_id: sub.athlete_id ?? null,
+    description: `Masters Membership (${tierLabel})${player?.full_name ? ` — ${player.full_name}` : ""}`,
     amount_cents: invoice.amount_paid ?? 0,
     currency: (invoice.currency ?? "usd").toLowerCase(),
     status: "paid",

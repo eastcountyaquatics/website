@@ -276,7 +276,7 @@
       supabaseClient
         .from("profiles")
         .select("id, email, full_name, role, created_at")
-        .order("created_at", { ascending: false }),
+        .order("full_name", { ascending: true }),
       supabaseClient.from("head_coach_teams").select("profile_id, team_slug"),
     ]);
 

@@ -62,12 +62,6 @@
             <p class="muted">Log coaching hours and travel days for a tournament, start to end date.</p>
           </a>
         </div>
-        <div class="admin-nav-card" id="coach-registrations-card">
-          <a href="admin-coach-registrations.html" style="display:block;color:inherit;">
-            <h3 id="coach-reg-title">Coach Registrations</h3>
-            <p class="muted" id="coach-reg-desc">Coach info, certifications and W-9s from the registration form &mdash; set hourly rates here.</p>
-          </a>
-        </div>
       </div>
     </div>
     <div class="admin-group" data-group="teams" style="display:none;">
@@ -119,6 +113,12 @@
             <p class="muted">Add, edit, or remove coaches shown on the About Us page.</p>
           </a>
         </div>
+        <div class="admin-nav-card" id="coach-registrations-card">
+          <a href="admin-coach-registrations.html" style="display:block;color:inherit;">
+            <h3 id="coach-reg-title">Coach Registrations</h3>
+            <p class="muted" id="coach-reg-desc">Coach info, certifications and W-9s from the registration form &mdash; set hourly rates here.</p>
+          </a>
+        </div>
         <div class="admin-nav-card" id="registrations-card">
           <a href="admin-registrations.html" style="display:block;color:inherit;">
             <h3>Registrations</h3>
@@ -160,6 +160,15 @@
             <h3>Team Access</h3>
             <p class="muted">Set who has manager, coach, or head coach access to this admin area.</p>
           </a>
+        </div>
+        <div class="admin-nav-card" id="age-calc-card">
+          <h3>Age Calculator Year</h3>
+          <p class="muted">The tournament year the public <a href="age-division-calculator.html">Age Division Calculator</a> uses.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+            <select id="adc-admin-year" style="padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;"></select>
+            <button type="button" id="adc-admin-save" class="btn btn-primary" style="padding:8px 16px;">Save</button>
+          </div>
+          <div id="adc-admin-msg" class="form-msg" style="margin-top:6px;"></div>
         </div>
         <div class="admin-nav-card" id="signups-card">
           <a href="admin-signups.html" style="display:block;color:inherit;">
@@ -229,13 +238,42 @@
       coach: ["coaches"],
     };
     if (auth.role !== "owner") {
+      // Coaches keep their own registration in the Coaches group; the
+      // Manager's full list lives under Admin.
       document.getElementById("coach-reg-title").textContent = "My Coach Registration";
       document.getElementById("coach-reg-desc").textContent = "Your registration info and the hourly rate the club has set for you.";
+      document.querySelector('[data-group="coaches"] .admin-nav-cards').appendChild(document.getElementById("coach-registrations-card"));
+    } else {
+      setUpAgeCalcYear();
     }
     (GROUPS_BY_ROLE[auth.role] || []).forEach(function (group) {
       document.querySelector('[data-group="' + group + '"]').style.display = "block";
     });
   })();
+
+  // site_settings "age_calculator_year": the tournament year the public
+  // Age Division Calculator uses. Default is the current season's
+  // tournament year (Aug 1 of the year after the season starts).
+  async function setUpAgeCalcYear() {
+    const select = document.getElementById("adc-admin-year");
+    const msg = document.getElementById("adc-admin-msg");
+    const now = new Date();
+    const seasonTournamentYear = (now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1) + 1;
+    const { data } = await supabaseClient.from("site_settings").select("value").eq("key", "age_calculator_year").maybeSingle();
+    const saved = data && data.value ? parseInt(data.value, 10) : null;
+    let html = "";
+    for (let y = now.getFullYear() - 1; y <= now.getFullYear() + 3; y++) html += '<option value="' + y + '">' + y + "</option>";
+    select.innerHTML = html;
+    select.value = String(saved || seasonTournamentYear);
+    document.getElementById("adc-admin-save").addEventListener("click", async function () {
+      const { error } = await supabaseClient.from("site_settings").upsert(
+        { key: "age_calculator_year", value: parseInt(select.value, 10), updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      );
+      msg.className = error ? "form-msg error" : "form-msg success";
+      msg.textContent = error ? "Could not save: " + error.message : "Saved — the calculator now uses " + select.value + ".";
+    });
+  }
 </script>
 </body>
 </html>

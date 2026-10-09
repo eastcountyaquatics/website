@@ -120,6 +120,44 @@
   let registrations = [];
   let profileByEmail = {};
   let rateByProfileId = {};
+  let coachRecords = [];
+  let rateByRecordId = {};
+
+  // A registration is matched to its coach record on the Coaches page (where
+  // most rates live -- many coaches have no website login yet): by linked
+  // login, then by email, then by name. A typo'd last name ("McColluch" vs
+  // "McCulloch") still matches on first name + start of last name, as long
+  // as only one coach fits.
+  function normName(n) { return String(n || "").toLowerCase().replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim(); }
+  function coachRecordFor(r, profile) {
+    const email = r.email.toLowerCase();
+    let hit = profile && coachRecords.find(function (c) { return c.profile_id === profile.id; });
+    if (!hit) hit = coachRecords.find(function (c) {
+      return (c.invite_email && c.invite_email.toLowerCase() === email) || (c.contact_email && c.contact_email.toLowerCase() === email);
+    });
+    const name = normName(r.full_name);
+    if (!hit) hit = coachRecords.find(function (c) { return normName(c.full_name) === name; });
+    if (!hit) {
+      const parts = name.split(" ");
+      const first = parts[0], last = parts[parts.length - 1] || "";
+      if (first && last.length >= 3) {
+        const fuzzy = coachRecords.filter(function (c) {
+          const cp = normName(c.full_name).split(" ");
+          return cp[0] === first && (cp[cp.length - 1] || "").slice(0, 3) === last.slice(0, 3);
+        });
+        if (fuzzy.length === 1) hit = fuzzy[0];
+      }
+    }
+    return hit || null;
+  }
+  function byFirstName(rows) {
+    return rows.slice().sort(function (a, b) { return a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" }); });
+  }
+  function rateFor(profile, record) {
+    if (profile && rateByProfileId[profile.id] != null) return rateByProfileId[profile.id];
+    if (record && rateByRecordId[record.id] != null) return rateByRecordId[record.id];
+    return null;
+  }
 
   // Flags an expired / soon-expiring certification so the owner doesn't
   // have to eyeball every date.
@@ -149,7 +187,7 @@
   function render() {
     const listEl = document.getElementById("reg-list");
     const q = document.getElementById("reg-search").value.trim().toLowerCase();
-    const rows = latestPerEmail(registrations).filter(function (r) {
+    const rows = byFirstName(latestPerEmail(registrations)).filter(function (r) {
       return !q || r.full_name.toLowerCase().indexOf(q) !== -1 || r.email.toLowerCase().indexOf(q) !== -1;
     });
     if (!rows.length) {
@@ -159,7 +197,8 @@
 
     listEl.innerHTML = rows.map(function (r) {
       const profile = profileByEmail[r.email.toLowerCase()];
-      const rate = profile ? rateByProfileId[profile.id] : null;
+      const record = coachRecordFor(r, profile);
+      const rate = rateFor(profile, record);
       const flags =
         (r.lifeguard_certified ? expiryFlag("Lifeguard", r.lifeguard_expiration) : "") +
         (r.uswp_member ? expiryFlag("USAWP", r.uswp_expiration) : '<span class="reg-flag warn">No USAWP</span>') +
@@ -193,13 +232,14 @@
       ].map(function (pair) { return "<dt>" + pair[0] + "</dt><dd>" + pair[1] + "</dd>"; }).join("");
 
       return '<details class="reg-item"><summary><span><strong>' + escapeHtml(r.full_name) + "</strong>" + flags + "</span>" +
-        '<span class="muted" style="font-size:13px;white-space:nowrap;">' + (rate != null ? "$" + (rate / 100).toFixed(2) + "/hr" : "No rate set") + "</span></summary>" +
+        '<span class="muted" style="font-size:13px;white-space:nowrap;" data-rate-label="' + r.id + '">' + (rate != null ? "$" + (rate / 100).toFixed(2) + "/hr" : "No rate set") + "</span></summary>" +
         '<div class="reg-body"><dl class="reg-dl">' + dl + "</dl>" +
         '<div class="reg-owner">' +
           '<div class="field" style="margin:0;"><label style="font-size:13px;">Hourly Rate ($)</label>' +
-            (profile
-              ? '<input type="number" min="0" step="0.25" data-rate-for="' + r.id + '" value="' + (rate != null ? (rate / 100).toFixed(2) : "") + '" placeholder="22.00">'
-              : '<p class="muted" style="font-size:12.5px;margin:4px 0 0;">Coach needs a website account with ' + escapeHtml(r.email) + " first.</p>") +
+            (profile || record
+              ? '<input type="number" min="0" step="0.25" data-rate-for="' + r.id + '" value="' + (rate != null ? (rate / 100).toFixed(2) : "") + '" placeholder="22.00">' +
+                (record && !profile ? '<p class="muted" style="font-size:12px;margin:4px 0 0;">Same rate as ' + escapeHtml(record.full_name) + " on the Coaches page.</p>" : "")
+              : '<p class="muted" style="font-size:12.5px;margin:4px 0 0;">Add ' + escapeHtml(r.full_name) + " on the <a href=\"admin-coaches.html\">Coaches</a> page first, then set the rate.</p>") +
           "</div>" +
           '<div class="field" style="margin:0;"><label style="font-size:13px;">Owner Notes (coach never sees)</label>' +
             '<textarea rows="2" maxlength="2000" data-notes-for="' + r.id + '">' + escapeHtml(r.owner_notes || "") + "</textarea></div>" +
@@ -240,6 +280,25 @@
         let rateError = null;
         const rateInput = listEl.querySelector('[data-rate-for="' + id + '"]');
         const profile = profileByEmail[r.email.toLowerCase()];
+        const record = coachRecordFor(r, profile);
+        if (!error && rateInput && !profile && record) {
+          // No website login: the rate lives on the coach record.
+          const raw = rateInput.value.trim();
+          const dollars = parseFloat(raw);
+          if (raw && (isNaN(dollars) || dollars < 0)) {
+            rateError = { message: "Enter a valid hourly rate." };
+          } else if (raw) {
+            const cents = Math.round(dollars * 100);
+            rateError = (await supabaseClient.from("coach_record_rates").upsert(
+              { coach_record_id: record.id, hourly_rate_cents: cents, updated_at: new Date().toISOString() },
+              { onConflict: "coach_record_id" }
+            )).error;
+            if (!rateError) rateByRecordId[record.id] = cents;
+          } else if (rateByRecordId[record.id] != null && confirm("Remove this coach's hourly rate?")) {
+            await supabaseClient.from("coach_record_rates").delete().eq("coach_record_id", record.id);
+            delete rateByRecordId[record.id];
+          }
+        }
         if (!error && rateInput && profile) {
           const raw = rateInput.value.trim();
           if (raw) {
@@ -252,6 +311,14 @@
               if (res.cancelled) rateError = { message: "rate change cancelled (notes saved)." };
               else rateError = res.error || null;
               if (res.ok) rateByProfileId[profile.id] = Math.round(dollars * 100);
+              // Keep the Coaches page's copy in step.
+              if (res.ok && record) {
+                await supabaseClient.from("coach_record_rates").upsert(
+                  { coach_record_id: record.id, hourly_rate_cents: Math.round(dollars * 100), updated_at: new Date().toISOString() },
+                  { onConflict: "coach_record_id" }
+                );
+                rateByRecordId[record.id] = Math.round(dollars * 100);
+              }
             }
           } else if (rateByProfileId[profile.id] != null) {
             if (!confirm("Remove this coach's hourly rate (and its history)?")) {
@@ -271,6 +338,9 @@
         r.owner_notes = notes;
         msg.className = "form-msg success";
         msg.textContent = "Saved.";
+        const rateLabel = listEl.querySelector('[data-rate-label="' + id + '"]');
+        const newRate = rateFor(profile, record);
+        if (rateLabel) rateLabel.textContent = newRate != null ? "$" + (newRate / 100).toFixed(2) + "/hr" : "No rate set";
       });
     });
   }
@@ -324,10 +394,12 @@
   }
 
   async function load() {
-    const [{ data, error }, { data: profiles }, { data: rates }] = await Promise.all([
+    const [{ data, error }, { data: profiles }, { data: rates }, { data: records }, { data: recordRates }] = await Promise.all([
       supabaseClient.from("coach_registrations").select("*").order("created_at", { ascending: false }),
       supabaseClient.from("profiles").select("id, email, role"),
       supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
+      supabaseClient.from("coaches").select("id, full_name, profile_id, invite_email, contact_email"),
+      supabaseClient.from("coach_record_rates").select("coach_record_id, hourly_rate_cents"),
     ]);
     if (error) {
       document.getElementById("list-msg").className = "form-msg error";
@@ -340,13 +412,16 @@
     (profiles || []).forEach(function (p) { if (p.email) profileByEmail[p.email.toLowerCase()] = p; });
     rateByProfileId = {};
     (rates || []).forEach(function (r) { rateByProfileId[r.coach_id] = r.hourly_rate_cents; });
+    coachRecords = records || [];
+    rateByRecordId = {};
+    (recordRates || []).forEach(function (r) { rateByRecordId[r.coach_record_id] = r.hourly_rate_cents; });
     render();
   }
 
   document.getElementById("reg-search").addEventListener("input", render);
 
   document.getElementById("export-btn").addEventListener("click", function () {
-    const rows = latestPerEmail(registrations);
+    const rows = byFirstName(latestPerEmail(registrations));
     if (!rows.length) return;
     const header = ["Name", "Email", "Phone", "Date of Birth", "Shirt Size", "Mailing Address", "Emergency Contact", "Relationship",
       "Emergency Phone", "Certified Lifeguard", "Lifeguard Expiration", "Lifeguard Cert Uploaded", "Health Issues", "USAWP Member", "USAWP Number", "USAWP Expiration",
@@ -354,7 +429,7 @@
     const lines = [header.join(",")];
     rows.forEach(function (r) {
       const profile = profileByEmail[r.email.toLowerCase()];
-      const rate = profile ? rateByProfileId[profile.id] : null;
+      const rate = rateFor(profile, coachRecordFor(r, profile));
       lines.push([
         r.full_name, r.email, r.phone, r.date_of_birth, r.shirt_size, r.mailing_address, r.emergency_contact_name,
         r.emergency_contact_relationship, r.emergency_contact_phone, r.lifeguard_certified ? "Yes" : "No", r.lifeguard_expiration,

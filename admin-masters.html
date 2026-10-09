@@ -290,19 +290,38 @@
     }
 
     const userIds = [...new Set(subs.map(function (s) { return s.user_id; }))];
-    const { data: profiles } = await supabaseClient.from("profiles").select("id, email, full_name").in("id", userIds);
+    const athleteIds = subs.map(function (s) { return s.athlete_id; }).filter(Boolean);
+    const [{ data: profiles }, { data: athletes }] = await Promise.all([
+      supabaseClient.from("profiles").select("id, email, full_name").in("id", userIds),
+      athleteIds.length ? supabaseClient.from("athletes").select("id, full_name").in("id", athleteIds) : Promise.resolve({ data: [] }),
+    ]);
     const profileById = {};
     (profiles || []).forEach(function (p) { profileById[p.id] = p; });
+    const athleteById = {};
+    (athletes || []).forEach(function (a) { athleteById[a.id] = a; });
+    // Masters is per player: show the athlete's name (the account holder
+    // for memberships from before that).
+    function memberName(s) {
+      const a = athleteById[s.athlete_id];
+      const p = profileById[s.user_id];
+      return (a && a.full_name) || (p && (p.full_name || p.email)) || "Unknown member";
+    }
+    subs.sort(function (x, y) {
+      const ax = x.status === "canceled" ? 1 : 0, ay = y.status === "canceled" ? 1 : 0;
+      if (ax !== ay) return ax - ay;
+      return memberName(x).localeCompare(memberName(y), undefined, { sensitivity: "base" });
+    });
 
     listEl.innerHTML = subs
       .map(function (s) {
         const p = profileById[s.user_id];
-        const name = (p && (p.full_name || p.email)) || "Unknown member";
+        const name = memberName(s);
         return (
           '<div class="admin-list-item">' +
           "<div>" +
           "<h4>" + escapeHtml(name) + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + TIER_LABELS[s.tier] + " &middot; " +
+          '<div class="muted" style="font-size:13px;">' + (s.comped ? "Free (coach)" : TIER_LABELS[s.tier]) + " &middot; " +
+          (p && p.email ? escapeHtml(p.email) + " &middot; " : "") +
           '<span class="status-pill ' + (s.status === "active" ? "paid" : s.status === "canceled" ? "canceled" : "pending") + '">' + escapeHtml(s.status) + "</span>" +
           (s.current_period_end ? " &middot; renews " + formatDate(s.current_period_end) : "") + "</div>" +
           "</div>" +

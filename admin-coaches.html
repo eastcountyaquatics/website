@@ -141,7 +141,7 @@
           </div>
           <p class="muted" style="font-size:12px;margin-top:4px;">Shown as a circle everywhere on the site &mdash; a square, centered headshot crops best.</p>
         </div>
-        <div class="field" id="sort-order-field">
+        <div class="field" id="sort-order-field" style="display:none;"><!-- coaches are listed A-Z by first name -->
           <label for="sort_order">Display Order (lower shows first)</label>
           <input type="number" id="sort_order" value="0">
         </div>
@@ -398,8 +398,7 @@
     const { data, error } = await supabaseClient
       .from("coaches")
       .select("*")
-      .order("team_group", { ascending: true })
-      .order("sort_order", { ascending: true });
+      .order("full_name", { ascending: true });
 
     const listEl = document.getElementById("coach-list");
     if (error) {
@@ -700,7 +699,14 @@
         inviteNote = " An invite email was sent to " + inviteEmail + ".";
       } else {
         inviteEmailFailed = true;
-        inviteNote = " Coach access is set up for " + inviteEmail + ", but the invite EMAIL COULD NOT BE SENT" + (inviteResult && inviteResult.reason ? " (" + inviteResult.reason + ")" : "") + " -- please tell them to sign up directly at signup.html using this same email address.";
+        // Usually a Resend 403: until the club's own email domain is
+        // verified in Resend, it can only send to the club's own address.
+        const signupLink = new URL("signup.html?email=" + encodeURIComponent(inviteEmail), window.location.href).href;
+        inviteNote = " Coach access is set up for " + inviteEmail + ", but the site couldn't email them" +
+          (inviteResult && inviteResult.reason && inviteResult.reason.indexOf("403") !== -1
+            ? " (the club's email domain isn't verified with our email service yet)"
+            : inviteResult && inviteResult.reason ? " (" + inviteResult.reason + ")" : "") +
+          ". Text or email them this link to sign up with that same address: " + signupLink;
       }
     }
 

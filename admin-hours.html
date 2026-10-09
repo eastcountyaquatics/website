@@ -98,6 +98,7 @@
         <label for="to-date">To</label>
         <input type="date" id="to-date">
       </div>
+      <a id="report-btn" href="admin-coach-report.html" class="btn btn-primary" style="display:none;">Create Report</a>
       <button type="button" id="export-btn" class="btn btn-outline-dark">Export CSV</button>
     </div>
 
@@ -175,6 +176,8 @@
 
     const from = document.getElementById("from-date").value;
     const to = document.getElementById("to-date").value;
+    // Same date range on the printable Coach Hours Report.
+    document.getElementById("report-btn").href = "admin-coach-report.html?from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to);
 
     let q = supabaseClient
       .from("coach_hours")
@@ -323,6 +326,7 @@
     const auth = await requireRole(["owner", "coach", "head_coach", "assistant_coach"]);
     if (!auth) return;
     isOwner = auth.role === "owner";
+    if (isOwner) document.getElementById("report-btn").style.display = "";
 
     currentUserId = auth.session.user.id;
 
@@ -346,7 +350,7 @@
     if (isOwner) {
       const { data: staff } = await supabaseClient.rpc("list_staff_profiles");
       document.getElementById("log-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
-        (staff || []).map(function (c) {
+        (staff || []).slice().sort(function (a, b) { return (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" }); }).map(function (c) {
           return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>";
         }).join("");
       document.getElementById("log-coach").required = true;

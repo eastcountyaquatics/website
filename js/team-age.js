@@ -73,7 +73,7 @@
   function deriveTeamLabel(age, sex) {
     if (age === null || age === undefined) return "Needs birthdate";
     var bracket = ageBracket(age);
-    if (!bracket) return "Aged out (19+)";
+    if (!bracket) return "Masters (19+)";
     var upper = bracket.toUpperCase();
     if (bracket === "8u" || bracket === "10u") return upper + " Coed";
     var s = (sex || "").toLowerCase();

@@ -145,6 +145,7 @@
               <option value="">Select...</option>
               <option value="Parent">Parent</option>
               <option value="Guardian">Guardian</option>
+              <option value="Spouse">Spouse</option>
               <option value="Grandparent">Grandparent</option>
               <option value="Other Relative">Other Relative</option>
               <option value="Friend">Friend</option>
@@ -171,6 +172,7 @@
               <option value="">Select...</option>
               <option value="Parent">Parent</option>
               <option value="Guardian">Guardian</option>
+              <option value="Spouse">Spouse</option>
               <option value="Grandparent">Grandparent</option>
               <option value="Other Relative">Other Relative</option>
               <option value="Friend">Friend</option>
@@ -185,9 +187,9 @@
             <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100">
           </div>
           <div class="field">
-            <label for="athlete_notes">Medical / Allergy Notes</label>
-            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about" required></textarea>
-            <p class="muted" style="font-size:12px;margin-top:4px;">Enter N/A if not applicable.</p>
+            <label for="athlete_notes">Medical / Allergy Notes <span style="font-weight:400;color:#a12626;">&mdash; indicate NA if not applicable</span></label>
+            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about &mdash; or NA" required></textarea>
+            <p class="muted" style="font-size:12px;margin-top:4px;"><strong>Indicate NA if not applicable.</strong></p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button type="submit" id="athlete-submit-btn" class="btn btn-primary">Save Athlete</button>
@@ -241,7 +243,7 @@
       <div class="dash-card">
         <h3>Masters Membership</h3>
         <p class="muted" style="margin-bottom:14px;">A separate monthly subscription from team registration &mdash; billed to you directly, and you can pause it anytime. See <a href="masters.html" style="color:var(--blue);font-weight:700;">the Masters page</a> for practice details.</p>
-        <p class="muted" style="margin:-6px 0 14px;font-size:13px;"><strong>Coaches register themselves for free.</strong> Signed in with your coach account, just click <em>Join Free</em>.</p>
+        <p class="muted" style="margin:-6px 0 14px;font-size:13px;"><strong>Coaches register themselves for free</strong> &mdash; add yourself under My Athletes with &ldquo;This athlete is me&rdquo; checked, then click <em>Join Free (Coach)</em>.</p>
         <div id="masters-msg" class="form-msg"></div>
         <div id="masters-section"><p class="muted">Loading&hellip;</p></div>
       </div>
@@ -563,7 +565,7 @@
   // The athlete's team: a staff-assigned one, otherwise the one their
   // birthdate and sex put them on (js/team-age.js).
   function athleteTeamSlug(a) {
-    return a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
+    return athleteTournamentTeam(a); // js/tournament-teams.js -- adults are "masters"
   }
   // Same rules the database enforces on RSVPs (tournament_rsvp_eligibility):
   // on one of the tournament's teams, and not over its maximum age as of
@@ -862,82 +864,132 @@
     });
   }
 
+  // Masters is per adult athlete (19+ as of the Aug 1 cutoff) on this
+  // account: monthly 25 & Under / 26+ by the player's age today, a drop-in
+  // (a registration option tagged Masters), or free for a coach
+  // registering themselves ("this athlete is me").
+  function mastersAgeToday(birthdate) {
+    const now = new Date();
+    const dob = new Date(birthdate + "T00:00:00");
+    let age = now.getFullYear() - dob.getFullYear();
+    if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) age--;
+    return age;
+  }
+
   async function loadMastersSection() {
     var wrap = document.getElementById("masters-section");
     var msg = document.getElementById("masters-msg");
+    const adults = (myAthletes || []).filter(function (a) {
+      const age = calcAge(a.birthdate);
+      return age !== null && age > 18;
+    });
 
-    const { data: sub } = await supabaseClient
-      .from("masters_subscriptions")
-      .select("id, tier, status, current_period_end, comped")
-      .in("status", ["pending", "active", "paused", "past_due"])
-      .maybeSingle();
+    const [{ data: subs }, { data: tiers }, { data: dropIns }] = await Promise.all([
+      supabaseClient
+        .from("masters_subscriptions")
+        .select("id, athlete_id, tier, status, current_period_end, comped")
+        .eq("user_id", currentUser.id)
+        .in("status", ["pending", "active", "paused", "past_due"]),
+      supabaseClient.from("masters_price_tiers").select("tier, label, amount_cents"),
+      supabaseClient.from("registration_options").select("id, label, amount_cents, team_slugs").eq("is_open", true).contains("team_slugs", ["masters"]),
+    ]);
+    const tierByKey = {};
+    (tiers || []).forEach(function (t) { tierByKey[t.tier] = t; });
+    const subByAthlete = {};
+    const accountSubs = [];
+    (subs || []).forEach(function (sub) {
+      if (sub.athlete_id) subByAthlete[sub.athlete_id] = sub;
+      else accountSubs.push(sub); // memberships from before Masters was per athlete
+    });
 
-    if (sub) {
-      wrap.innerHTML =
-        "<p><strong>" + MASTERS_TIER_LABELS[sub.tier] + "</strong>" + (sub.comped ? " (free for coaches)" : "") + " &middot; " +
+    function subHtml(sub, name) {
+      return '<div style="border:1px solid #e3e6f0;border-radius:8px;padding:12px 16px;margin-bottom:10px;">' +
+        "<p style=\"margin:0;\"><strong>" + escapeHtml(name) + "</strong> &middot; " +
+        (sub.comped ? "Free (coach)" : escapeHtml(MASTERS_TIER_LABELS[sub.tier] || sub.tier) + " monthly") + " &middot; " +
         '<span class="status-pill ' + (sub.status === "active" ? "paid" : "pending") + '">' + escapeHtml(sub.status) + "</span>" +
-        (sub.current_period_end ? '<span class="muted"> &middot; renews ' + formatDate(sub.current_period_end) + "</span>" : "") +
+        (sub.current_period_end && !sub.comped ? '<span class="muted"> &middot; renews ' + formatDate(sub.current_period_end) + "</span>" : "") +
         "</p>" +
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">' +
-        (sub.status === "active" ? '<button type="button" class="btn btn-outline-dark" data-masters-action="pause">Pause Membership</button>' : "") +
-        (sub.status === "paused" ? '<button type="button" class="btn btn-primary" data-masters-action="resume">Resume Membership</button>' : "") +
-        (sub.status === "active" || sub.status === "paused" ? '<button type="button" class="btn btn-outline-dark" data-masters-action="cancel">Cancel Membership</button>' : "") +
-        "</div>";
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+        (sub.status === "active" ? '<button type="button" class="btn btn-outline-dark" data-masters-action="pause" data-sub="' + sub.id + '">Pause</button>' : "") +
+        (sub.status === "paused" ? '<button type="button" class="btn btn-primary" data-masters-action="resume" data-sub="' + sub.id + '">Resume</button>' : "") +
+        (sub.status === "active" || sub.status === "paused" ? '<button type="button" class="btn btn-outline-dark" data-masters-action="cancel" data-sub="' + sub.id + '">Cancel Membership</button>' : "") +
+        "</div></div>";
+    }
 
-      wrap.querySelectorAll("[data-masters-action]").forEach(function (btn) {
-        btn.addEventListener("click", async function () {
-          var action = btn.dataset.mastersAction;
-          if (action === "cancel" && !confirm("Cancel your Masters membership? You'd need to sign up again to rejoin.")) return;
-          btn.disabled = true;
-          msg.className = "form-msg";
-          const { data, error } = await supabaseClient.functions.invoke("manage-masters-subscription", { body: { action: action } });
-          btn.disabled = false;
-          if (error || !data || data.error) {
-            msg.className = "form-msg error";
-            msg.textContent = await functionErrorMessage(error, data, "Something went wrong.");
-            return;
-          }
-          loadMastersSection();
-        });
+    let html = accountSubs.map(function (sub) { return subHtml(sub, "Your membership"); }).join("");
+    if (!adults.length) {
+      html += '<p class="muted">Masters is for players 19 and over. Add the adult player (yourself, if it&rsquo;s you) under <strong>My Athletes</strong> above, then register them here.</p>';
+    }
+    adults.forEach(function (a) {
+      if (subByAthlete[a.id]) { html += subHtml(subByAthlete[a.id], a.full_name); return; }
+      const coachFree = isStaffAccount && a.is_self;
+      const tierKey = a.birthdate && mastersAgeToday(a.birthdate) <= 25 ? "25_under" : "26_plus";
+      const tier = tierByKey[tierKey];
+      let options = "";
+      if (coachFree) {
+        options += '<button type="button" class="btn btn-primary" data-masters-join="' + a.id + '">Join Free (Coach)</button>';
+      } else if (tier) {
+        options += '<button type="button" class="btn btn-primary" data-masters-join="' + a.id + '">' +
+          escapeHtml(tier.label || MASTERS_TIER_LABELS[tierKey]) + " Monthly &mdash; " + formatAmount(tier.amount_cents) + "/mo</button>";
+      }
+      (dropIns || []).forEach(function (o) {
+        options += '<button type="button" class="btn btn-outline-dark" data-masters-dropin="' + o.id + '" data-athlete="' + a.id + '">' +
+          escapeHtml(o.label) + " &mdash; " + formatAmount(o.amount_cents) + "</button>";
       });
-      return;
-    }
+      html += '<div style="border:1px solid #e3e6f0;border-radius:8px;padding:12px 16px;margin-bottom:10px;">' +
+        "<p style=\"margin:0 0 10px;\"><strong>" + escapeHtml(a.full_name) + "</strong>" +
+        (coachFree ? ' <span class="muted">&middot; free for coaches</span>' : ' <span class="muted">&middot; ' + escapeHtml(MASTERS_TIER_LABELS[tierKey]) + " rate (pause anytime)</span>") + "</p>" +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;">' + (options || '<span class="muted">Masters signup isn&rsquo;t set up yet &mdash; contact the club.</span>') + "</div>" +
+        '<div class="form-msg" data-masters-msg="' + a.id + '"></div></div>';
+    });
+    wrap.innerHTML = html;
 
-    const { data: tiers } = await supabaseClient.from("masters_price_tiers").select("tier, label, amount_cents").order("tier");
-    if (!tiers || tiers.length === 0) {
-      wrap.innerHTML = '<p class="muted">Masters membership signup isn\'t set up yet &mdash; contact the club.</p>';
-      return;
-    }
-
-    wrap.innerHTML = tiers
-      .map(function (t) {
-        return (
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e3e6f0;border-radius:8px;padding:12px 16px;margin-bottom:10px;">' +
-          "<div><strong>" + escapeHtml(t.label || MASTERS_TIER_LABELS[t.tier]) + "</strong><div class=\"muted\">" +
-            (isStaffAccount ? "Free for coaches" : formatAmount(t.amount_cents) + "/month, pause anytime") + "</div></div>" +
-          '<button type="button" class="btn btn-primary" data-masters-subscribe="' + t.tier + '">' + (isStaffAccount ? "Join Free" : "Subscribe") + "</button>" +
-          "</div>"
-        );
-      })
-      .join("");
-
-    wrap.querySelectorAll("[data-masters-subscribe]").forEach(function (btn) {
+    wrap.querySelectorAll("[data-masters-action]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
+        var action = btn.dataset.mastersAction;
+        if (action === "cancel" && !confirm("Cancel this Masters membership? You'd need to sign up again to rejoin.")) return;
         btn.disabled = true;
-        btn.textContent = "Redirecting...";
         msg.className = "form-msg";
-        const { data, error } = await supabaseClient.functions.invoke("create-masters-subscription", { body: { tier: btn.dataset.mastersSubscribe } });
+        const { data, error } = await supabaseClient.functions.invoke("manage-masters-subscription", { body: { action: action, subscription_id: btn.dataset.sub } });
+        btn.disabled = false;
+        if (error || !data || data.error) {
+          msg.className = "form-msg error";
+          msg.textContent = await functionErrorMessage(error, data, "Something went wrong.");
+          return;
+        }
+        loadMastersSection();
+      });
+    });
+
+    wrap.querySelectorAll("[data-masters-join]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const rowMsg = wrap.querySelector('[data-masters-msg="' + btn.dataset.mastersJoin + '"]');
+        const label = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "One moment...";
+        rowMsg.className = "form-msg";
+        const { data, error } = await supabaseClient.functions.invoke("create-masters-subscription", { body: { athlete_id: btn.dataset.mastersJoin } });
         if (error || !data || !data.url) {
           btn.disabled = false;
-          btn.textContent = "Subscribe";
-          msg.className = "form-msg error";
-          msg.textContent = await functionErrorMessage(error, data, "Could not start checkout. Please try again.");
+          btn.textContent = label;
+          rowMsg.className = "form-msg error";
+          rowMsg.textContent = await functionErrorMessage(error, data, "Could not start checkout. Please try again.");
           return;
         }
         window.location.href = data.url;
       });
     });
+
+    // Drop-in goes through the normal registration checkout (same
+    // agreement + payment as any program).
+    wrap.querySelectorAll("[data-masters-dropin]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const rowMsg = wrap.querySelector('[data-masters-msg="' + btn.dataset.athlete + '"]');
+        openConsentModal([{ athlete_id: btn.dataset.athlete, registration_option_id: btn.dataset.mastersDropin }], btn, rowMsg);
+      });
+    });
   }
+
 
   var myAthletes = [];
   var isStaffAccount = false;
@@ -980,6 +1032,9 @@
     const { data, error } = await supabaseClient
       .from("athletes")
       .select("id, full_name, birthdate, sex, school, team_slug, uswp_number, emergency_contact_name, emergency_contact_email, emergency_contact_phone1, emergency_contact_phone2, emergency_contact2_name, emergency_contact2_email, emergency_contact2_phone1, emergency_contact2_phone2, emergency_contact_relationship, emergency_contact2_relationship, is_self, notes, trial_started_on, trial_expires_on")
+      // Coaches and the Manager can read every athlete (RLS), so My Account
+      // must ask for this account's own athletes only.
+      .eq("parent_id", currentUser.id)
       .order("created_at", { ascending: true });
 
     const listEl = document.getElementById("athlete-list");
@@ -1054,6 +1109,7 @@
     // Refresh the checkbox lists on any already-rendered registration cards.
     loadRegistrationOptions();
     loadFreeTrialSection();
+    loadMastersSection();
   }
 
   // 2-week free trial (start_free_trial RPC): one per athlete, youth only,
@@ -1468,7 +1524,6 @@
     await loadAthletes();
     loadNotificationsSection();
     loadTeamLabels().then(loadTournamentsSection);
-    loadMastersSection();
     loadInterestSection();
 
     const { data: profile } = await supabaseClient
@@ -1506,15 +1561,16 @@
       }
     });
 
-    // Two policies feed this: rows tied to this login (user_id) plus rows
-    // tied to one of this parent's athletes (tournament payments, which are
-    // always made without logging in, so user_id is null on those -- only
-    // the athlete link identifies them as belonging to this family). A
-    // single select naturally returns the union of whatever RLS allows, so
-    // this one query already gets both; no need to fetch twice and merge.
+    // Rows tied to this login (user_id) plus rows tied to one of this
+    // family's athletes (tournament payments are made without logging in,
+    // so user_id is null on those). Filtered explicitly: a Manager's RLS
+    // can see every family's purchases, and My Account must only ever show
+    // their own.
+    const myAthleteIds = (myAthletes || []).map(function (a) { return a.id; });
     const { data: purchases, error: purchasesError } = await supabaseClient
       .from("purchases")
       .select("id, description, amount_cents, currency, status, created_at")
+      .or("user_id.eq." + user.id + (myAthleteIds.length ? ",athlete_id.in.(" + myAthleteIds.join(",") + ")" : ""))
       .order("created_at", { ascending: false });
 
     document.getElementById("purchases-loading").style.display = "none";

@@ -4,7 +4,26 @@
 // athletes on any of the listed regular teams are treated as on it.
 var TOURNAMENT_ONLY_TEAMS = [
   { team_slug: "12u-coed", team_label: "12U Coed", includes: ["12u-boys", "12u-girls"], after: "12u-girls" },
+  // Adult players (19+ as of the Aug 1 cutoff) -- Masters tournaments are
+  // invited and RSVP'd the same way as youth ones.
+  { team_slug: "masters", team_label: "Masters", includes: [], after: "18u-girls" },
 ];
+
+// An athlete's team for tournament purposes: the staff-assigned team, else
+// the one their birthdate/sex puts them on (js/team-age.js); adults 19+
+// are Masters. Mirrors public.athlete_team_slug in the database.
+function athleteTournamentTeam(a) {
+  if (a.team_slug) return a.team_slug;
+  var age = calcAge(a.birthdate);
+  if (age !== null && age > 18) return "masters";
+  return deriveTeamSlug(age, a.sex);
+}
+
+// Is this athlete on any of these tournament teams?
+function athleteOnTournamentTeams(a, tournamentSlugs) {
+  var mine = tournamentTeamSlugsFor(athleteTournamentTeam(a));
+  return (tournamentSlugs || []).some(function (s) { return mine.indexOf(s) !== -1; });
+}
 
 // Regular teams (from the schedules table) plus the tournament-only ones,
 // each slotted in right after the team named by `after`.

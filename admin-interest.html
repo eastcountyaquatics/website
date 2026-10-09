@@ -104,6 +104,8 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/team-age.js"></script>
+<script src="js/tournament-teams.js"></script>
 <script>
   function escapeHtml(str) {
     return String(str == null ? "" : str)
@@ -121,15 +123,20 @@
   var teams = [];
   var athleteCountByTeam = {};
 
+  let allTeamAthletes = [];
   async function loadTeams() {
     const [{ data: teamRows }, { data: athleteRows }] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
-      supabaseClient.from("athletes").select("team_slug"),
+      supabaseClient.from("athletes").select("id, team_slug, birthdate, sex"),
     ]);
     teams = teamRows || [];
+    // Team = assigned team, else worked out from birthdate/sex (most
+    // athletes have no hand-assigned team).
+    allTeamAthletes = athleteRows || [];
     athleteCountByTeam = {};
-    (athleteRows || []).forEach(function (a) {
-      if (a.team_slug) athleteCountByTeam[a.team_slug] = (athleteCountByTeam[a.team_slug] || 0) + 1;
+    allTeamAthletes.forEach(function (a) {
+      const slug = athleteTournamentTeam(a);
+      if (slug) athleteCountByTeam[slug] = (athleteCountByTeam[slug] || 0) + 1;
     });
     document.getElementById("ann-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
       teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
@@ -213,7 +220,7 @@
         btn.textContent = "Marking…";
         try {
           const [{ data: teamAthletes }, { data: existingResponses }] = await Promise.all([
-            supabaseClient.from("athletes").select("id").eq("team_slug", teamSlug),
+            Promise.resolve({ data: allTeamAthletes.filter(function (a) { return athleteTournamentTeam(a) === teamSlug; }) }),
             supabaseClient.from("team_announcement_responses").select("athlete_id").eq("announcement_id", annId),
           ]);
           const alreadyResponded = new Set((existingResponses || []).map(function (r) { return r.athlete_id; }));

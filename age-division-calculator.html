@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Age Division Calculator | San Diego East County Aquatics</title>
-<meta name="description" content="Find your athlete's USA Water Polo age division, or browse the age-division chart for any tournament year.">
+<meta name="description" content="Find your athlete's USA Water Polo age division.">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
@@ -12,11 +12,11 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://eastcountyaquatics.github.io/website/age-division-calculator.html">
 <meta property="og:title" content="Age Division Calculator | San Diego East County Aquatics">
-<meta property="og:description" content="Find your athlete's USA Water Polo age division, or browse the age-division chart for any tournament year.">
+<meta property="og:description" content="Find your athlete's USA Water Polo age division.">
 <meta property="og:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Age Division Calculator | San Diego East County Aquatics">
-<meta name="twitter:description" content="Find your athlete's USA Water Polo age division, or browse the age-division chart for any tournament year.">
+<meta name="twitter:description" content="Find your athlete's USA Water Polo age division.">
 <meta name="twitter:image" content="https://eastcountyaquatics.github.io/website/images/hero-pool.jpg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,38 +73,12 @@
   </div>
 </section>
 
-<section class="section-tight">
-  <div class="container" style="max-width:640px;">
-    <div class="notice" id="adc-admin-box" style="display:none;margin-bottom:16px;">
-      <strong>Manager:</strong> set the tournament year everyone sees on this page.
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
-        <select id="adc-admin-year" style="padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;"></select>
-        <button type="button" id="adc-admin-save" class="btn btn-primary" style="padding:8px 16px;">Save</button>
-        <span id="adc-admin-msg" style="font-size:13px;"></span>
-      </div>
-    </div>
-    <div class="adc-year-row">
-      <label for="adc-year-select">Tournament Year</label>
-      <select id="adc-year-select"></select>
-      <strong id="adc-year-fixed" style="display:none;font-size:18px;"></strong>
-    </div>
-    <div class="table-wrap" style="overflow-x:auto;">
-      <table class="schedule adc-chart">
-        <thead>
-          <tr><th>Division</th><th>Eligible Birth Dates</th></tr>
-        </thead>
-        <tbody id="adc-chart-body"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
 <section class="alt">
   <div class="container" style="max-width:640px;">
     <div class="section-head" style="margin-bottom:24px;">
       <span class="kicker" style="color:var(--gold);">Find Your Division</span>
       <h2>Find Your Division</h2>
-      <p class="muted">Enter the athlete's birthday to find their age division.</p>
+      <p class="muted">Enter the athlete's birthday to find their age division for the <strong id="adc-year-label"></strong> tournament year.</p>
     </div>
 
     <div class="card">
@@ -113,10 +87,6 @@
           <div class="field" style="margin:0;flex:1;min-width:160px;">
             <label for="adc-dob">Date of Birth</label>
             <input type="date" id="adc-dob" required>
-          </div>
-          <div class="field" style="margin:0;" id="adc-calc-year-field">
-            <label for="adc-calc-year">Tournament Year</label>
-            <select id="adc-calc-year"></select>
           </div>
           <button type="submit" class="btn btn-primary" style="height:46px;">Find Division</button>
         </div>
@@ -195,85 +165,22 @@
     return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   }
 
-  function yearOptionsHtml(selectedYear) {
-    const now = new Date().getFullYear();
-    let html = "";
-    for (let y = now - 1; y <= now + 3; y++) {
-      html += '<option value="' + y + '"' + (y === selectedYear ? " selected" : "") + ">" + y + "</option>";
-    }
-    return html;
-  }
-
-  function renderChart(tournamentYear) {
-    const body = document.getElementById("adc-chart-body");
-    body.innerHTML = USWP_AGE_DIVISIONS.map(function (div) {
-      const range = uswpDivisionBirthdateRange(div, tournamentYear);
-      const text = range.latest
-        ? formatLongDate(range.earliest) + " – " + formatLongDate(range.latest)
-        : formatLongDate(range.earliest) + " or later";
-      return "<tr><td>" + div.name + "</td><td>" + text + "</td></tr>";
-    }).join("");
-  }
-
-  const yearSelect = document.getElementById("adc-year-select");
-  const calcYearSelect = document.getElementById("adc-calc-year");
-  const currentYear = new Date().getFullYear();
-  yearSelect.innerHTML = yearOptionsHtml(currentYear);
-  calcYearSelect.innerHTML = yearOptionsHtml(currentYear);
-  renderChart(currentYear);
-
-  yearSelect.addEventListener("change", function () {
-    renderChart(parseInt(this.value, 10));
-  });
-
-  // The Manager can pin the tournament year for everyone (site_settings
-  // "age_calculator_year"); visitors then see that year fixed instead of
-  // a dropdown. "Let visitors choose" clears it.
-  function applyFixedYear(year) {
-    const fixed = !!year;
-    yearSelect.style.display = fixed ? "none" : "";
-    document.getElementById("adc-year-fixed").style.display = fixed ? "" : "none";
-    document.getElementById("adc-calc-year-field").style.display = fixed ? "none" : "";
-    if (fixed) {
-      document.getElementById("adc-year-fixed").textContent = year;
-      yearSelect.innerHTML = yearOptionsHtml(year);
-      calcYearSelect.innerHTML = yearOptionsHtml(year);
-      yearSelect.value = String(year);
-      calcYearSelect.value = String(year);
-    }
-    renderChart(fixed ? year : parseInt(yearSelect.value, 10));
-  }
-
+  // The tournament year is set by the Manager on the Admin page
+  // (site_settings "age_calculator_year"). Until one is saved, it's the
+  // current season's: Aug 1 of the year after the season starts.
+  const nowDate = new Date();
+  let tournamentYear = (nowDate.getMonth() >= 7 ? nowDate.getFullYear() : nowDate.getFullYear() - 1) + 1;
+  document.getElementById("adc-year-label").textContent = tournamentYear;
   (async function () {
     try {
       const { data } = await supabaseClient.from("site_settings").select("value").eq("key", "age_calculator_year").maybeSingle();
       const year = data && data.value ? parseInt(data.value, 10) : null;
-      if (year) applyFixedYear(year);
-
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (!session || (await getUserRole(session.user.id)) !== "owner") return;
-      const adminSelect = document.getElementById("adc-admin-year");
-      adminSelect.innerHTML = '<option value="">Let visitors choose</option>' + yearOptionsHtml(year || currentYear);
-      adminSelect.value = year ? String(year) : "";
-      document.getElementById("adc-admin-box").style.display = "block";
-      document.getElementById("adc-admin-save").addEventListener("click", async function () {
-        const chosen = adminSelect.value ? parseInt(adminSelect.value, 10) : null;
-        const { error } = await supabaseClient.from("site_settings").upsert(
-          { key: "age_calculator_year", value: chosen, updated_at: new Date().toISOString() },
-          { onConflict: "key" }
-        );
-        const msg = document.getElementById("adc-admin-msg");
-        msg.textContent = error ? "Could not save: " + error.message : "Saved.";
-        if (!error) {
-          if (!chosen) {
-            yearSelect.innerHTML = yearOptionsHtml(currentYear);
-            calcYearSelect.innerHTML = yearOptionsHtml(currentYear);
-          }
-          applyFixedYear(chosen);
-        }
-      });
+      if (year) {
+        tournamentYear = year;
+        document.getElementById("adc-year-label").textContent = year;
+      }
     } catch (e) {
-      // Page works fine with the visitor-chosen year if settings can't load.
+      // Falls back to the current season's year.
     }
   })();
 
@@ -282,7 +189,6 @@
     const dobRaw = document.getElementById("adc-dob").value;
     if (!dobRaw) return;
     const dob = new Date(dobRaw + "T00:00:00");
-    const tournamentYear = parseInt(calcYearSelect.value, 10);
     const result = uswpDivisionForBirthdate(dob, tournamentYear);
     const cutoff = uswpAugustFirst(tournamentYear);
 

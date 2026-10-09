@@ -51,10 +51,12 @@ Deno.serve(async (req) => {
 
     // Only the current membership -- a member who canceled and rejoined has
     // an old canceled row too, which would otherwise make this ambiguous.
+    // A family can have one membership per adult athlete, so the page names
+    // which one; members may only touch their own, the Manager any.
     let query = supabase.from("masters_subscriptions").select("*").in("status", ["pending", "active", "paused", "past_due"]);
-    query = body.subscription_id && isOwner ? query.eq("id", body.subscription_id) : query.eq("user_id", user.id);
-    const { data: sub, error: subError } = await query.maybeSingle();
-    if (subError || !sub) return json({ error: "Masters subscription not found" }, 404);
+    query = body.subscription_id ? query.eq("id", body.subscription_id) : query.eq("user_id", user.id);
+    const { data: sub, error: subError } = await query.limit(1).maybeSingle();
+    if (subError || !sub || (sub.user_id !== user.id && !isOwner)) return json({ error: "Masters subscription not found" }, 404);
 
     // Free coach memberships have no Stripe subscription -- just update
     // the status directly.

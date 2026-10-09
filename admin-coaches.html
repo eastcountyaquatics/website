@@ -200,6 +200,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/fn-error.js"></script>
+<script src="js/delete-person.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script src="js/coach-rates.js"></script>
@@ -534,48 +535,33 @@
       });
       listEl.querySelectorAll("[data-delete]").forEach(function (btn) {
         btn.addEventListener("click", async function () {
+          // One step-through Delete (js/delete-person.js): removes the
+          // Coaches page profile AND their login, saving everything to
+          // Team Access > Deleted Accounts first.
           const coach = data.find(function (c) { return c.id === btn.dataset.delete; });
-          const name = coach ? coach.full_name : "this coach";
-          if (!confirm("Permanently delete " + name + "?\n\nThis removes their coach profile from the site and the pay rate saved on it. " +
-            "Archive instead if they might come back.")) return;
-
-          // Coach has a website login? Offer to permanently delete that too
-          // (same delete-user path as Team Access: their hours, pay and
-          // athletes are saved under their name and email first).
-          let deleteLogin = false;
-          if (coach && coach.profile_id && coach.profile_id !== myUserId) {
-            deleteLogin = confirm("Also permanently delete " + name + "'s website login?\n\n" +
-              "OK = delete the login too (they can no longer sign in; their hours, pay and athletes are saved under their name and email in Team Access > Deleted Accounts).\n" +
-              "Cancel = keep the login (they just won't be on the Coaches page).");
-            if (deleteLogin) {
-              const typed = prompt("Type DELETE to permanently delete " + name + "'s login.");
-              if (typed === null || typed.trim().toUpperCase() !== "DELETE") {
-                alert("Login not deleted (you need to type DELETE). Nothing was changed.");
-                return;
-              }
-            }
-          }
-
+          if (!coach) return;
+          // Their login goes too -- unless it's your own, or a login shared
+          // with another coach card (e.g. Clint & Marcy); then only this
+          // card is removed.
+          const sharedLogin = !!coach.profile_id && data.some(function (o) { return o.id !== coach.id && o.profile_id === coach.profile_id; });
+          const deleteLogin = !!coach.profile_id && coach.profile_id !== myUserId && !sharedLogin;
+          const login = coach.profile_id ? accountProfiles.find(function (p) { return p.id === coach.profile_id; }) : null;
+          const done = await openDeletePerson({
+            name: coach.full_name,
+            email: login ? login.email : (coach.invite_email || coach.contact_email || ""),
+            userId: deleteLogin ? coach.profile_id : null,
+            coachRecord: coach,
+            onArchive: coach.is_active === false ? null : function () {
+              const archiveBtn = listEl.querySelector('[data-set-active="' + coach.id + '"][data-active="false"]');
+              if (archiveBtn) archiveBtn.click();
+            },
+          });
+          if (!done) return;
           const msg = document.getElementById("form-msg");
-          if (deleteLogin) {
-            const { data: res, error: delError } = await supabaseClient.functions.invoke("delete-user", {
-              body: { action: "delete", user_id: coach.profile_id, force: true },
-            });
-            if (delError || !res || !res.ok) {
-              msg.className = "form-msg error";
-              msg.textContent = "Could not delete " + name + "'s login, so nothing was deleted: " +
-                (await functionErrorMessage(delError, res, "unknown error"));
-              return;
-            }
-          }
-          const { error } = await supabaseClient.from("coaches").delete().eq("id", btn.dataset.delete);
-          if (error) {
-            alert("Could not delete: " + error.message);
-            return;
-          }
           msg.className = "form-msg success";
-          msg.textContent = name + " was deleted" + (deleteLogin ? ", including their website login." : ".");
-          if (document.getElementById("coach-id").value === btn.dataset.delete) resetForm();
+          msg.textContent = coach.full_name + " was deleted. Their records are saved in Team Access \u2192 Deleted Accounts.";
+          if (document.getElementById("coach-id").value === coach.id) resetForm();
+          await loadAccountOptions(isOwnerView);
           loadCoaches();
         });
       });
@@ -741,6 +727,7 @@
       .select("id, full_name, email, role")
       .order("full_name", { ascending: true });
     accountProfiles = data || [];
+    select.length = 1; // keep "Not linked", drop old options before refilling
     (data || []).forEach(function (p) {
       const opt = document.createElement("option");
       opt.value = p.id;

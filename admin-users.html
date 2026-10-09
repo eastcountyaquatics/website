@@ -12,6 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .acct-tabs{display:flex;gap:8px;margin:32px 0 16px;border-bottom:2px solid #e3e6f0;}
+  .acct-tabs button{border:none;background:none;padding:10px 16px;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
+  .acct-tabs button.active{color:var(--navy);border-bottom-color:var(--gold);}
+</style>
 </head>
 <body>
 
@@ -81,12 +86,18 @@
       <div id="pending-list"></div>
     </div>
 
-    <h3 style="margin-top:32px;">Accounts</h3>
-    <div id="user-list"><p class="muted">Loading accounts&hellip;</p></div>
-
-    <div id="deleted-wrap" style="margin-top:36px;padding-top:24px;border-top:2px solid #e3e6f0;">
-      <h3>Deleted Accounts</h3>
-      <p class="muted" style="font-size:13px;">Everything a deleted login had (coach hours, coach pay, reimbursements, Masters, athletes) is saved here under their name and email. Their payments stay in Sign-Ups as before.</p>
+    <!-- Everyone who has ever signed up: current logins on one tab,
+         deleted ones (with their saved records) on the other. -->
+    <div class="acct-tabs" role="tablist">
+      <button type="button" class="active" data-acct-tab="accounts" role="tab" aria-selected="true">All Accounts <span id="acct-count"></span></button>
+      <button type="button" data-acct-tab="deleted" role="tab" aria-selected="false">Deleted Accounts <span id="deleted-count"></span></button>
+    </div>
+    <div id="accounts-wrap">
+      <p class="muted" style="font-size:13px;margin-top:0;">Every login that has signed up. Use the trash icon to delete someone completely &mdash; it walks you through it and saves their records.</p>
+      <div id="user-list"><p class="muted">Loading accounts&hellip;</p></div>
+    </div>
+    <div id="deleted-wrap" style="display:none;">
+      <p class="muted" style="font-size:13px;margin-top:0;">Everyone who has been deleted. What they had (coach hours, coach pay, reimbursements, Masters, athletes) is saved here under their name and email &mdash; their payments stay in Sign-Ups. They can sign up again any time as a new person. <strong>Remove</strong> erases the saved records for good.</p>
       <div id="deleted-list"><p class="muted">Loading&hellip;</p></div>
     </div>
   </div>
@@ -104,6 +115,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/fn-error.js"></script>
+<script src="js/delete-person.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -302,6 +314,7 @@
     }
 
     knownProfiles = data;
+    document.getElementById("acct-count").textContent = "(" + data.length + ")";
     document.getElementById("known-emails").innerHTML = data
       .map(function (u) { return '<option value="' + escapeHtml(u.email) + '">'; })
       .join("");
@@ -385,88 +398,37 @@
 
   // Two round trips on purpose: first ask what's attached to the account
   // so the confirm box can say exactly what disappears with it.
+  // One step-through Delete (js/delete-person.js): the login, everything
+  // on it and their Coaches page profile, saved to Deleted Accounts first.
   async function deleteAccount(btn) {
-    const msg = document.getElementById("assign-msg");
     const userId = btn.dataset.deleteUser;
-    btn.disabled = true;
-    const { data: preview, error: previewError } = await supabaseClient.functions.invoke("delete-user", {
-      body: { action: "preview", user_id: userId },
-    });
-    btn.disabled = false;
-    if (previewError || !preview || !preview.ok) {
-      msg.className = "form-msg error";
-      msg.textContent = await functionErrorMessage(previewError, preview, "Could not check this account.");
-      return;
-    }
-
-    const who = preview.account.full_name ? preview.account.full_name + " (" + preview.account.email + ")" : preview.account.email;
-    if (preview.blocked) {
-      // Say exactly what's in the way, so a stray test entry can be cleared.
-      const l = preview.linked || {};
-      const plural = function (n, word) { return n + " " + word + (n === 1 ? "" : "s"); };
-      const reasons = [];
-      if (l.coach_hours) reasons.push("- " + plural(l.coach_hours, "logged coaching hour entry").replace("entrys", "entries") +
-        " (if they were entered by mistake, remove them on Coaches' Hours Logged, then try again)");
-      if (l.coach_payments) reasons.push("- " + plural(l.coach_payments, "coach payment") + " recorded on Coach Pay");
-      if (l.purchases) reasons.push("- " + plural(l.purchases, "purchase") + " (registrations or payments)");
-      if (l.masters_subscriptions) reasons.push("- a paid Masters membership" + (l.live_masters ? " (still active)" : ""));
-      const proceed = confirm(
-        who + " has records the club normally keeps:\n\n" + reasons.join("\n") +
-        '\n\nTo just take away their access, click Cancel and set their role to "No admin access".' +
-        "\n\nClick OK to DELETE ANYWAY. Their login and athletes are removed, but every record above is saved " +
-        "under their name and email in Deleted Accounts (bottom of this page)" +
-        (l.purchases ? ", and their payments stay in Sign-Ups" : "") + "." +
-        (l.live_masters ? " Their Masters membership will be canceled in Stripe first, so they won't be charged again." : "")
-      );
-      if (!proceed) return;
-      const typed = prompt('Type DELETE to permanently delete ' + who + ".");
-      if (typed === null) return;
-      if (typed.trim().toUpperCase() !== "DELETE") {
-        alert("Not deleted -- you need to type DELETE to confirm.");
-        return;
-      }
-      btn.disabled = true;
-      const { data: forced, error: forceError } = await supabaseClient.functions.invoke("delete-user", {
-        body: { action: "delete", user_id: userId, force: true },
-      });
-      btn.disabled = false;
-      if (forceError || !forced || !forced.ok) {
-        msg.className = "form-msg error";
-        msg.textContent = await functionErrorMessage(forceError, forced, "Could not delete this account.");
-        return;
-      }
-      msg.className = "form-msg success";
-      msg.textContent = "Deleted " + who + ". Their records are saved under Deleted Accounts below.";
-      loadUsers();
-      loadPending();
-      loadDeleted();
-      return;
-    }
-
-    let text = "Permanently delete the account for " + who + "?\n\nThey will no longer be able to log in.";
-    if (preview.linked.athletes > 0) {
-      text += "\n\nThis will also delete " + preview.linked.athletes + " athlete" +
-        (preview.linked.athletes === 1 ? "" : "s") + " registered under this account.";
-    }
-    text += "\n\nThis can't be undone.";
-    if (!confirm(text)) return;
-
-    btn.disabled = true;
-    const { data, error } = await supabaseClient.functions.invoke("delete-user", {
-      body: { action: "delete", user_id: userId },
-    });
-    if (error || !data || !data.ok) {
-      btn.disabled = false;
-      msg.className = "form-msg error";
-      msg.textContent = await functionErrorMessage(error, data, "Could not delete this account.");
-      return;
-    }
+    const label = (btn.getAttribute("aria-label") || "").replace(/^Delete /, "");
+    const row = btn.closest("[data-user-row]");
+    const emailEl = row && row.querySelector("h4 + .muted");
+    const email = emailEl ? emailEl.textContent.trim() : "";
+    const done = await openDeletePerson({ name: label, email: email, userId: userId, coachRecord: null });
+    if (!done) return;
+    const msg = document.getElementById("assign-msg");
     msg.className = "form-msg success";
-    msg.textContent = "Deleted " + who + ".";
+    msg.textContent = "Deleted " + label + ". Their records are saved on the Deleted Accounts tab.";
     loadUsers();
     loadPending();
     loadDeleted();
   }
+
+  // All Accounts / Deleted Accounts tabs.
+  document.querySelectorAll("[data-acct-tab]").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      const deleted = tab.dataset.acctTab === "deleted";
+      document.querySelectorAll("[data-acct-tab]").forEach(function (t) {
+        const on = t === tab;
+        t.classList.toggle("active", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      document.getElementById("accounts-wrap").style.display = deleted ? "none" : "";
+      document.getElementById("deleted-wrap").style.display = deleted ? "" : "none";
+    });
+  });
 
   // ---- Deleted Accounts log (deleted_accounts) ----------------------------
   async function loadDeleted() {
@@ -474,8 +436,8 @@
       .from("deleted_accounts")
       .select("id, email, full_name, role, deleted_at, forced, records")
       .order("deleted_at", { ascending: false });
-    const wrap = document.getElementById("deleted-wrap");
     const listEl = document.getElementById("deleted-list");
+    document.getElementById("deleted-count").textContent = "(" + ((data && data.length) || 0) + ")";
     if (!data || !data.length) {
       listEl.innerHTML = '<p class="muted">No deleted accounts yet.</p>';
       return;

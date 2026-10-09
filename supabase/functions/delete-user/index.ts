@@ -10,9 +10,10 @@
 //     confirm on Team Access) goes ahead anyway, first canceling any
 //     still-running paid Masters membership in Stripe so billing stops.
 //   - every delete first saves the account's records (coach hours, pay,
-//     reimbursements, sign-offs, Masters, athletes) to deleted_accounts
-//     under the person's name and email, and keeps their purchases,
-//     relabeled with that name and email.
+//     reimbursements, sign-offs, Masters, athletes, Coaches page profile)
+//     to deleted_accounts under the person's name and email, keeps their
+//     purchases (relabeled with that name and email), and removes their
+//     Coaches page profile along with the login.
 //   - nobody can delete their own account from here (that's how the last
 //     Manager would lock the whole club out).
 //
@@ -84,12 +85,13 @@ Deno.serve(async (req) => {
     };
     // Free coach Masters memberships (comped) were never paid for, so they
     // don't count as history worth keeping -- only Stripe-billed ones do.
-    const [athletes, purchases, coachHours, coachPayments, mastersSubs] = await Promise.all([
+    const [athletes, purchases, coachHours, coachPayments, mastersSubs, coachProfiles] = await Promise.all([
       count("athletes", "parent_id"),
       count("purchases", "user_id"),
       count("coach_hours", "coach_id"),
       count("coach_payments", "coach_id"),
       count("masters_subscriptions", "user_id", (q) => q.eq("comped", false)),
+      count("coaches", "profile_id"),
     ]);
     const { count: liveMastersCount } = await admin
       .from("masters_subscriptions")
@@ -100,6 +102,7 @@ Deno.serve(async (req) => {
     const linked = {
       athletes, purchases, coach_hours: coachHours, coach_payments: coachPayments,
       masters_subscriptions: mastersSubs, live_masters: liveMastersCount ?? 0,
+      coach_profiles: coachProfiles,
     };
     const blocked = purchases > 0 || coachHours > 0 || coachPayments > 0 || mastersSubs > 0;
 
@@ -152,7 +155,7 @@ Deno.serve(async (req) => {
         if (error) throw new Error(`Could not save ${table}: ${error.message}`);
         return data ?? [];
       };
-      const [hours, payments, reimbursements, signoffs, rateHistory, masters, ownAthletes] = await Promise.all([
+      const [hours, payments, reimbursements, signoffs, rateHistory, masters, ownAthletes, coachRows] = await Promise.all([
         rowsFor("coach_hours", "coach_id"),
         rowsFor("coach_payments", "coach_id"),
         rowsFor("coach_reimbursements", "coach_id"),
@@ -160,7 +163,14 @@ Deno.serve(async (req) => {
         rowsFor("coach_rate_history", "coach_id"),
         rowsFor("masters_subscriptions", "user_id"),
         rowsFor("athletes", "parent_id"),
+        rowsFor("coaches", "profile_id"),
       ]);
+      // Their Coaches page profile(s) go too ("delete completely"), with the
+      // pay rate saved on them.
+      const coachIds = coachRows.map((c: { id: string }) => c.id);
+      const { data: recordRates } = coachIds.length
+        ? await admin.from("coach_record_rates").select("*").in("coach_record_id", coachIds)
+        : { data: [] };
       const { data: targetRole } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
       const { error: logError } = await admin.from("deleted_accounts").insert({
         user_id: userId,
@@ -177,6 +187,8 @@ Deno.serve(async (req) => {
           coach_rate_history: rateHistory,
           masters_subscriptions: masters,
           athletes: ownAthletes,
+          coach_profiles: coachRows,
+          coach_record_rates: recordRates ?? [],
         },
       });
       if (logError) return json({ error: "Could not save this account's records, so nothing was deleted: " + logError.message }, 500);
@@ -197,6 +209,7 @@ Deno.serve(async (req) => {
 
       const { error } = await admin.auth.admin.deleteUser(userId);
       if (error) return json({ error: error.message }, 500);
+      if (coachIds.length) await admin.from("coaches").delete().in("id", coachIds);
       // A queued role for the same email would quietly re-grant access if
       // they ever sign up again.
       if (target.email) {

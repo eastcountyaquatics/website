@@ -176,7 +176,9 @@
       const t = teams.find(function (x) { return x.team_slug === a.team_slug; });
       if (t) return t.team_label;
     }
-    return deriveTeamLabel(calcAge(a.birthdate), a.sex);
+    const age = calcAge(a.birthdate);
+    if (age !== null && age > 18) return "Masters"; // matches the Masters team (schedules)
+    return deriveTeamLabel(age, a.sex);
   }
 
   // Athletes a family has only added (no paid session, free trial or

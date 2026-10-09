@@ -174,9 +174,15 @@
   // "masters" is not a real schedules row -- added as a plain selectable tag
   // so a registration option can be flagged for the Masters program too.
   const EXTRA_TEAM_TAGS = [{ team_slug: "masters", team_label: "Masters" }];
+  // Masters is in the schedules table now; the extra tag only fills in if it isn't.
+  function allTeamTags() {
+    return teams.concat(EXTRA_TEAM_TAGS.filter(function (x) {
+      return !teams.some(function (t) { return t.team_slug === x.team_slug; });
+    }));
+  }
 
   function teamLabel(slug) {
-    const t = teams.concat(EXTRA_TEAM_TAGS).find(function (x) { return x.team_slug === slug; });
+    const t = allTeamTags().find(function (x) { return x.team_slug === slug; });
     return t ? t.team_label : slug;
   }
   function selectedTeamSlugs() {
@@ -188,7 +194,7 @@
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
     teams = data || [];
     const wrap = document.getElementById("team-checkboxes");
-    wrap.innerHTML = teams.concat(EXTRA_TEAM_TAGS).map(function (t) {
+    wrap.innerHTML = allTeamTags().map(function (t) {
       return '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:400;white-space:nowrap;">' +
         '<input type="checkbox" value="' + escapeHtml(t.team_slug) + '" style="width:auto;"> ' + escapeHtml(t.team_label) + "</label>";
     }).join("");

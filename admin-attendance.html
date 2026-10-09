@@ -149,7 +149,10 @@
   // there, not a local copy, so "who's on this team" always matches what
   // the Roster page shows.
   function athleteTeamSlug(a) {
-    return a.team_slug || deriveTeamSlug(calcAge(a.birthdate), a.sex);
+    if (a.team_slug) return a.team_slug;
+    const age = calcAge(a.birthdate);
+    if (age !== null && age > 18) return "masters"; // adults 19+ are Masters
+    return deriveTeamSlug(age, a.sex);
   }
 
   let teams = [];

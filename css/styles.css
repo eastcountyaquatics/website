@@ -220,6 +220,12 @@ html{scroll-padding-top:92px;}
 
 /* Alt background section */
 .alt{background:#fff;}
+/* Team pages: the team's BAND group link, right under the header */
+.band-bar{background:#fff8dc;border-bottom:3px solid var(--gold);padding:0 !important;}
+.band-bar-inner{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:16px;padding-bottom:16px;}
+.band-bar strong{color:var(--navy);font-size:17px;}
+.band-bar-sub{color:#5b6075;font-size:14px;margin-top:2px;}
+
 .navy-block{background:var(--navy);color:#fff;}
 .navy-block h2{color:#fff;}
 .navy-block .muted{color:#c9d2f5;}

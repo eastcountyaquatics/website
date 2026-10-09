@@ -377,6 +377,9 @@
       return (
         '<div class="coach-pay-card" data-coach-card="' + c.coachId + '">' +
         '<div class="coach-pay-head"><h3>' + escapeHtml(c.name) + '</h3><div class="coach-pay-total">' + money(c.totalOwedCents) + "</div></div>" +
+        (teamsForCoach(c.coachId, c.name)
+          ? '<div style="font-size:13px;color:var(--blue);font-weight:600;margin:-4px 0 6px;">Teams: ' + escapeHtml(teamsForCoach(c.coachId, c.name)) + "</div>"
+          : "") +
         signoffBadges(signoffsByCoach[c.coachId]) +
         '<div class="coach-pay-detail">' +
           ([
@@ -536,6 +539,15 @@
   // Only coach-level accounts sign off on hours (not Managers / Finance).
   var coachLevelIds = new Set();
 
+  // The teams each coach coaches, from Admin > Coaches (Team Group) -- the
+  // same assignment that lists them on each team page.
+  var coachRecords = [];
+  function teamsForCoach(profileId, name) {
+    const rec = coachRecords.find(function (r) { return r.profile_id === profileId; }) ||
+      coachRecords.find(function (r) { return (r.full_name || "").toLowerCase() === String(name || "").toLowerCase(); });
+    return rec && rec.team_group ? rec.team_group.split("&").map(function (t) { return t.trim(); }).join(", ") : "";
+  }
+
   // ---- Month-end sign-off -------------------------------------------------
   const SIGNOFF_LABELS = {
     pending: '<span style="color:#8a6d00;font-weight:700;">Waiting on coach</span>',
@@ -613,6 +625,8 @@
       supabaseClient.from("profiles").select("id, full_name, email, role"),
       supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
     ]);
+    const { data: recs } = await supabaseClient.from("coaches").select("full_name, profile_id, team_group").eq("is_active", true);
+    coachRecords = recs || [];
     rateHistory = await loadCoachRateHistory();
     (profiles || []).forEach(function (p) {
       nameById[p.id] = p.full_name || p.email;

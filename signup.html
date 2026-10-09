@@ -150,6 +150,18 @@
       return;
     }
 
+    // An email that already has an account comes back looking like a
+    // success (no error, no email sent, and an empty identities list) --
+    // the auth server does that on purpose so sign-up can't be used to
+    // check who's registered. Tell the person what to do instead of
+    // "check your email" for a message that will never arrive.
+    if (!data.session && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      msg.className = "form-msg error";
+      msg.innerHTML = "There's already an account with this email. " +
+        '<a href="login.html">Sign in</a> instead, or use <a href="forgot-password.html">Forgot your password?</a> to set a new one.';
+      return;
+    }
+
     if (data.session) {
       // A coach (their access was set up ahead of time from their invite
       // email) goes straight to the Coach Registration questionnaire.

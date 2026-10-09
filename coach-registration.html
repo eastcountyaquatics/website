@@ -87,6 +87,11 @@
             </div>
           </div>
         </div>
+        <div class="field">
+          <label for="cr-bio">Short Bio (required)</label>
+          <textarea id="cr-bio" rows="4" maxlength="1200" required placeholder="Your water polo background, how long you've coached, anything families should know about you."></textarea>
+          <p class="muted" style="font-size:12.5px;margin:4px 0 0;">Shown with your photo on the public Coaches page.</p>
+        </div>
         <div class="reg-grid">
           <div class="field">
             <label for="cr-email">Email Address</label>
@@ -390,6 +395,7 @@
       full_name: val("cr-name"),
       email: val("cr-email"),
       photo_url: photoUrl,
+      bio: val("cr-bio"),
       phone: val("cr-phone"),
       date_of_birth: val("cr-dob"),
       shirt_size: val("cr-shirt"),

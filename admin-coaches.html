@@ -149,6 +149,8 @@
           <input type="number" id="hourly_rate" step="0.01" min="0" placeholder="e.g. 25.00" style="max-width:160px;">
           <p class="field-hint">Only you (and the coach, once they have a login) can see their rate. Works before they sign up &mdash; it carries over to their account automatically.</p>
         </div>
+        <p class="muted" id="bio-photo-note" style="font-size:13px;margin:0 0 14px;">The coach adds their own <strong>photo and bio</strong> on their coach registration form &mdash; it fills in their profile here automatically.</p>
+        <div id="bio-photo-fields" style="display:none;">
         <div class="field">
           <label for="bio">Bio (optional)</label>
           <textarea id="bio" rows="3"></textarea>
@@ -167,6 +169,7 @@
             </div>
           </div>
           <p class="muted" style="font-size:12px;margin-top:4px;">Shown as a circle everywhere on the site &mdash; a square, centered headshot crops best.</p>
+        </div>
         </div>
         <div class="field" id="sort-order-field" style="display:none;"><!-- coaches are listed A-Z by first name -->
           <label for="sort_order">Display Order (lower shows first)</label>
@@ -552,6 +555,10 @@
   function startEdit(coach) {
     document.getElementById("photo-status").textContent = "";
     document.getElementById("form-title").textContent = "Edit Coach";
+    // Bio/photo normally come from the coach's registration; editable here
+    // only to correct an existing coach.
+    document.getElementById("bio-photo-fields").style.display = "block";
+    document.getElementById("bio-photo-note").style.display = "none";
     document.getElementById("form-subtitle").textContent = coach.full_name || "";
     setCoachFormOpen(true);
     document.getElementById("coach-form-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -584,6 +591,8 @@
     document.getElementById("photo-status").textContent = "";
     myCoachRecord = coach;
     document.getElementById("form-title").textContent = "Edit My Profile";
+    document.getElementById("bio-photo-fields").style.display = "block";
+    document.getElementById("bio-photo-note").style.display = "none";
     setCoachFormOpen(true);
     document.getElementById("coach-id").value = coach.id;
     const nameInput = document.getElementById("full_name");
@@ -667,6 +676,8 @@
     delete document.getElementById("coach-form").dataset.origTeamGroup;
     document.getElementById("invite-email-field").style.display = "block";
     document.getElementById("form-title").textContent = "Add a Coach";
+    document.getElementById("bio-photo-fields").style.display = "none";
+    document.getElementById("bio-photo-note").style.display = "";
     document.getElementById("form-subtitle").textContent = "Add someone new to the coaching staff";
     document.getElementById("submit-btn").textContent = "Add Coach";
     document.getElementById("cancel-edit-btn").style.display = "none";

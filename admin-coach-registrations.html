@@ -210,6 +210,7 @@
       const dl = [
         ["Email", '<a href="mailto:' + escapeHtml(r.email) + '">' + escapeHtml(r.email) + "</a>"],
         ["Phone", escapeHtml(r.phone)],
+        ["Bio", r.bio ? escapeHtml(r.bio) : '<span class="muted">Not provided</span>'],
         ["Date of Birth", fmtDate(r.date_of_birth)],
         ["Shirt Size", escapeHtml(r.shirt_size)],
         ["Mailing Address", escapeHtml(r.mailing_address || "\u2014")],
@@ -241,7 +242,7 @@
             (record
               ? (record.photo_url === r.photo_url
                   ? '<span class="muted" style="font-size:13px;">Shown on the Coaches page.</span>'
-                  : '<button type="button" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;" data-use-photo="' + r.id + '">Use on Coaches page</button>')
+                  : '<button type="button" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;" data-use-photo="' + r.id + '">Use photo &amp; bio on Coaches page</button>')
               : '<span class="muted" style="font-size:13px;">Add them on the <a href="admin-coaches.html">Coaches</a> page to use this photo there.</span>') +
             "</div>"
           : "") +
@@ -268,7 +269,9 @@
         const record = r && coachRecordFor(r, profileByEmail[r.email.toLowerCase()]);
         if (!record) return;
         btn.disabled = true;
-        const { error } = await supabaseClient.from("coaches").update({ photo_url: r.photo_url }).eq("id", record.id);
+        const update = { photo_url: r.photo_url };
+        if (r.bio) update.bio = r.bio;
+        const { error } = await supabaseClient.from("coaches").update(update).eq("id", record.id);
         if (error) {
           btn.disabled = false;
           alert("Could not update the photo: " + error.message);

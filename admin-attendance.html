@@ -123,6 +123,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/team-age.js"></script>
+<script src="js/active-athletes.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -168,7 +169,7 @@
   let coachHoursEntries = {};
 
   async function init() {
-    const [{ data: teamRows }, { data: athleteRows }, { data: coachRows }] = await Promise.all([
+    const [{ data: teamRows }, { data: athleteRows }, { data: coachRows }, activeIds] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
       supabaseClient.from("athletes").select("id, full_name, birthdate, sex, team_slug, trial_expires_on"),
       // Everyone with real coach/owner access, straight from profiles.role --
@@ -176,9 +177,12 @@
       // coach shows up here the moment they have access, with nothing to
       // manually maintain. See list_staff_profiles migration.
       supabaseClient.rpc("list_staff_profiles"),
+      loadActiveAthleteIds(),
     ]);
     teams = teamRows || [];
-    allAthletes = athleteRows || [];
+    // Only registered athletes (paid session, free trial or Masters) are
+    // on a team's roll -- ones a family has merely added aren't.
+    allAthletes = (athleteRows || []).filter(function (a) { return activeIds.has(a.id); });
     coachRoster = (coachRows || []).map(function (c) { return { profile_id: c.id, full_name: c.full_name }; });
 
     const teamSelect = document.getElementById("attendance-team");
@@ -339,7 +343,7 @@
       .sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
 
     if (currentMembers.length === 0) {
-      listEl.innerHTML = '<p class="muted">No athletes on this team yet.</p>';
+      listEl.innerHTML = '<p class="muted">No registered athletes on this team yet.</p>';
       summaryEl.textContent = "";
       document.getElementById("roll-save-bar").style.display = "none";
       document.getElementById("hours-field").style.display = "none";

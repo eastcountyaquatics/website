@@ -181,6 +181,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/team-age.js"></script>
+<script src="js/active-athletes.js"></script>
 <script src="js/fn-error.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
@@ -463,11 +464,18 @@
   let selectedInviteIds = new Set();
   let inviteStatusByAthlete = {};
 
+  // Registered athletes only (paid session, free trial or Masters) are on
+  // a team; the roster-wide search below still finds everyone.
+  let activeAthleteIds = new Set();
   async function loadAllAthletes() {
-    const { data } = await supabaseClient
-      .from("athletes")
-      .select("id, full_name, birthdate, sex, team_slug, parent_id")
-      .order("full_name", { ascending: true });
+    const [{ data }, activeIds] = await Promise.all([
+      supabaseClient
+        .from("athletes")
+        .select("id, full_name, birthdate, sex, team_slug, parent_id")
+        .order("full_name", { ascending: true }),
+      loadActiveAthleteIds(),
+    ]);
+    activeAthleteIds = activeIds;
     allAthletesCache = data || [];
     return allAthletesCache;
   }
@@ -500,8 +508,8 @@
     const listEl = document.getElementById("invite-team-roster-list");
     if (!slug) { wrapEl.style.display = "none"; return; }
     wrapEl.style.display = "block";
-    const players = (allAthletesCache || []).filter(function (a) { return athleteOnTournamentTeams(a, [slug]); });
-    if (!players.length) { listEl.innerHTML = '<p class="muted">No players on this team yet.</p>'; return; }
+    const players = (allAthletesCache || []).filter(function (a) { return activeAthleteIds.has(a.id) && athleteOnTournamentTeams(a, [slug]); });
+    if (!players.length) { listEl.innerHTML = '<p class="muted">No registered players on this team yet.</p>'; return; }
     listEl.innerHTML = players.map(inviteAthleteRowHtml).join("");
     wireInviteAthleteRows(listEl);
   }
@@ -661,9 +669,6 @@
     // Team membership is worked out the same way as everywhere else --
     // assigned team, else birthdate/sex, adults = Masters -- not just the
     // hand-assigned team_slug (most athletes don't have one).
-    const rosterAthletes = (allAthletesCache || (await loadAllAthletes())).filter(function (a) {
-      return athleteOnTournamentTeams(a, tournamentTeamList(t));
-    });
     const { data: rsvps } = await supabaseClient
       .from("tournament_rsvps").select("id, athlete_id, response, on_roster").eq("tournament_id", currentTournamentId);
     const rsvpByAthlete = {};
@@ -672,9 +677,15 @@
       .from("tournament_invites").select("athlete_id, token, status").eq("tournament_id", currentTournamentId);
     const inviteByAthlete = {};
     (rosterInvites || []).forEach(function (i) { inviteByAthlete[i.athlete_id] = i; });
+    // Registered athletes on the tournament's team(s), plus anyone who has
+    // already RSVP'd or been invited directly.
+    const rosterAthletes = (allAthletesCache || (await loadAllAthletes())).filter(function (a) {
+      return (activeAthleteIds.has(a.id) && athleteOnTournamentTeams(a, tournamentTeamList(t))) ||
+        rsvpByAthlete[a.id] || inviteByAthlete[a.id];
+    });
 
     if (!rosterAthletes || rosterAthletes.length === 0) {
-      listEl.innerHTML = '<p class="muted">No athletes are assigned to this team yet.</p>';
+      listEl.innerHTML = '<p class="muted">No registered athletes on this team yet.</p>';
       return;
     }
 

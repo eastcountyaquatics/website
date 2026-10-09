@@ -124,6 +124,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/team-age.js"></script>
+<script src="js/active-athletes.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 <script>
@@ -178,7 +179,20 @@
     return deriveTeamLabel(calcAge(a.birthdate), a.sex);
   }
 
+  // Athletes a family has only added (no paid session, free trial or
+  // Masters membership yet) aren't on a team -- they wait here.
+  const NOT_REGISTERED = "Added, Not Registered Yet";
+  function rosterGroupFor(a) {
+    return a.active ? teamLabelFor(a) : NOT_REGISTERED;
+  }
+
+  function exportGroupLabel(value) {
+    if (value === "__not_registered") return NOT_REGISTERED;
+    return (teams.find(function (t) { return t.team_slug === value; }) || {}).team_label;
+  }
+
   function teamSortIndex(name) {
+    if (name === NOT_REGISTERED) return 10000;
     const i = teams.findIndex(function (t) { return t.team_label === name; });
     if (i !== -1) return i;
     const j = TEAM_ORDER.indexOf(name);
@@ -200,8 +214,10 @@
           );
         });
 
+    const registeredCount = filtered.filter(function (a) { return a.active; }).length;
     document.getElementById("roster-count").textContent =
-      filtered.length + " athlete" + (filtered.length === 1 ? "" : "s") + (term ? " matching “" + filterText + "”" : "");
+      registeredCount + " registered" + (filtered.length > registeredCount ? " · " + (filtered.length - registeredCount) + " added, not registered yet" : "") +
+      (term ? " matching “" + filterText + "”" : "");
 
     const listEl = document.getElementById("roster-list");
     if (filtered.length === 0) {
@@ -211,7 +227,7 @@
 
     const byTeam = {};
     filtered.forEach(function (a) {
-      const team = teamLabelFor(a);
+      const team = rosterGroupFor(a);
       if (!byTeam[team]) byTeam[team] = [];
       byTeam[team].push(a);
     });
@@ -290,6 +306,9 @@
           '<div class="team-group">' +
           '<h3 class="team-group-head">' + escapeHtml(team) +
           ' <span class="muted">' + members.length + " player" + (members.length === 1 ? "" : "s") + "</span></h3>" +
+          (team === NOT_REGISTERED
+            ? '<p class="muted" style="font-size:13px;margin:-4px 0 10px;">Added by their family but not on a team yet &mdash; they join their age group once they pay for a session, start a free trial, or join Masters.</p>'
+            : "") +
           members.map(renderAthlete).join("") +
           "</div>"
         );
@@ -390,9 +409,10 @@
     const parentIds = [...new Set(athletes.map(function (a) { return a.parent_id; }))];
     const athleteIds = athletes.map(function (a) { return a.id; });
 
-    const [{ data: profiles }, { data: purchases }] = await Promise.all([
+    const [{ data: profiles }, { data: purchases }, activeIds] = await Promise.all([
       supabaseClient.from("profiles").select("id, email, full_name, phone").in("id", parentIds),
       supabaseClient.from("purchases").select("athlete_id, description, status, amount_cents, created_at").in("athlete_id", athleteIds).order("created_at", { ascending: false }),
+      loadActiveAthleteIds(),
     ]);
 
     const profileById = {};
@@ -415,6 +435,7 @@
         school: a.school,
         uswp_number: a.uswp_number,
         team_slug: a.team_slug,
+        active: activeIds.has(a.id),
         trial_started_on: a.trial_started_on,
         trial_expires_on: a.trial_expires_on,
         emergency_contact_name: a.emergency_contact_name,
@@ -460,7 +481,7 @@
   // the "select which columns" checkboxes and the CSV itself, so adding a
   // column later is one entry here rather than two places to keep in sync.
   const EXPORT_COLUMNS = [
-    { key: "team", label: "Team", get: function (a) { return teamLabelFor(a); }, defaultOn: true },
+    { key: "team", label: "Team", get: function (a) { return rosterGroupFor(a); }, defaultOn: true },
     { key: "name", label: "Athlete Name", get: function (a) { return a.full_name; }, defaultOn: true },
     { key: "uswp", label: "USWP Number", get: function (a) { return a.uswp_number || ""; }, defaultOn: true },
     { key: "age", label: "Age", get: function (a) { const g = calcAge(a.birthdate); return g === null ? "" : g; }, defaultOn: true },
@@ -509,7 +530,8 @@
 
     const teamSelect = document.getElementById("export-team-filter");
     teamSelect.innerHTML = '<option value="">All teams</option>' +
-      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("") +
+      '<option value="__not_registered">' + NOT_REGISTERED + "</option>";
   }
 
   document.getElementById("export-toggle-btn").addEventListener("click", function () {
@@ -525,8 +547,8 @@
       listEl.innerHTML = "";
       return;
     }
-    const teamLabel = (teams.find(function (t) { return t.team_slug === teamSlug; }) || {}).team_label;
-    const members = allAthletes.filter(function (a) { return teamLabelFor(a) === teamLabel; });
+    const teamLabel = exportGroupLabel(teamSlug);
+    const members = allAthletes.filter(function (a) { return rosterGroupFor(a) === teamLabel; });
     field.style.display = "block";
     listEl.innerHTML = members.length
       ? members
@@ -567,15 +589,15 @@
     const teamFilter = document.getElementById("export-team-filter").value;
     let subset = allAthletes;
     if (teamFilter) {
-      const teamLabel = (teams.find(function (t) { return t.team_slug === teamFilter; }) || {}).team_label;
+      const teamLabel = exportGroupLabel(teamFilter);
       const checkedPlayers = Array.prototype.slice.call(document.querySelectorAll("[data-export-player]:checked")).map(function (cb) { return cb.dataset.exportPlayer; });
-      subset = allAthletes.filter(function (a) { return teamLabelFor(a) === teamLabel && checkedPlayers.indexOf(a.id) !== -1; });
+      subset = allAthletes.filter(function (a) { return rosterGroupFor(a) === teamLabel && checkedPlayers.indexOf(a.id) !== -1; });
     }
 
     const rows = subset
       .slice()
       .sort(function (x, y) {
-        const d = teamSortIndex(teamLabelFor(x)) - teamSortIndex(teamLabelFor(y));
+        const d = teamSortIndex(rosterGroupFor(x)) - teamSortIndex(rosterGroupFor(y));
         return d !== 0 ? d : x.full_name.localeCompare(y.full_name);
       })
       .map(function (a) {

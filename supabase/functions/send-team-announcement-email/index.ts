@@ -64,10 +64,15 @@ Deno.serve(async (req) => {
     // Team = staff-assigned team, else the one birthdate/sex puts them on
     // (adults 19+ are Masters) -- same rule as the site and
     // public.athlete_team_slug. Most athletes have no assigned team_slug.
-    const { data: allAthletes } = await supabase
-      .from("athletes")
-      .select("id, full_name, parent_id, team_slug, birthdate, sex");
-    const athletes = (allAthletes || []).filter((a) => athleteTeamSlug(a) === announcement.team_slug);
+    // Only registered athletes (paid session, free trial or Masters --
+    // public.athlete_is_active); ones a family has merely added aren't on
+    // a team yet.
+    const [{ data: allAthletes }, { data: activeRows }] = await Promise.all([
+      supabase.from("athletes").select("id, full_name, parent_id, team_slug, birthdate, sex"),
+      supabase.rpc("active_athlete_ids"),
+    ]);
+    const activeIds = new Set((activeRows || []).map((r: unknown) => typeof r === "string" ? r : (r as { active_athlete_ids: string }).active_athlete_ids));
+    const athletes = (allAthletes || []).filter((a) => activeIds.has(a.id) && athleteTeamSlug(a) === announcement.team_slug);
 
     const parentIds = Array.from(new Set((athletes || []).map((a) => a.parent_id).filter(Boolean)));
     if (parentIds.length === 0) {

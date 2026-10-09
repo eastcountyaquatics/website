@@ -390,6 +390,7 @@
 <script src="js/image-blocks.js"></script>
 <script src="js/page-extras.js"></script>
 <script src="js/team-age.js"></script>
+<script src="js/active-athletes.js"></script>
 <script>
   function formatAmount(cents, currency) {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: (currency || "usd").toUpperCase() }).format((cents || 0) / 100);
@@ -564,8 +565,10 @@
 
   // The athlete's team: a staff-assigned one, otherwise the one their
   // birthdate and sex put them on (js/team-age.js).
+  // An athlete is only on a team once registered (paid session, free trial
+  // or Masters); until then they get no team tournaments or team updates.
   function athleteTeamSlug(a) {
-    return athleteTournamentTeam(a); // js/tournament-teams.js -- adults are "masters"
+    return a.active ? athleteTournamentTeam(a) : null; // js/tournament-teams.js -- adults are "masters"
   }
   // Same rules the database enforces on RSVPs (tournament_rsvp_eligibility):
   // on one of the tournament's teams, and not over its maximum age as of
@@ -1043,6 +1046,8 @@
       return;
     }
     myAthletes = data || [];
+    const activeIds = await loadActiveAthleteIds();
+    myAthletes.forEach(function (a) { a.active = activeIds.has(a.id); });
     if (myAthletes.length === 0) {
       listEl.innerHTML = '<p class="muted">No athletes added yet.</p>';
     } else {
@@ -1056,6 +1061,7 @@
             escapeHtml(a.full_name) +
             (age !== null ? ' <span class="muted" style="font-weight:400;font-size:13px;">(age ' + age + ")</span>" : "") +
             trialPill(a) +
+            (!a.active && !a.trial_expires_on ? ' <span class="status-pill pending" style="font-size:11px;">Not registered yet</span>' : "") +
             "</h4>" +
             '<div class="admin-list-actions"><button data-edit-athlete="' + a.id + '">Edit</button><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
             "</div>" +

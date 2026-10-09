@@ -106,6 +106,7 @@
 <script src="js/main.js"></script>
 <script src="js/team-age.js"></script>
 <script src="js/tournament-teams.js"></script>
+<script src="js/active-athletes.js"></script>
 <script>
   function escapeHtml(str) {
     return String(str == null ? "" : str)
@@ -125,14 +126,16 @@
 
   let allTeamAthletes = [];
   async function loadTeams() {
-    const [{ data: teamRows }, { data: athleteRows }] = await Promise.all([
+    const [{ data: teamRows }, { data: athleteRows }, activeIds] = await Promise.all([
       supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true }),
       supabaseClient.from("athletes").select("id, team_slug, birthdate, sex"),
+      loadActiveAthleteIds(),
     ]);
     teams = teamRows || [];
     // Team = assigned team, else worked out from birthdate/sex (most
     // athletes have no hand-assigned team).
-    allTeamAthletes = athleteRows || [];
+    // Registered athletes only (paid session, free trial or Masters).
+    allTeamAthletes = (athleteRows || []).filter(function (a) { return activeIds.has(a.id); });
     athleteCountByTeam = {};
     allTeamAthletes.forEach(function (a) {
       const slug = athleteTournamentTeam(a);

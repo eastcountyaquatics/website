@@ -24,6 +24,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const token = String(body.token || "").trim();
     const contactEmail = String(body.contact_email || "").trim();
+    // Teams invited by email only (Admin > Hosted Events) give their team
+    // name here, the first time they open their link.
+    const teamNameInput = String(body.team_name || "").trim().slice(0, 200);
     if (!token) return json({ error: "Missing token" }, 400);
     if (!contactEmail || !contactEmail.includes("@")) return json({ error: "Enter a valid email address" }, 400);
 
@@ -55,9 +58,15 @@ Deno.serve(async (req) => {
       return json({ error: "This event has already taken place." }, 409);
     }
 
+    const teamName = (invite.team_name || "").trim() || teamNameInput;
+    if (!teamName) return json({ error: "Enter your team or club name." }, 400);
+
     // Keep the contact email on file current -- whoever actually pays is
     // the reachable contact, which can differ from whoever was first invited.
-    await supabase.from("hosted_event_invites").update({ contact_email: contactEmail }).eq("id", invite.id);
+    await supabase.from("hosted_event_invites").update({
+      contact_email: contactEmail,
+      ...((invite.team_name || "").trim() ? {} : { team_name: teamName }),
+    }).eq("id", invite.id);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2024-06-20",
@@ -78,7 +87,7 @@ Deno.serve(async (req) => {
             currency: "usd",
             unit_amount: event.fee_cents,
             product_data: {
-              name: `${event.name} — ${invite.team_name}`,
+              name: `${event.name} — ${teamName}`,
             },
           },
           quantity: 1,

@@ -13,6 +13,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  .send-results{margin-top:14px;border:1px solid #e3e6f0;border-radius:10px;padding:12px 14px;background:#fbfcfe;font-size:14px;}
+  .send-results h4{margin:0 0 6px;font-size:15px;}
+  .send-results .sr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 0;border-top:1px solid #eef1f6;}
+  .send-results .sr-row:first-of-type{border-top:0;}
+  .send-results .btn{padding:5px 11px;font-size:12.5px;}
   .invite-link-box{display:flex;gap:8px;align-items:center;margin-top:10px;}
   .invite-link-box input{flex:1;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;font-size:12px;}
   .event-detail{display:none;margin-top:24px;padding-top:24px;border-top:2px solid var(--gold);}
@@ -66,7 +71,7 @@
   <div class="container" style="max-width:760px;">
 
     <div class="notice" style="margin-bottom:24px;">
-      For tournaments or scrimmages this club is hosting where you collect a fee from visiting teams. Invite a team, send them the signup link, and they pay their own fee &mdash; no login needed on their end.
+      For tournaments or scrimmages this club is hosting where you collect a fee from visiting teams. Add the event with the teams' emails and each team is emailed its own signup link right away &mdash; they pay their own fee, no login needed on their end.
     </div>
 
     <div class="admin-form">
@@ -114,11 +119,17 @@
           <label for="ev-fee">Fee per Team (USD)</label>
           <input type="number" id="ev-fee" step="0.01" min="0.01" required>
         </div>
+        <div class="field">
+          <label for="ev-invite-emails">Invite Teams by Email</label>
+          <textarea id="ev-invite-emails" rows="3" placeholder="coach@otherclub.org, manager@anotherteam.com"></textarea>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Optional. Paste one or more emails (commas or new lines). Each team is emailed its own signup link as soon as you save &mdash; they enter their team name when they sign up. Teams already invited to this event are skipped.</p>
+        </div>
         <div style="display:flex;gap:12px;">
           <button type="submit" id="event-submit-btn" class="btn btn-primary">Add Event</button>
           <button type="button" id="event-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
         </div>
       </form>
+      <div id="event-invite-results"></div>
     </div>
 
     <h3 style="margin-top:32px;">All Hosted Events</h3>
@@ -163,8 +174,9 @@
           <label for="inv-phone">Contact Phone</label>
           <input type="tel" id="inv-phone">
         </div>
-        <button type="submit" class="btn btn-primary">Generate Signup Link</button>
+        <button type="submit" class="btn btn-primary">Send Invite</button>
       </form>
+      <div id="invite-send-results"></div>
       <div id="new-invite-link" style="display:none;" class="invite-link-box">
         <input type="text" id="new-invite-url" readonly>
         <button type="button" id="copy-invite-btn" class="btn btn-outline-dark">Copy</button>
@@ -189,6 +201,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/main.js"></script>
+<script src="js/fn-error.js"></script>
 <script>
   function escapeHtml(str) {
     return String(str || "")
@@ -219,6 +232,96 @@
   function buildInviteUrl(token) {
     return window.location.origin + window.location.pathname.replace("admin-hosted-events.html", "hosted-event-signup.html") + "?token=" + token;
   }
+
+  // ---- Emailing invites (send-hosted-event-invites) ------------------------
+  function parseEmails(text) {
+    const valid = [], invalid = [];
+    String(text || "").split(/[\s,;]+/).map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean).forEach(function (e) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) invalid.push(e);
+      else if (valid.indexOf(e) === -1) valid.push(e);
+    });
+    return { valid: valid, invalid: invalid };
+  }
+
+  // A pre-filled email from the Manager's own mail app -- the fallback when
+  // the site couldn't email a team itself.
+  function mailtoFor(inv, ev) {
+    const subject = "You're invited: " + (ev ? ev.name : "our event");
+    const body = "Hi,\n\n" + (inv.team_name ? inv.team_name + " is" : "Your team is") + " invited to " + (ev ? ev.name : "our event") +
+      ", hosted by San Diego East County Aquatics" + (ev ? " (" + formatEventDates(ev) + (ev.location ? ", " + ev.location : "") + ")" : "") + ".\n\n" +
+      "Sign up and pay your team's fee here (no account needed):\n" + buildInviteUrl(inv.token) + "\n\nThank you!\nSan Diego East County Aquatics";
+    return "mailto:" + encodeURIComponent(inv.contact_email) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  // Emails these invites; returns [{id, email, ok, reason}] (never throws).
+  async function emailInvites(inviteIds) {
+    if (!inviteIds.length) return [];
+    const { data, error } = await supabaseClient.functions.invoke("send-hosted-event-invites", { body: { invite_ids: inviteIds } });
+    if (error || !data || !data.ok) {
+      const why = await functionErrorMessage(error, data, "the email service didn't respond");
+      return inviteIds.map(function (id) { return { id: id, ok: false, reason: why }; });
+    }
+    return data.results || [];
+  }
+
+  // What happened, plus a link / "send from my email" for anyone not emailed.
+  function renderSendResults(el, invites, results, ev, invalid) {
+    const byId = {};
+    (results || []).forEach(function (r) { byId[r.id] = r; });
+    const sent = invites.filter(function (i) { return byId[i.id] && byId[i.id].ok; });
+    const notSent = invites.filter(function (i) { return !(byId[i.id] && byId[i.id].ok); });
+    let html = '<div class="send-results">';
+    if (sent.length) html += "<h4 style=\"color:#1c7a3a;\">&#10003; Emailed " + sent.length + " team" + (sent.length === 1 ? "" : "s") + "</h4>" +
+      '<div class="muted" style="font-size:13px;">' + sent.map(function (i) { return escapeHtml(i.contact_email); }).join(", ") + "</div>";
+    if (notSent.length) {
+      const reasons = notSent.map(function (i) { return (byId[i.id] || {}).reason; }).filter(Boolean);
+      html += '<h4 style="color:#a12626;' + (sent.length ? "margin-top:12px;" : "") + '">Not emailed yet (' + notSent.length + ")</h4>" +
+        '<div class="muted" style="font-size:13px;margin-bottom:6px;">' + escapeHtml(reasons[0] ? "The site couldn\u2019t send these: " + reasons[0] + "." : "The site couldn\u2019t send these.") +
+        " They\u2019re invited &mdash; send each one their link from your own email:</div>" +
+        notSent.map(function (i) {
+          return '<div class="sr-row"><span>' + escapeHtml(i.contact_email) + "</span><span>" +
+            '<a class="btn btn-primary" href="' + escapeHtml(mailtoFor(i, ev)) + '">Send from My Email</a> ' +
+            '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(buildInviteUrl(i.token)) + '">Copy Link</button></span></div>';
+        }).join("");
+    }
+    if (invalid && invalid.length) html += '<div class="muted" style="font-size:13px;margin-top:8px;color:#a12626;">Skipped (not an email address): ' + escapeHtml(invalid.join(", ")) + "</div>";
+    html += "</div>";
+    el.innerHTML = html;
+  }
+
+  // Creates invites for these emails on an event (skipping anyone already
+  // invited), filling the team name from a saved contact when there is one.
+  async function createEmailInvites(eventId, emails) {
+    if (!emails.length) return { created: [], skipped: [] };
+    const [{ data: existing }, { data: known }] = await Promise.all([
+      supabaseClient.from("hosted_event_invites").select("contact_email").eq("event_id", eventId).in("contact_email", emails),
+      supabaseClient.from("contacts").select("id, first_name, last_name, email, organization").in("email", emails),
+    ]);
+    const already = (existing || []).map(function (r) { return String(r.contact_email).toLowerCase(); });
+    const fresh = emails.filter(function (e) { return already.indexOf(e) === -1; });
+    if (!fresh.length) return { created: [], skipped: already };
+    const rows = fresh.map(function (email) {
+      const c = (known || []).find(function (k) { return String(k.email).toLowerCase() === email; });
+      return {
+        event_id: eventId,
+        team_name: c && c.organization ? c.organization : "",
+        contact_name: c ? (c.first_name + " " + c.last_name).trim() : null,
+        contact_email: email,
+        contact_id: c ? c.id : null,
+      };
+    });
+    const { data, error } = await supabaseClient.from("hosted_event_invites").insert(rows).select("id, team_name, contact_email, token");
+    if (error) throw new Error(error.message);
+    return { created: data || [], skipped: already };
+  }
+
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".send-results [data-copy-link]");
+    if (!btn) return;
+    navigator.clipboard.writeText(btn.dataset.copyLink);
+    btn.textContent = "Copied!";
+    setTimeout(function () { btn.textContent = "Copy Link"; }, 1500);
+  });
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
@@ -301,6 +404,8 @@
     document.getElementById("ev-description").value = ev.description || "";
     document.getElementById("ev-location").value = ev.location || "";
     document.getElementById("ev-fee").value = (ev.fee_cents / 100).toFixed(2);
+    document.getElementById("ev-invite-emails").value = "";
+    document.getElementById("event-invite-results").innerHTML = "";
 
     document.getElementById("ev-end-date").value = ev.end_date || "";
     extraDatesDraft = (ev.additional_dates || []).slice();
@@ -371,12 +476,19 @@
       fee_cents: Math.round(dollars * 100),
     };
 
+    const emails = parseEmails(document.getElementById("ev-invite-emails").value);
+    const resultsEl = document.getElementById("event-invite-results");
+    resultsEl.innerHTML = "";
+    const submitBtn = document.getElementById("event-submit-btn");
+    submitBtn.disabled = true;
+
     const id = document.getElementById("ev-id").value;
     const result = id
-      ? await supabaseClient.from("hosted_events").update(payload).eq("id", id)
-      : await supabaseClient.from("hosted_events").insert(payload);
+      ? await supabaseClient.from("hosted_events").update(payload).eq("id", id).select("*").single()
+      : await supabaseClient.from("hosted_events").insert(payload).select("*").single();
 
     if (result.error) {
+      submitBtn.disabled = false;
       msg.className = "form-msg error";
       msg.textContent = result.error.message;
       return;
@@ -384,8 +496,25 @@
 
     msg.className = "form-msg success";
     msg.textContent = id ? "Event updated." : "Event added.";
+    if (emails.valid.length) {
+      msg.textContent += " Sending invites\u2026";
+      try {
+        const made = await createEmailInvites(result.data.id, emails.valid);
+        const sendResults = await emailInvites(made.created.map(function (i) { return i.id; }));
+        msg.textContent = (id ? "Event updated." : "Event added.") +
+          (made.skipped.length ? " " + made.skipped.length + " already invited (skipped)." : "");
+        if (made.created.length || emails.invalid.length) renderSendResults(resultsEl, made.created, sendResults, result.data, emails.invalid);
+      } catch (err) {
+        msg.className = "form-msg error";
+        msg.textContent = (id ? "Event updated" : "Event added") + ", but the invites couldn\u2019t be created: " + err.message;
+      }
+    } else if (emails.invalid.length) {
+      renderSendResults(resultsEl, [], [], result.data, emails.invalid);
+    }
+    submitBtn.disabled = false;
     resetEventForm();
-    loadEvents();
+    await loadEvents();
+    if (currentEventId === result.data.id) loadInvites();
   });
 
   function selectEvent(id) {
@@ -394,6 +523,7 @@
     document.getElementById("detail-heading").textContent = "Invite a Team — " + (ev ? ev.name : "");
     document.getElementById("event-detail").classList.add("open");
     document.getElementById("new-invite-link").style.display = "none";
+    document.getElementById("invite-send-results").innerHTML = "";
     document.getElementById("inv-search").value = "";
     document.getElementById("inv-suggestions").style.display = "none";
     document.getElementById("invite-form").reset();
@@ -493,11 +623,12 @@
     if (!e.target.closest(".contact-suggestions")) document.getElementById("inv-suggestions").style.display = "none";
   });
 
+  let invitesCache = [];
   async function loadInvites() {
     const ev = events.find(function (x) { return x.id === currentEventId; });
     const { data } = await supabaseClient
       .from("hosted_event_invites")
-      .select("id, team_name, contact_email, contact_phone, token, status, created_at")
+      .select("id, team_name, contact_email, contact_phone, token, status, created_at, emailed_at")
       .eq("event_id", currentEventId)
       .order("created_at", { ascending: false });
 
@@ -511,15 +642,34 @@
       return;
     }
 
+    invitesCache = data;
     listEl.innerHTML = data.map(function (i) {
       const url = buildInviteUrl(i.token);
+      const emailed = i.emailed_at
+        ? "Emailed " + new Date(i.emailed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : "Not emailed yet";
       return '<div class="invite-row">' +
-        "<div><strong>" + escapeHtml(i.team_name) + "</strong> &middot; " +
+        "<div><strong>" + (i.team_name ? escapeHtml(i.team_name) : '<span class="muted" style="font-weight:400;">Team name pending</span>') + "</strong> &middot; " +
         '<span class="status-pill ' + (i.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(i.status) + "</span>" +
-        '<div class="muted" style="font-size:12.5px;">' + escapeHtml(i.contact_email) + (i.contact_phone ? " &middot; " + escapeHtml(i.contact_phone) : "") + "</div></div>" +
+        '<div class="muted" style="font-size:12.5px;">' + escapeHtml(i.contact_email) + (i.contact_phone ? " &middot; " + escapeHtml(i.contact_phone) : "") +
+        (i.status === "paid" ? "" : " &middot; " + emailed) + "</div></div>" +
+        '<span style="display:flex;gap:6px;flex-wrap:wrap;">' +
+        (i.status === "paid" ? "" : '<button type="button" class="btn btn-outline-dark" data-email-invite="' + i.id + '" style="padding:6px 12px;font-size:13px;">' + (i.emailed_at ? "Email Again" : "Email Invite") + "</button>") +
         '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(url) + '" style="padding:6px 12px;font-size:13px;">Copy Link</button>' +
-        "</div>";
+        "</span></div>";
     }).join("");
+
+    listEl.querySelectorAll("[data-email-invite]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const inv = invitesCache.find(function (x) { return x.id === btn.dataset.emailInvite; });
+        if (!inv) return;
+        btn.disabled = true;
+        btn.textContent = "Sending\u2026";
+        const results = await emailInvites([inv.id]);
+        renderSendResults(document.getElementById("invite-send-results"), [inv], results, ev, []);
+        loadInvites();
+      });
+    });
 
     listEl.querySelectorAll("[data-copy-link]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -563,7 +713,7 @@
         contact_phone: document.getElementById("inv-phone").value.trim() || null,
         contact_id: contact ? contact.id : null,
       })
-      .select("token")
+      .select("id, team_name, contact_email, token")
       .single();
 
     if (error) {
@@ -572,6 +722,11 @@
       return;
     }
 
+    const ev = events.find(function (x) { return x.id === currentEventId; });
+    msg.textContent = "Sending\u2026";
+    const results = await emailInvites([data.id]);
+    msg.textContent = "";
+    renderSendResults(document.getElementById("invite-send-results"), [data], results, ev, []);
     const url = buildInviteUrl(data.token);
     document.getElementById("new-invite-url").value = url;
     document.getElementById("new-invite-link").style.display = "flex";

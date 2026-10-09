@@ -83,6 +83,12 @@
 
     <h3 style="margin-top:32px;">Accounts</h3>
     <div id="user-list"><p class="muted">Loading accounts&hellip;</p></div>
+
+    <div id="deleted-wrap" style="margin-top:36px;display:none;">
+      <h3>Deleted Accounts</h3>
+      <p class="muted" style="font-size:13px;">Everything a deleted login had (coach hours, coach pay, reimbursements, Masters, athletes) is saved here under their name and email. Their payments stay in Sign-Ups as before.</p>
+      <div id="deleted-list"></div>
+    </div>
   </div>
 </section>
 
@@ -404,11 +410,35 @@
       if (l.coach_payments) reasons.push("- " + plural(l.coach_payments, "coach payment") + " recorded on Coach Pay");
       if (l.purchases) reasons.push("- " + plural(l.purchases, "purchase") + " (registrations or payments)");
       if (l.masters_subscriptions) reasons.push("- a paid Masters membership");
-      alert(
-        who + " can't be deleted yet. The club keeps payment and coach-pay records, and this account has:\n\n" +
-        reasons.join("\n") +
-        '\n\nTo just take away their access, set their role to "No admin access" instead.'
+      const proceed = confirm(
+        who + " has records the club normally keeps:\n\n" + reasons.join("\n") +
+        '\n\nTo just take away their access, click Cancel and set their role to "No admin access".' +
+        "\n\nClick OK to DELETE ANYWAY. Their login and athletes are removed, but every record above is saved " +
+        "under their name and email in Deleted Accounts (bottom of this page)" +
+        (l.purchases ? ", and their payments stay in Sign-Ups" : "") + "."
       );
+      if (!proceed) return;
+      const typed = prompt('Type DELETE to permanently delete ' + who + ".");
+      if (typed === null) return;
+      if (typed.trim().toUpperCase() !== "DELETE") {
+        alert("Not deleted -- you need to type DELETE to confirm.");
+        return;
+      }
+      btn.disabled = true;
+      const { data: forced, error: forceError } = await supabaseClient.functions.invoke("delete-user", {
+        body: { action: "delete", user_id: userId, force: true },
+      });
+      btn.disabled = false;
+      if (forceError || !forced || !forced.ok) {
+        msg.className = "form-msg error";
+        msg.textContent = await functionErrorMessage(forceError, forced, "Could not delete this account.");
+        return;
+      }
+      msg.className = "form-msg success";
+      msg.textContent = "Deleted " + who + ". Their records are saved under Deleted Accounts below.";
+      loadUsers();
+      loadPending();
+      loadDeleted();
       return;
     }
 
@@ -434,6 +464,74 @@
     msg.textContent = "Deleted " + who + ".";
     loadUsers();
     loadPending();
+    loadDeleted();
+  }
+
+  // ---- Deleted Accounts log (deleted_accounts) ----------------------------
+  async function loadDeleted() {
+    const { data } = await supabaseClient
+      .from("deleted_accounts")
+      .select("id, email, full_name, role, deleted_at, forced, records")
+      .order("deleted_at", { ascending: false });
+    const wrap = document.getElementById("deleted-wrap");
+    const listEl = document.getElementById("deleted-list");
+    if (!data || !data.length) { wrap.style.display = "none"; return; }
+    wrap.style.display = "block";
+    const n = function (r, key) { return (r.records && r.records[key] ? r.records[key].length : 0); };
+    listEl.innerHTML = data.map(function (r) {
+      const hours = (r.records.coach_hours || []).reduce(function (sum, h) { return sum + Number(h.hours || 0); }, 0);
+      const bits = [];
+      if (n(r, "coach_hours")) bits.push(n(r, "coach_hours") + " hour entr" + (n(r, "coach_hours") === 1 ? "y" : "ies") + " (" + hours.toFixed(2) + " hrs)");
+      if (n(r, "coach_payments")) bits.push(n(r, "coach_payments") + " coach payment" + (n(r, "coach_payments") === 1 ? "" : "s"));
+      if (n(r, "coach_reimbursements")) bits.push(n(r, "coach_reimbursements") + " reimbursement" + (n(r, "coach_reimbursements") === 1 ? "" : "s"));
+      if (n(r, "athletes")) bits.push(n(r, "athletes") + " athlete" + (n(r, "athletes") === 1 ? "" : "s"));
+      if (n(r, "masters_subscriptions")) bits.push(n(r, "masters_subscriptions") + " Masters membership" + (n(r, "masters_subscriptions") === 1 ? "" : "s"));
+      return '<div class="admin-list-item"><div>' +
+        "<h4>" + escapeHtml(r.full_name || r.email || "Unknown") + "</h4>" +
+        '<div class="muted" style="font-size:13px;">' + escapeHtml(r.email || "") +
+        " &middot; deleted " + new Date(r.deleted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+        (r.forced ? " (deleted anyway)" : "") + "</div>" +
+        '<div class="muted" style="font-size:12.5px;">' + (bits.length ? "Saved: " + escapeHtml(bits.join(", ")) : "No records to save") + "</div>" +
+        "</div>" +
+        (bits.length ? '<div class="admin-list-actions"><button type="button" data-deleted-csv="' + r.id + '">Download Records</button></div>' : "") +
+        "</div>";
+    }).join("");
+    listEl.querySelectorAll("[data-deleted-csv]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const r = data.find(function (x) { return x.id === btn.dataset.deletedCsv; });
+        if (r) downloadDeletedRecords(r);
+      });
+    });
+  }
+
+  // One CSV per deleted account: every saved record, one row each.
+  function downloadDeletedRecords(r) {
+    function cell(v) {
+      let str = String(v == null ? "" : v);
+      if (/^[=+\-@\t\r]/.test(str) && !/^-?\d+(\.\d+)?$/.test(str)) str = "'" + str;
+      return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+    }
+    const money = function (c) { return c == null ? "" : (c / 100).toFixed(2); };
+    const lines = [["Name", "Email", "Record", "Date", "Hours", "Amount", "Details"].join(",")];
+    const add = function (kind, date, hours, amount, details) {
+      lines.push([r.full_name, r.email, kind, date, hours, amount, details].map(cell).join(","));
+    };
+    (r.records.coach_hours || []).forEach(function (h) {
+      add("Coach hours", h.session_date, h.hours, "", [h.session_type, h.team_slug, h.tournament_name, h.travel_days ? h.travel_days + " travel day(s)" : ""].filter(Boolean).join(" / "));
+    });
+    (r.records.coach_payments || []).forEach(function (p) { add("Coach payment", p.paid_date, "", money(p.amount_cents), [p.method, p.note].filter(Boolean).join(" / ")); });
+    (r.records.coach_reimbursements || []).forEach(function (x) { add("Reimbursement", x.reimb_date, "", money(x.amount_cents), x.description); });
+    (r.records.coach_hours_signoffs || []).forEach(function (x) { add("Hours sign-off", x.period_month, x.total_hours, "", x.status); });
+    (r.records.coach_rate_history || []).forEach(function (x) { add("Pay rate", x.effective_from, "", money(x.hourly_rate_cents), "per hour"); });
+    (r.records.masters_subscriptions || []).forEach(function (x) { add("Masters membership", (x.created_at || "").slice(0, 10), "", "", [x.tier, x.status, x.comped ? "free (coach)" : ""].filter(Boolean).join(" / ")); });
+    (r.records.athletes || []).forEach(function (a) { add("Athlete", a.birthdate, "", "", a.full_name); });
+    const blob = new Blob([lines.join("\r\n")], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "deleted-account-" + (r.email || r.id).replace(/[^a-z0-9]+/gi, "-") + ".csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   function wireTeamCheckboxes(wrap, profileId) {
@@ -470,6 +568,7 @@
     await loadTeams();
     loadUsers();
     loadPending();
+    loadDeleted();
   })();
 </script>
 </body>

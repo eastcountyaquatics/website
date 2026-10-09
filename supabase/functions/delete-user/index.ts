@@ -6,6 +6,13 @@
 //     (payments, coach hours, coach pay) -- those are records the club
 //     needs to keep for taxes/1099s. Remove that person's access by
 //     setting their role to "No admin access" instead.
+//   - action "delete" with force: true ("Delete anyway", typed-DELETE
+//     confirm on Team Access) goes ahead anyway. A still-running paid
+//     Masters membership still blocks it.
+//   - every delete first saves the account's records (coach hours, pay,
+//     reimbursements, sign-offs, Masters, athletes) to deleted_accounts
+//     under the person's name and email, and keeps their purchases,
+//     relabeled with that name and email.
 //   - nobody can delete their own account from here (that's how the last
 //     Manager would lock the whole club out).
 //
@@ -90,13 +97,79 @@ Deno.serve(async (req) => {
     }
 
     if (body.action === "delete") {
-      if (blocked) {
+      const force = body.force === true;
+      if (blocked && !force) {
         return json({
           error:
             "This account has payment or coach-pay history, which the club needs to keep for its records. " +
             "Set their role to \"No admin access\" instead.",
         }, 409);
       }
+      if (force) {
+        // "Delete anyway" (the Manager typed DELETE to confirm). One thing
+        // still stops it: a paid Masters membership that's still running
+        // would keep billing their card in Stripe after the account is gone.
+        const { count: liveMasters } = await admin
+          .from("masters_subscriptions")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("comped", false)
+          .in("status", ["pending", "active", "paused", "past_due"]);
+        if ((liveMasters ?? 0) > 0) {
+          return json({ error: "Cancel their Masters membership first (Admin -> Masters Membership) -- otherwise Stripe keeps billing them." }, 409);
+        }
+      }
+
+      // Save everything tied to this login under their name and email
+      // before it cascades away (deleted_accounts, shown on Team Access).
+      const rowsFor = async (table: string, column: string) => {
+        const { data, error } = await admin.from(table).select("*").eq(column, userId);
+        if (error) throw new Error(`Could not save ${table}: ${error.message}`);
+        return data ?? [];
+      };
+      const [hours, payments, reimbursements, signoffs, rateHistory, masters, ownAthletes] = await Promise.all([
+        rowsFor("coach_hours", "coach_id"),
+        rowsFor("coach_payments", "coach_id"),
+        rowsFor("coach_reimbursements", "coach_id"),
+        rowsFor("coach_hours_signoffs", "coach_id"),
+        rowsFor("coach_rate_history", "coach_id"),
+        rowsFor("masters_subscriptions", "user_id"),
+        rowsFor("athletes", "parent_id"),
+      ]);
+      const { data: targetRole } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+      const { error: logError } = await admin.from("deleted_accounts").insert({
+        user_id: userId,
+        email: target.email,
+        full_name: target.full_name,
+        role: targetRole?.role ?? null,
+        deleted_by: userData.user.id,
+        forced: force && blocked,
+        records: {
+          coach_hours: hours,
+          coach_payments: payments,
+          coach_reimbursements: reimbursements,
+          coach_hours_signoffs: signoffs,
+          coach_rate_history: rateHistory,
+          masters_subscriptions: masters,
+          athletes: ownAthletes,
+        },
+      });
+      if (logError) return json({ error: "Could not save this account's records, so nothing was deleted: " + logError.message }, 500);
+
+      // Payments stay in the club's records (Sign-Ups, QuickBooks export),
+      // relabeled with the person's name and email instead of the login.
+      if (purchases > 0) {
+        const { data: theirPurchases } = await admin.from("purchases").select("id, payer_name, payer_email").eq("user_id", userId);
+        for (const p of theirPurchases ?? []) {
+          const { error: detachError } = await admin.from("purchases").update({
+            user_id: null,
+            payer_name: p.payer_name || target.full_name,
+            payer_email: p.payer_email || target.email,
+          }).eq("id", p.id);
+          if (detachError) return json({ error: "Could not preserve payment records: " + detachError.message }, 500);
+        }
+      }
+
       const { error } = await admin.auth.admin.deleteUser(userId);
       if (error) return json({ error: error.message }, 500);
       // A queued role for the same email would quietly re-grant access if

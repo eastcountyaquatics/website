@@ -4,6 +4,11 @@
 // fee from the database server-side, same reasoning as
 // create-tournament-checkout: never trust an amount the browser sends.
 //
+// The club picks which of the event's age groups it's bringing and how many
+// teams in each (body.teams: [{level, count}]); each age group is priced
+// from the event -- one fee per team, or its own price when the event is
+// priced by age group -- and saved on the invite as registered_teams.
+//
 // Deploy: supabase functions deploy create-hosted-event-checkout --no-verify-jwt
 // Secrets required: STRIPE_SECRET_KEY, SITE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
@@ -47,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from("hosted_events")
-      .select("id, name, event_date, end_date, additional_dates, fee_cents")
+      .select("id, name, event_date, end_date, additional_dates, levels, fee_cents, price_by_level, level_prices")
       .eq("id", invite.event_id)
       .maybeSingle();
     if (eventError || !event) return json({ error: "This event could not be found." }, 404);
@@ -61,10 +66,36 @@ Deno.serve(async (req) => {
     const teamName = (invite.team_name || "").trim() || teamNameInput;
     if (!teamName) return json({ error: "Enter your team or club name." }, 400);
 
+    // Which teams they're bringing, priced from the event itself.
+    const levels: string[] = (event.levels && event.levels.length) ? event.levels : ["Team"];
+    const priceFor = (level: string): number | null => {
+      if (!event.price_by_level) return event.fee_cents;
+      const row = (event.level_prices || []).find((p: { level: string }) => p.level === level);
+      return row ? Number(row.fee_cents) : null;
+    };
+    const picked: { level: string; count: number }[] = Array.isArray(body.teams)
+      ? body.teams.map((t: { level?: unknown; count?: unknown }) => ({ level: String(t?.level ?? ""), count: Math.floor(Number(t?.count)) }))
+      // A page loaded before age-group signup existed sends no teams: one team.
+      : (event.price_by_level ? [] : [{ level: levels[0], count: 1 }]);
+    const registered: { level: string; count: number; fee_cents: number }[] = [];
+    for (const t of picked) {
+      if (!t.count) continue;
+      if (levels.indexOf(t.level) === -1) return json({ error: `"${t.level}" isn't an option for this event.` }, 400);
+      if (!(t.count >= 1 && t.count <= 10)) return json({ error: "Choose between 1 and 10 teams for each age group." }, 400);
+      if (registered.some((r) => r.level === t.level)) continue;
+      const fee = priceFor(t.level);
+      if (!fee || fee <= 0) return json({ error: `There's no price set for ${t.level} yet. Please contact the club.` }, 422);
+      registered.push({ level: t.level, count: t.count, fee_cents: fee });
+    }
+    if (!registered.length) return json({ error: "Pick at least one team to sign up." }, 400);
+    const amountCents = registered.reduce((sum, r) => sum + r.fee_cents * r.count, 0);
+
     // Keep the contact email on file current -- whoever actually pays is
     // the reachable contact, which can differ from whoever was first invited.
     await supabase.from("hosted_event_invites").update({
       contact_email: contactEmail,
+      registered_teams: registered,
+      amount_cents: amountCents,
       ...((invite.team_name || "").trim() ? {} : { team_name: teamName }),
     }).eq("id", invite.id);
 
@@ -81,18 +112,16 @@ Deno.serve(async (req) => {
       // wallets/pay-later options. Bank payments clear in a few business days;
       // stripe-webhook waits for checkout.session.async_payment_succeeded.
       payment_method_types: ["card", "us_bank_account"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            unit_amount: event.fee_cents,
-            product_data: {
-              name: `${event.name} — ${teamName}`,
-            },
+      line_items: registered.map((r) => ({
+        price_data: {
+          currency: "usd",
+          unit_amount: r.fee_cents,
+          product_data: {
+            name: `${event.name} — ${teamName}` + (r.level === "Team" ? "" : ` — ${r.level}`),
           },
-          quantity: 1,
         },
-      ],
+        quantity: r.count,
+      })),
       customer_email: contactEmail,
       success_url: `${returnUrl}&checkout=success`,
       cancel_url: `${returnUrl}&checkout=cancelled`,

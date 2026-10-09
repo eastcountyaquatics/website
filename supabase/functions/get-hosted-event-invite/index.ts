@@ -1,8 +1,10 @@
 // Public, no login required: resolves a hosted-event invite token into the
 // event details + fee, so a visiting team's contact can see what they're
 // being asked to pay before they pay it. Mirrors get-tournament-invite, but
-// simpler -- one fixed fee per team rather than age/gender tiers, since the
-// "athletes" here are an entire outside team with no accounts of their own.
+// priced per team rather than per athlete, since the "athletes" here are an
+// entire outside team with no accounts of their own: one fee per team, or
+// (price_by_level) a price for each age group. The club picks which age
+// groups -- and how many teams in each -- on hosted-event-signup.html.
 //
 // Deploy: supabase functions deploy get-hosted-event-invite --no-verify-jwt
 // (the invited team has no Supabase account; the random, unguessable token
@@ -34,14 +36,14 @@ Deno.serve(async (req) => {
 
     const { data: invite, error: inviteError } = await supabase
       .from("hosted_event_invites")
-      .select("id, event_id, team_name, status")
+      .select("id, event_id, team_name, status, registered_teams, amount_cents")
       .eq("token", token)
       .maybeSingle();
     if (inviteError || !invite) return json({ error: "This invite link is not valid." }, 404);
 
     const { data: event, error: eventError } = await supabase
       .from("hosted_events")
-      .select("id, name, event_date, end_date, additional_dates, levels, description, location, fee_cents, schedule_url")
+      .select("id, name, event_date, end_date, additional_dates, levels, description, location, fee_cents, price_by_level, level_prices, schedule_url")
       .eq("id", invite.event_id)
       .maybeSingle();
     if (eventError || !event) return json({ error: "This event could not be found." }, 404);
@@ -59,6 +61,8 @@ Deno.serve(async (req) => {
       status: invite.status,
       closed_reason: closedReason,
       team_name: invite.team_name,
+      registered_teams: invite.registered_teams ?? [],
+      amount_cents: invite.amount_cents,
       event: {
         name: event.name,
         event_date: event.event_date,
@@ -68,6 +72,8 @@ Deno.serve(async (req) => {
         description: event.description,
         location: event.location,
         fee_cents: event.fee_cents,
+        price_by_level: event.price_by_level,
+        level_prices: event.level_prices ?? [],
         schedule_url: event.schedule_url,
       },
     });

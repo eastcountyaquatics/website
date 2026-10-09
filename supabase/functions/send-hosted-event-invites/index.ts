@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     const eventIds = [...new Set((invites ?? []).map((i) => i.event_id))];
     const { data: events } = await admin
       .from("hosted_events")
-      .select("id, name, event_date, end_date, additional_dates, levels, location, description, fee_cents")
+      .select("id, name, event_date, end_date, additional_dates, levels, location, description, fee_cents, price_by_level, level_prices")
       .in("id", eventIds);
     const eventById = new Map((events ?? []).map((e) => [e.id, e]));
 
@@ -92,8 +92,12 @@ Deno.serve(async (req) => {
       const details = [
         `Date: ${formatEventDates(ev)}`,
         ev.location ? `Location: ${ev.location}` : null,
-        ev.levels && ev.levels.length ? `Age / Level: ${ev.levels.join(", ")}` : null,
-        `Team fee: ${formatAmount(ev.fee_cents)}`,
+        ...(ev.price_by_level && (ev.level_prices || []).length
+          ? ["Age groups and fee per team:", ...ev.level_prices.map((p: { level: string; fee_cents: number }) => `  ${p.level}: ${formatAmount(p.fee_cents)}`)]
+          : [
+            ev.levels && ev.levels.length ? `Age groups: ${ev.levels.join(", ")}` : null,
+            `Fee per team: ${formatAmount(ev.fee_cents)}`,
+          ]),
       ].filter(Boolean);
       const paid = inv.status === "paid";
       const lines = isUpdate
@@ -109,7 +113,7 @@ Deno.serve(async (req) => {
           "",
           paid
             ? `${inv.team_name || "Your team"} is registered -- nothing else to do. Details and the latest schedule:`
-            : "Sign up and pay your team's fee here (no account needed):",
+            : "Pick your teams and pay here (no account needed):",
           link,
           "",
           `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,
@@ -124,7 +128,7 @@ Deno.serve(async (req) => {
           ...details,
           ...(ev.description ? ["", ev.description] : []),
           "",
-          "Sign up and pay your team's fee here (no account needed):",
+          "Pick your teams and pay here (no account needed):",
           link,
           "",
           `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,

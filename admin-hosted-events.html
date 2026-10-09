@@ -30,6 +30,15 @@
   .level-options{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:6px;}
   .level-options label{display:flex;align-items:center;gap:6px;font-weight:400;margin:0;}
   .level-options input{width:auto;}
+  .switch-row{display:flex;align-items:center;gap:10px;font-weight:600;margin:4px 0 10px;cursor:pointer;}
+  .switch-row input{appearance:none;-webkit-appearance:none;width:42px;height:24px;border-radius:12px;background:#cfd6e4;position:relative;margin:0;cursor:pointer;transition:background .15s;flex:0 0 auto;}
+  .switch-row input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .switch-row input:checked{background:var(--blue);}
+  .switch-row input:checked::after{left:21px;}
+  .lp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #eef1f6;}
+  .lp-row span{font-weight:600;}
+  .lp-row .lp-input{display:flex;align-items:center;gap:4px;}
+  .lp-row input{width:120px;margin:0;}
   .contact-suggestions{position:relative;}
   .contact-suggestions-list{position:absolute;z-index:5;top:100%;left:0;right:0;background:#fff;border:1px solid #d7e6ee;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:var(--shadow);}
   .contact-suggestions-list div{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f1f3;}
@@ -101,10 +110,12 @@
           </div>
         </div>
         <div class="field">
-          <label>Age / Level</label>
+          <label>Age Groups</label>
+          <p class="muted" style="font-size:12px;margin:0 0 4px;">The options visiting clubs pick from when they sign up.</p>
           <div class="level-options" id="ev-level-options"></div>
           <div id="ev-level-other-wrap" style="display:none;margin-top:8px;">
-            <input type="text" id="ev-level-other" placeholder="Describe the custom age/level">
+            <input type="text" id="ev-level-other" placeholder="e.g. 10U Girls, Open Men">
+            <p class="muted" style="font-size:12px;margin-top:4px;">Separate several custom age groups with commas.</p>
           </div>
         </div>
         <div class="field">
@@ -116,8 +127,13 @@
           <input type="text" id="ev-location">
         </div>
         <div class="field">
-          <label for="ev-fee">Fee per Team (USD)</label>
-          <input type="number" id="ev-fee" step="0.01" min="0.01" required>
+          <label>Price</label>
+          <label class="switch-row"><input type="checkbox" id="ev-price-by-level" role="switch"> Price per team by age group</label>
+          <div id="ev-flat-fee-wrap">
+            <label for="ev-fee" style="font-weight:400;font-size:13px;">Fee per Team (USD)</label>
+            <input type="number" id="ev-fee" step="0.01" min="0.01" required>
+          </div>
+          <div id="ev-level-prices" style="display:none;"></div>
         </div>
         <div class="field">
           <label for="ev-invite-emails">Invite Teams by Email</label>
@@ -284,12 +300,11 @@
   // What changed between the saved event and its edit, in plain words.
   function describeChanges(before, after) {
     const out = [];
-    function money(c) { return formatAmount(c); }
     if (before.name !== after.name) out.push("Name: " + before.name + " \u2192 " + after.name);
     if (formatEventDates(before) !== formatEventDates(after)) out.push("Date: " + formatEventDates(before) + " \u2192 " + formatEventDates(after));
     if ((before.location || "") !== (after.location || "")) out.push("Location: " + (before.location || "(none)") + " \u2192 " + (after.location || "(none)"));
     if ((before.levels || []).join(", ") !== (after.levels || []).join(", ")) out.push("Age / Level: " + ((after.levels || []).join(", ") || "(none)"));
-    if (before.fee_cents !== after.fee_cents) out.push("Team fee: " + money(before.fee_cents) + " \u2192 " + money(after.fee_cents));
+    if (feeDetail(before) !== feeDetail(after)) out.push("Team fees: " + feeDetail(after));
     if ((before.description || "") !== (after.description || "")) out.push("Description: " + (after.description || "(removed)"));
     return out;
   }
@@ -367,13 +382,65 @@
 
   async function loadTeams() {
     const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
-    teams = data || [];
+    teams = (data || []).slice();
+    // 12U Coed (a combined boys + girls team) right after 12U Girls.
+    if (!teams.some(function (t) { return t.team_label === "12U Coed"; })) {
+      const at = teams.findIndex(function (t) { return t.team_slug === "12u-girls"; });
+      teams.splice(at === -1 ? teams.length : at + 1, 0, { team_slug: "12u-coed", team_label: "12U Coed" });
+    }
     document.getElementById("ev-level-options").innerHTML =
       teams.map(function (t) { return '<label><input type="checkbox" value="' + escapeHtml(t.team_label) + '"> ' + escapeHtml(t.team_label) + "</label>"; }).join("") +
-      '<label><input type="checkbox" id="ev-level-other-check" value="__other__"> Other</label>';
+      '<label><input type="checkbox" id="ev-level-other-check" value="__other__"> Custom</label>';
     document.getElementById("ev-level-other-check").addEventListener("change", function () {
       document.getElementById("ev-level-other-wrap").style.display = this.checked ? "block" : "none";
+      renderLevelPrices();
     });
+    document.getElementById("ev-level-options").addEventListener("change", renderLevelPrices);
+    document.getElementById("ev-level-other").addEventListener("input", renderLevelPrices);
+  }
+
+  // ---- Age groups + pricing ------------------------------------------------
+  // Every age group picked (custom ones split on commas), in display order.
+  function selectedLevels() {
+    const levels = Array.from(document.querySelectorAll('#ev-level-options input[type="checkbox"]:checked:not(#ev-level-other-check)')).map(function (cb) { return cb.value; });
+    if (document.getElementById("ev-level-other-check").checked) {
+      document.getElementById("ev-level-other").value.split(",").map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (c) {
+        if (levels.indexOf(c) === -1) levels.push(c);
+      });
+    }
+    return levels;
+  }
+  // Typed prices survive re-rendering (and unchecking then re-checking).
+  let levelPriceDraft = {};
+  function renderLevelPrices() {
+    const wrap = document.getElementById("ev-level-prices");
+    wrap.querySelectorAll("[data-level-price]").forEach(function (i) { levelPriceDraft[i.dataset.levelPrice] = i.value; });
+    const byLevel = document.getElementById("ev-price-by-level").checked;
+    document.getElementById("ev-flat-fee-wrap").style.display = byLevel ? "none" : "block";
+    document.getElementById("ev-fee").required = !byLevel;
+    wrap.style.display = byLevel ? "block" : "none";
+    if (!byLevel) { wrap.innerHTML = ""; return; }
+    const levels = selectedLevels();
+    wrap.innerHTML = levels.length
+      ? '<p class="muted" style="font-size:12px;margin:0 0 4px;">Fee per team for each age group (USD):</p>' +
+        levels.map(function (l) {
+          return '<div class="lp-row"><span>' + escapeHtml(l) + '</span><span class="lp-input">$<input type="number" step="0.01" min="0.01" required data-level-price="' + escapeHtml(l) + '" value="' + escapeHtml(levelPriceDraft[l] || "") + '" aria-label="Fee per team for ' + escapeHtml(l) + '"></span></div>';
+        }).join("")
+      : '<p class="muted" style="font-size:13px;">Pick the age groups above, then enter a price for each.</p>';
+  }
+  document.getElementById("ev-price-by-level").addEventListener("change", renderLevelPrices);
+
+  // "$300/team" or "$250–$350/team" for an event's list row.
+  function feeSummary(ev) {
+    if (!ev.price_by_level || !(ev.level_prices || []).length) return formatAmount(ev.fee_cents) + "/team";
+    const cents = ev.level_prices.map(function (p) { return p.fee_cents; });
+    const lo = Math.min.apply(null, cents), hi = Math.max.apply(null, cents);
+    return (lo === hi ? formatAmount(lo) : formatAmount(lo) + "\u2013" + formatAmount(hi)) + "/team";
+  }
+  // "14U Boys $300, 16U Girls $350" -- or "$300 per team".
+  function feeDetail(ev) {
+    if (!ev.price_by_level) return formatAmount(ev.fee_cents) + " per team";
+    return (ev.level_prices || []).map(function (p) { return p.level + " " + formatAmount(p.fee_cents); }).join(", ");
   }
 
   // ---- Event date mode -----------------------------------------------------
@@ -417,9 +484,9 @@
     listEl.innerHTML = events.map(function (ev) {
       return '<div class="admin-list-item" style="cursor:pointer;" data-select="' + ev.id + '">' +
         "<div><h4>" + escapeHtml(ev.name) + "</h4>" +
-        '<div class="muted" style="font-size:13px;">' + formatEventDates(ev) + " &middot; " + formatAmount(ev.fee_cents) + "/team" +
+        '<div class="muted" style="font-size:13px;">' + formatEventDates(ev) + " &middot; " + escapeHtml(feeSummary(ev)) +
         (ev.levels && ev.levels.length ? " &middot; " + escapeHtml(ev.levels.join(", ")) : "") + "</div></div>" +
-        '<div class="admin-list-actions"><button data-edit="' + ev.id + '">Edit</button></div>' +
+        '<div class="admin-list-actions"><button data-edit="' + ev.id + '">Edit</button><button data-delete-event="' + ev.id + '" class="danger">Delete</button></div>' +
         "</div>";
     }).join("");
 
@@ -429,6 +496,13 @@
         selectEvent(row.dataset.select);
       });
     });
+    listEl.querySelectorAll("[data-delete-event]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const ev = events.find(function (x) { return x.id === btn.dataset.deleteEvent; });
+        if (ev) deleteEvent(ev, btn);
+      });
+    });
     listEl.querySelectorAll("[data-edit]").forEach(function (btn) {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
@@ -436,6 +510,36 @@
         if (ev) startEditEvent(ev);
       });
     });
+  }
+
+  // Deletes the event and its invites (their signup links stop working).
+  // Payments already made stay in Sign-Ups and the QuickBooks export.
+  async function deleteEvent(ev, btn) {
+    const { data: inv } = await supabaseClient.from("hosted_event_invites").select("status").eq("event_id", ev.id);
+    const total = (inv || []).length;
+    const paid = (inv || []).filter(function (i) { return i.status === "paid"; }).length;
+    let text = "Delete \u201c" + ev.name + "\u201d (" + formatEventDates(ev) + ")?";
+    if (total) text += "\n\nIts " + total + " invited team" + (total === 1 ? "" : "s") + " will be removed and their signup links will stop working.";
+    if (paid) text += "\n\n" + paid + " team" + (paid === 1 ? " has" : "s have") + " already paid. Their payments stay in Sign-Ups, but deleting does NOT refund them \u2014 refund in Stripe if the event is cancelled.";
+    text += "\n\nThis can\u2019t be undone.";
+    if (!confirm(text)) return;
+    btn.disabled = true;
+    const { error } = await supabaseClient.from("hosted_events").delete().eq("id", ev.id);
+    const msg = document.getElementById("event-form-msg");
+    if (error) {
+      btn.disabled = false;
+      msg.className = "form-msg error";
+      msg.textContent = "Could not delete: " + error.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Deleted \u201c" + ev.name + "\u201d.";
+    if (document.getElementById("ev-id").value === ev.id) resetEventForm();
+    if (currentEventId === ev.id) {
+      currentEventId = null;
+      document.getElementById("event-detail").classList.remove("open");
+    }
+    loadEvents();
   }
 
   function startEditEvent(ev) {
@@ -466,6 +570,10 @@
     document.getElementById("ev-level-other-check").checked = customLevels.length > 0;
     document.getElementById("ev-level-other-wrap").style.display = customLevels.length ? "block" : "none";
     document.getElementById("ev-level-other").value = customLevels.join(", ");
+    levelPriceDraft = {};
+    (ev.level_prices || []).forEach(function (p) { levelPriceDraft[p.level] = (p.fee_cents / 100).toFixed(2); });
+    document.getElementById("ev-price-by-level").checked = !!ev.price_by_level;
+    renderLevelPrices();
 
     document.getElementById("event-submit-btn").textContent = "Save Changes";
     document.getElementById("event-cancel-btn").style.display = "inline-block";
@@ -498,6 +606,9 @@
     document.getElementById("event-submit-btn").textContent = "Add Event";
     document.getElementById("event-cancel-btn").style.display = "none";
     document.getElementById("ev-level-other-wrap").style.display = "none";
+    levelPriceDraft = {};
+    document.getElementById("ev-price-by-level").checked = false;
+    renderLevelPrices();
     document.getElementById("ev-notify-wrap").style.display = "none";
     document.getElementById("ev-notify").checked = false;
     document.getElementById("ev-notify-note").value = "";
@@ -513,17 +624,36 @@
     const msg = document.getElementById("event-form-msg");
     msg.className = "form-msg";
 
-    const dollars = parseFloat(document.getElementById("ev-fee").value);
-    if (isNaN(dollars) || dollars <= 0) {
+    const levels = selectedLevels();
+    if (!levels.length) {
       msg.className = "form-msg error";
-      msg.textContent = "Enter a fee greater than $0.";
+      msg.textContent = "Pick at least one age group \u2014 they\u2019re the options visiting clubs sign up for.";
       return;
     }
-
-    const levels = Array.from(document.querySelectorAll('#ev-level-options input[type="checkbox"]:checked:not(#ev-level-other-check)')).map(function (cb) { return cb.value; });
-    if (document.getElementById("ev-level-other-check").checked) {
-      const custom = document.getElementById("ev-level-other").value.trim();
-      if (custom) levels.push(custom);
+    const priceByLevel = document.getElementById("ev-price-by-level").checked;
+    let levelPrices = [];
+    let feeCents;
+    if (priceByLevel) {
+      for (const l of levels) {
+        const input = Array.from(document.querySelectorAll("[data-level-price]")).find(function (i) { return i.dataset.levelPrice === l; });
+        const d = input ? parseFloat(input.value) : NaN;
+        if (isNaN(d) || d <= 0) {
+          msg.className = "form-msg error";
+          msg.textContent = "Enter a fee greater than $0 for " + l + ".";
+          if (input) input.focus();
+          return;
+        }
+        levelPrices.push({ level: l, fee_cents: Math.round(d * 100) });
+      }
+      feeCents = Math.min.apply(null, levelPrices.map(function (p) { return p.fee_cents; }));
+    } else {
+      const dollars = parseFloat(document.getElementById("ev-fee").value);
+      if (isNaN(dollars) || dollars <= 0) {
+        msg.className = "form-msg error";
+        msg.textContent = "Enter a fee greater than $0.";
+        return;
+      }
+      feeCents = Math.round(dollars * 100);
     }
 
     const activeMode = document.querySelector("[data-datemode].active").dataset.datemode;
@@ -539,7 +669,9 @@
       levels: levels,
       description: document.getElementById("ev-description").value.trim() || null,
       location: document.getElementById("ev-location").value.trim() || null,
-      fee_cents: Math.round(dollars * 100),
+      fee_cents: feeCents,
+      price_by_level: priceByLevel,
+      level_prices: levelPrices,
     };
 
     const emails = parseEmails(document.getElementById("ev-invite-emails").value);
@@ -719,7 +851,7 @@
     const ev = events.find(function (x) { return x.id === currentEventId; });
     const { data } = await supabaseClient
       .from("hosted_event_invites")
-      .select("id, team_name, contact_email, contact_phone, token, status, created_at, emailed_at")
+      .select("id, team_name, contact_email, contact_phone, token, status, created_at, emailed_at, registered_teams, amount_cents")
       .eq("event_id", currentEventId)
       .order("created_at", { ascending: false });
 
@@ -743,7 +875,13 @@
         "<div><strong>" + (i.team_name ? escapeHtml(i.team_name) : '<span class="muted" style="font-weight:400;">Team name pending</span>') + "</strong> &middot; " +
         '<span class="status-pill ' + (i.status === "paid" ? "paid" : "pending") + '">' + escapeHtml(i.status) + "</span>" +
         '<div class="muted" style="font-size:12.5px;">' + escapeHtml(i.contact_email) + (i.contact_phone ? " &middot; " + escapeHtml(i.contact_phone) : "") +
-        (i.status === "paid" ? "" : " &middot; " + emailed) + "</div></div>" +
+        (i.status === "paid" ? "" : " &middot; " + emailed) + "</div>" +
+        ((i.registered_teams || []).length
+          ? '<div style="font-size:12.5px;margin-top:2px;">' + (i.status === "paid" ? "Teams: " : "Picked (not paid yet): ") +
+            escapeHtml(i.registered_teams.map(function (t) { return t.level === "Team" ? t.count + " team" + (t.count === 1 ? "" : "s") : t.level + (t.count > 1 ? " \u00d7" + t.count : ""); }).join(", ")) +
+            (i.amount_cents ? " &middot; " + formatAmount(i.amount_cents) : "") + "</div>"
+          : "") +
+        "</div>" +
         '<span style="display:flex;gap:6px;flex-wrap:wrap;">' +
         (i.status === "paid" ? "" : '<button type="button" class="btn btn-outline-dark" data-email-invite="' + i.id + '" style="padding:6px 12px;font-size:13px;">' + (i.emailed_at ? "Email Again" : "Email Invite") + "</button>") +
         '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(url) + '" style="padding:6px 12px;font-size:13px;">Copy Link</button>' +

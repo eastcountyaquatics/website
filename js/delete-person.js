@@ -35,6 +35,8 @@
     ".dp-box input.dp-type{width:100%;padding:11px 12px;border:2px solid #e3c0bb;border-radius:8px;font-size:16px;letter-spacing:.08em;margin:4px 0 14px;}" +
     ".dp-err{background:#fdecec;color:#a12626;border:1px solid #f5c2c2;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:12px;}" +
     ".dp-done{text-align:center;padding:6px 0;}" +
+    ".dp-actions.dp-center{justify-content:center;}" +
+    ".dp-actions.dp-center .btn{min-width:140px;}" +
     ".dp-done .dp-check{width:54px;height:54px;border-radius:50%;background:#1c7a3a;color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}";
 
   function injectCss() {
@@ -183,7 +185,7 @@
           "<h3>" + esc(name) + " was deleted</h3>" +
           '<p class="dp-sub">Their records are saved in <strong>Team Access &rarr; Deleted Accounts</strong>.' +
           (opts.userId ? " They can sign up again any time with " + esc(opts.email || "the same email") + "." : "") + "</p></div>" +
-          '<div class="dp-actions"><button type="button" class="btn btn-primary" data-dp-close>Done</button></div>';
+          '<div class="dp-actions dp-center"><button type="button" class="btn btn-primary" data-dp-close>Done</button></div>';
         box.querySelector("[data-dp-close]").onclick = close;
         box.querySelector("[data-dp-close]").focus();
       }

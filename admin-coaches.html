@@ -16,6 +16,29 @@
   .coach-tabs{display:flex;gap:8px;margin:28px 0 16px;border-bottom:2px solid #e3e6f0;}
   .coach-tabs button{border:none;background:none;padding:10px 16px;font-size:15px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;}
   .coach-tabs button.active{color:var(--navy);border-bottom-color:var(--gold);}
+
+  /* Add a Coach: one tidy bar until opened */
+  #coach-form-wrap{padding:0;margin-bottom:14px;overflow:hidden;border-left:4px solid var(--gold);}
+  .coach-form-toggle{width:100%;display:flex;align-items:center;gap:14px;background:none;border:0;padding:16px 22px;cursor:pointer;text-align:left;font:inherit;color:inherit;transition:background .15s;}
+  .coach-form-toggle:hover{background:#f6f8fc;}
+  .coach-form-toggle:focus-visible{outline:3px solid var(--gold);outline-offset:-3px;}
+  .coach-form-icon{flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;line-height:1;transition:transform .2s;}
+  .coach-form-toggle[aria-expanded="true"] .coach-form-icon{transform:rotate(45deg);background:var(--gold);color:var(--navy);}
+  .coach-form-text{flex:1;min-width:0;}
+  .coach-form-text h3{margin:0;font-size:18px;}
+  .coach-form-text span{display:block;font-size:13px;color:var(--muted);margin-top:2px;}
+  .coach-form-caret{flex:0 0 auto;color:var(--blue);font-size:14px;transition:transform .2s;}
+  .coach-form-toggle[aria-expanded="true"] .coach-form-caret{transform:rotate(180deg);}
+  #coach-form-body{border-top:1px solid #e3e6f0;padding:22px 26px 26px;}
+  #coach-form-body select{width:100%;max-width:360px;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;background:#fff;color:inherit;}
+
+  /* Saved / deleted / archived notice: sits between the form and the list
+     and fades out on its own. */
+  #form-msg{display:none;align-items:center;gap:10px;margin:0 0 4px;padding:11px 14px;border-radius:10px;font-size:14px;font-weight:500;transition:opacity .4s;}
+  #form-msg.success,#form-msg.error{display:flex;}
+  #form-msg.success::before{content:"\2713";flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#1c7a3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
+  #form-msg.error::before{content:"!";flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#a12626;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
+  #form-msg.fading{opacity:0;}
 </style>
 </head>
 <body>
@@ -69,14 +92,13 @@
       <div id="claim-unclaimed-list"></div>
     </div>
 
-    <div class="admin-form" id="coach-form-wrap" style="padding:0;">
-      <button type="button" id="coach-form-toggle" aria-expanded="false" aria-controls="coach-form-body"
-        style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:none;border:0;padding:18px 26px;cursor:pointer;text-align:left;">
-        <h3 id="form-title" style="margin:0;">+ Add a Coach</h3>
-        <span id="coach-form-caret" aria-hidden="true" style="font-size:18px;color:var(--blue);">&#9662;</span>
+    <div class="admin-form" id="coach-form-wrap">
+      <button type="button" id="coach-form-toggle" class="coach-form-toggle" aria-expanded="false" aria-controls="coach-form-body">
+        <span class="coach-form-icon" aria-hidden="true">+</span>
+        <span class="coach-form-text"><h3 id="form-title">Add a Coach</h3><span id="form-subtitle">Add someone new to the coaching staff</span></span>
+        <span id="coach-form-caret" class="coach-form-caret" aria-hidden="true">&#9660;</span>
       </button>
-      <div id="form-msg" class="form-msg" style="margin:0 26px;"></div>
-      <div id="coach-form-body" style="display:none;padding:0 26px 26px;">
+      <div id="coach-form-body" style="display:none;">
       <form id="coach-form">
         <input type="hidden" id="coach-id">
         <div class="field">
@@ -157,6 +179,7 @@
       </form>
       </div>
     </div>
+    <div id="form-msg" class="form-msg" role="status" aria-live="polite"></div>
 
     <div id="coach-list"><p class="muted">Loading coaches&hellip;</p></div>
   </div>
@@ -529,6 +552,7 @@
   function startEdit(coach) {
     document.getElementById("photo-status").textContent = "";
     document.getElementById("form-title").textContent = "Edit Coach";
+    document.getElementById("form-subtitle").textContent = coach.full_name || "";
     setCoachFormOpen(true);
     document.getElementById("coach-form-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
     document.getElementById("coach-id").value = coach.id;
@@ -606,8 +630,29 @@
   function setCoachFormOpen(open) {
     document.getElementById("coach-form-body").style.display = open ? "block" : "none";
     document.getElementById("coach-form-toggle").setAttribute("aria-expanded", open ? "true" : "false");
-    document.getElementById("coach-form-caret").innerHTML = open ? "&#9652;" : "&#9662;";
   }
+
+  // Success notices fade away after a few seconds; errors stay until the
+  // next action.
+  (function () {
+    const msgEl = document.getElementById("form-msg");
+    let timer = null;
+    let lastKey = "";
+    new MutationObserver(function () {
+      // React only to a new message, not to our own fade-out class.
+      const key = msgEl.className.replace(/\s*fading/, "") + "|" + msgEl.textContent;
+      if (key === lastKey) return;
+      lastKey = key;
+      clearTimeout(timer);
+      if (msgEl.classList.contains("fading")) msgEl.classList.remove("fading");
+      if (msgEl.classList.contains("success") && msgEl.textContent) {
+        timer = setTimeout(function () {
+          msgEl.classList.add("fading");
+          timer = setTimeout(function () { msgEl.className = "form-msg"; msgEl.textContent = ""; }, 400);
+        }, 5000);
+      }
+    }).observe(msgEl, { attributes: true, attributeFilter: ["class"], childList: true, characterData: true, subtree: true });
+  })();
   document.getElementById("coach-form-toggle").addEventListener("click", function () {
     setCoachFormOpen(document.getElementById("coach-form-body").style.display === "none");
   });
@@ -621,7 +666,8 @@
     setTeamGroupValue("");
     delete document.getElementById("coach-form").dataset.origTeamGroup;
     document.getElementById("invite-email-field").style.display = "block";
-    document.getElementById("form-title").textContent = "+ Add a Coach";
+    document.getElementById("form-title").textContent = "Add a Coach";
+    document.getElementById("form-subtitle").textContent = "Add someone new to the coaching staff";
     document.getElementById("submit-btn").textContent = "Add Coach";
     document.getElementById("cancel-edit-btn").style.display = "none";
     setCoachFormOpen(false);

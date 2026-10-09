@@ -1,14 +1,16 @@
-// Owner-only: emails someone an admin just added as a coach, with a direct
-// link to create their account. Reuses the same pending_role_assignments
-// table admin-users.html already writes to for "assign a role before
-// signup" -- this just adds the email on top of that existing mechanism,
-// rather than inventing a second one.
+// Owner-only: emails someone an admin just added as a coach. Sent through
+// Supabase Auth's own invite email (the same email service that delivers
+// sign-up confirmations and password resets), so it works without the
+// club's Resend domain being verified.
+//
+// The invite creates their login right away; handle_new_user applies the
+// coach role queued in pending_role_assignments (admin-coaches.html writes
+// it before calling this). The email's link opens reset-password.html,
+// where they choose a password and then go straight to the Coach
+// Registration questionnaire (js/coach-reg-gate.js).
 //
 // Deploy: supabase functions deploy invite-coach
-// Secrets required: SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL
-// Optional: RESEND_API_KEY, RECEIPT_EMAIL_FROM -- without it the coach
-// record + pending role assignment are still saved, but no email goes out;
-// the response says so rather than claiming success.
+// Secrets required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SITE_URL
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -42,35 +44,22 @@ Deno.serve(async (req) => {
     const coachName = String(body.coach_name || "").trim().slice(0, 200);
     if (!email || !email.includes("@")) return json({ error: "Enter a valid email address" }, 400);
 
-    const apiKey = Deno.env.get("RESEND_API_KEY");
-    if (!apiKey) {
-      return json({ ok: true, emailed: false, reason: "RESEND_API_KEY is not configured" });
-    }
-
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
-    const signupUrl = `${siteUrl}/signup.html?email=${encodeURIComponent(email)}`;
-    const from = Deno.env.get("RECEIPT_EMAIL_FROM") || "San Diego East County Aquatics <onboarding@resend.dev>";
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: email,
-        subject: "You've been added as a coach at San Diego East County Aquatics",
-        text:
-          `Hi${coachName ? " " + coachName : ""},\n\n` +
-          `You've been added as a coach at San Diego East County Aquatics. Create your account here to get access:\n\n${signupUrl}\n\n` +
-          `Use this same email address (${email}) when you sign up, so your coach access connects automatically.\n\n` +
-          `Please also fill out the coach registration form (contact info, emergency contact, certifications, W-9 and payment details):\n\n${siteUrl}/coach-registration.html\n\n` +
-          `San Diego East County Aquatics`,
-      }),
+    const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${siteUrl}/reset-password.html`,
+      data: coachName ? { full_name: coachName } : undefined,
     });
-
-    if (!res.ok) {
-      const body = await res.text();
-      console.error(`Resend invite failed (${res.status}) for ${email}: ${body}`);
-      return json({ ok: true, emailed: false, reason: `Resend responded with ${res.status}` });
+    if (error) {
+      if (/already been registered|already registered|already exists/i.test(error.message)) {
+        return json({ ok: true, emailed: false, already_registered: true, reason: "already has an account" });
+      }
+      console.error(`Supabase invite failed for ${email}: ${error.message}`);
+      return json({ ok: true, emailed: false, reason: error.message });
     }
     return json({ ok: true, emailed: true });
   } catch (err) {

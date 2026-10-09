@@ -808,16 +808,12 @@
         body: { email: inviteEmail, coach_name: payload.full_name },
       });
       if (inviteResult && inviteResult.emailed) {
-        inviteNote = " An invite email was sent to " + inviteEmail + ".";
+        inviteNote = " An invite email was sent to " + inviteEmail + " — they'll click \u201cAccept the invite\u201d, create a password, and fill out their coach registration.";
       } else {
         inviteEmailFailed = true;
-        // Usually a Resend 403: until the club's own email domain is
-        // verified in Resend, it can only send to the club's own address.
         const signupLink = new URL("signup.html?email=" + encodeURIComponent(inviteEmail), window.location.href).href;
-        inviteNote = " Coach access is set up for " + inviteEmail + ", but the site couldn't email them" +
-          (inviteResult && inviteResult.reason && inviteResult.reason.indexOf("403") !== -1
-            ? " (the club's email domain isn't verified with our email service yet)"
-            : inviteResult && inviteResult.reason ? " (" + inviteResult.reason + ")" : "") +
+        inviteNote = " Coach access is set up for " + inviteEmail + ", but the invite email didn't go out" +
+          (inviteResult && inviteResult.reason ? " (" + inviteResult.reason + ")" : "") +
           ". Text or email them this link to sign up with that same address: " + signupLink;
       }
     }

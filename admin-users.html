@@ -496,9 +496,28 @@
         (r.forced ? " (deleted anyway)" : "") + "</div>" +
         '<div class="muted" style="font-size:12.5px;">' + (bits.length ? "Saved: " + escapeHtml(bits.join(", ")) : "No records to save") + "</div>" +
         "</div>" +
-        (bits.length ? '<div class="admin-list-actions"><button type="button" data-deleted-csv="' + r.id + '">Download Records</button></div>' : "") +
+        '<div class="admin-list-actions">' +
+        (bits.length ? '<button type="button" data-deleted-csv="' + r.id + '">Download Records</button>' : "") +
+        '<button type="button" class="danger" data-deleted-purge="' + r.id + '">Remove</button></div>' +
         "</div>";
     }).join("");
+    // Erase the saved records too -- the person is then gone for good.
+    listEl.querySelectorAll("[data-deleted-purge]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const r = data.find(function (x) { return x.id === btn.dataset.deletedPurge; });
+        const who = r ? (r.full_name || r.email) : "this account";
+        if (!confirm("Erase every saved record for " + who + "?\n\nDownload Records first if you might need their hours or pay history (taxes, 1099s). This can't be undone.")) return;
+        btn.disabled = true;
+        const { error } = await supabaseClient.from("deleted_accounts").delete().eq("id", btn.dataset.deletedPurge);
+        if (error) {
+          btn.disabled = false;
+          alert("Could not remove: " + error.message);
+          return;
+        }
+        loadDeleted();
+      });
+    });
+
     listEl.querySelectorAll("[data-deleted-csv]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const r = data.find(function (x) { return x.id === btn.dataset.deletedCsv; });

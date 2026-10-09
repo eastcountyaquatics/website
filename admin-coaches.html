@@ -687,6 +687,8 @@
 
   // Only owners manage account links; a coach editing their own bio should
   // not be able to point a coach record at somebody else's login.
+  var accountProfiles = []; // every login, for matching an invite email to an existing account
+
   async function loadAccountOptions(canLink) {
     const select = document.getElementById("profile_id");
     if (!canLink) {
@@ -696,8 +698,9 @@
     }
     const { data } = await supabaseClient
       .from("profiles")
-      .select("id, full_name, email")
+      .select("id, full_name, email, role")
       .order("full_name", { ascending: true });
+    accountProfiles = data || [];
     (data || []).forEach(function (p) {
       const opt = document.createElement("option");
       opt.value = p.id;
@@ -758,9 +761,19 @@
 
     // Same owner-only gate as the account picker -- inviting someone is
     // effectively granting them coach access, same as profile_id itself.
-    const inviteEmail = !profileSelect.disabled && !payload.profile_id
+    let inviteEmail = !profileSelect.disabled && !payload.profile_id
       ? document.getElementById("invite_email").value.trim().toLowerCase()
       : "";
+    // Already has a login with that email? Link this profile to it instead
+    // of sending a sign-up invite they don't need.
+    let linkedExisting = null;
+    if (inviteEmail) {
+      linkedExisting = accountProfiles.find(function (p) { return (p.email || "").toLowerCase() === inviteEmail; }) || null;
+      if (linkedExisting) {
+        payload.profile_id = linkedExisting.id;
+        inviteEmail = "";
+      }
+    }
     if (!profileSelect.disabled) payload.invite_email = inviteEmail || null;
 
     const id = document.getElementById("coach-id").value;
@@ -776,6 +789,16 @@
 
     var inviteNote = "";
     var inviteEmailFailed = false;
+    if (linkedExisting) {
+      // A family-only login gets coach access; anyone who already has a
+      // staff role (Manager, Head Coach...) keeps it.
+      if (!linkedExisting.role) {
+        await supabaseClient.from("profiles").update({ role: "coach" }).eq("id", linkedExisting.id);
+        linkedExisting.role = "coach";
+      }
+      inviteNote = " " + (linkedExisting.full_name || linkedExisting.email) + " already has a login (" + linkedExisting.email +
+        "), so this profile was linked to it — no invite needed.";
+    }
     if (inviteEmail) {
       // Coach access takes effect on signup either way (pending_role_assignments
       // is the same mechanism admin-users.html already uses); the email is a

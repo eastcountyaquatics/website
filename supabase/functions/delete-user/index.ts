@@ -64,19 +64,23 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!target) return json({ error: "Account not found." }, 404);
 
-    const count = async (table: string, column: string) => {
-      const { count } = await admin
+    const count = async (table: string, column: string, extra?: (q: any) => any) => {
+      let q = admin
         .from(table)
         .select("*", { count: "exact", head: true })
         .eq(column, userId);
+      if (extra) q = extra(q);
+      const { count } = await q;
       return count ?? 0;
     };
+    // Free coach Masters memberships (comped) were never paid for, so they
+    // don't count as history worth keeping -- only Stripe-billed ones do.
     const [athletes, purchases, coachHours, coachPayments, mastersSubs] = await Promise.all([
       count("athletes", "parent_id"),
       count("purchases", "user_id"),
       count("coach_hours", "coach_id"),
       count("coach_payments", "coach_id"),
-      count("masters_subscriptions", "user_id"),
+      count("masters_subscriptions", "user_id", (q) => q.eq("comped", false)),
     ]);
     const linked = { athletes, purchases, coach_hours: coachHours, coach_payments: coachPayments, masters_subscriptions: mastersSubs };
     const blocked = purchases > 0 || coachHours > 0 || coachPayments > 0 || mastersSubs > 0;

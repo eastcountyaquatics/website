@@ -395,9 +395,19 @@
 
     const who = preview.account.full_name ? preview.account.full_name + " (" + preview.account.email + ")" : preview.account.email;
     if (preview.blocked) {
+      // Say exactly what's in the way, so a stray test entry can be cleared.
+      const l = preview.linked || {};
+      const plural = function (n, word) { return n + " " + word + (n === 1 ? "" : "s"); };
+      const reasons = [];
+      if (l.coach_hours) reasons.push("- " + plural(l.coach_hours, "logged coaching hour entry").replace("entrys", "entries") +
+        " (if they were entered by mistake, remove them on Coaches' Hours Logged, then try again)");
+      if (l.coach_payments) reasons.push("- " + plural(l.coach_payments, "coach payment") + " recorded on Coach Pay");
+      if (l.purchases) reasons.push("- " + plural(l.purchases, "purchase") + " (registrations or payments)");
+      if (l.masters_subscriptions) reasons.push("- a paid Masters membership");
       alert(
-        who + " can't be deleted: this account has payment or coach-pay history the club needs to keep.\n\n" +
-        'To take away their access, set their role to "No admin access" instead.'
+        who + " can't be deleted yet. The club keeps payment and coach-pay records, and this account has:\n\n" +
+        reasons.join("\n") +
+        '\n\nTo just take away their access, set their role to "No admin access" instead.'
       );
       return;
     }

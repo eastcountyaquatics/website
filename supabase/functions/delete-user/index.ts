@@ -172,7 +172,10 @@ Deno.serve(async (req) => {
         ? await admin.from("coach_record_rates").select("*").in("coach_record_id", coachIds)
         : { data: [] };
       const { data: targetRole } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
-      const { error: logError } = await admin.from("deleted_accounts").insert({
+      // A log entry left by an earlier attempt that didn't finish (the
+      // login still exists, so it was never really deleted) is replaced.
+      await admin.from("deleted_accounts").delete().eq("user_id", userId);
+      const { data: logRow, error: logError } = await admin.from("deleted_accounts").insert({
         user_id: userId,
         email: target.email,
         full_name: target.full_name,
@@ -190,7 +193,7 @@ Deno.serve(async (req) => {
           coach_profiles: coachRows,
           coach_record_rates: recordRates ?? [],
         },
-      });
+      }).select("id").single();
       if (logError) return json({ error: "Could not save this account's records, so nothing was deleted: " + logError.message }, 500);
 
       // Payments stay in the club's records (Sign-Ups, QuickBooks export),
@@ -207,9 +210,23 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Coaches page profile first (it's saved above), then the login.
+      if (coachIds.length) {
+        const { error: coachDelError } = await admin.from("coaches").delete().in("id", coachIds);
+        if (coachDelError) {
+          await admin.from("deleted_accounts").delete().eq("id", logRow.id);
+          return json({ error: "Could not remove their Coaches page profile, so nothing was deleted: " + coachDelError.message }, 500);
+        }
+      }
       const { error } = await admin.auth.admin.deleteUser(userId);
-      if (error) return json({ error: error.message }, 500);
-      if (coachIds.length) await admin.from("coaches").delete().in("id", coachIds);
+      if (error) {
+        // Put things back the way they were: the login still exists, so it
+        // shouldn't be in Deleted Accounts, and its coach card returns.
+        if (coachRows.length) await admin.from("coaches").insert(coachRows);
+        if (recordRates && recordRates.length) await admin.from("coach_record_rates").upsert(recordRates, { onConflict: "coach_record_id" });
+        await admin.from("deleted_accounts").delete().eq("id", logRow.id);
+        return json({ error: "Could not delete the login: " + error.message }, 500);
+      }
       // A queued role for the same email would quietly re-grant access if
       // they ever sign up again.
       if (target.email) {

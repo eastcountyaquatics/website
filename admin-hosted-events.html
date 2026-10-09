@@ -124,6 +124,11 @@
           <textarea id="ev-invite-emails" rows="3" placeholder="coach@otherclub.org, manager@anotherteam.com"></textarea>
           <p class="muted" style="font-size:12px;margin-top:4px;">Optional. Paste one or more emails (commas or new lines). Each team is emailed its own signup link as soon as you save &mdash; they enter their team name when they sign up. Teams already invited to this event are skipped.</p>
         </div>
+        <div class="field" id="ev-notify-wrap" style="display:none;background:#f4f8fc;border:1px solid #dce7f2;border-radius:8px;padding:12px 14px;">
+          <label style="display:flex;gap:8px;align-items:center;margin:0;"><input type="checkbox" id="ev-notify" style="width:auto;"> Email the invited teams about this update</label>
+          <p class="muted" id="ev-notify-count" style="font-size:12px;margin:4px 0 0;"></p>
+          <textarea id="ev-notify-note" rows="2" placeholder="Optional message to the teams, e.g. Games moved to the outdoor pool." style="display:none;margin-top:8px;"></textarea>
+        </div>
         <div style="display:flex;gap:12px;">
           <button type="submit" id="event-submit-btn" class="btn btn-primary">Add Event</button>
           <button type="button" id="event-cancel-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
@@ -245,12 +250,48 @@
 
   // A pre-filled email from the Manager's own mail app -- the fallback when
   // the site couldn't email a team itself.
-  function mailtoFor(inv, ev) {
-    const subject = "You're invited: " + (ev ? ev.name : "our event");
-    const body = "Hi,\n\n" + (inv.team_name ? inv.team_name + " is" : "Your team is") + " invited to " + (ev ? ev.name : "our event") +
-      ", hosted by San Diego East County Aquatics" + (ev ? " (" + formatEventDates(ev) + (ev.location ? ", " + ev.location : "") + ")" : "") + ".\n\n" +
-      "Sign up and pay your team's fee here (no account needed):\n" + buildInviteUrl(inv.token) + "\n\nThank you!\nSan Diego East County Aquatics";
+  // update: {changes, note} for an event-update email, else an invite.
+  function mailtoFor(inv, ev, update) {
+    const name = ev ? ev.name : "our event";
+    const where = ev ? " (" + formatEventDates(ev) + (ev.location ? ", " + ev.location : "") + ")" : "";
+    let subject, body;
+    if (update) {
+      subject = "Update: " + name;
+      body = "Hi,\n\nThere's an update to " + name + ", hosted by San Diego East County Aquatics" + where + ".\n" +
+        (update.changes.length ? "\nWhat changed:\n" + update.changes.map(function (c) { return "  - " + c; }).join("\n") + "\n" : "") +
+        (update.note ? "\n" + update.note + "\n" : "") +
+        "\n" + (inv.status === "paid" ? "You're registered -- details and the latest schedule:\n" : "Sign up and pay your team's fee here (no account needed):\n") +
+        buildInviteUrl(inv.token) + "\n\nThank you!\nSan Diego East County Aquatics";
+    } else {
+      subject = "You're invited: " + name;
+      body = "Hi,\n\n" + (inv.team_name ? inv.team_name + " is" : "Your team is") + " invited to " + name +
+        ", hosted by San Diego East County Aquatics" + where + ".\n\n" +
+        "Sign up and pay your team's fee here (no account needed):\n" + buildInviteUrl(inv.token) + "\n\nThank you!\nSan Diego East County Aquatics";
+    }
     return "mailto:" + encodeURIComponent(inv.contact_email) + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+  }
+
+  // Emails every team on an event about a change (minus excludeIds, who
+  // were just invited with the current details). Never throws.
+  async function emailEventUpdate(eventId, changes, note, excludeIds) {
+    const { data, error } = await supabaseClient.functions.invoke("send-hosted-event-invites", {
+      body: { mode: "update", event_id: eventId, changes: changes, note: note, exclude_ids: excludeIds },
+    });
+    if (error || !data || !data.ok) return { failed: await functionErrorMessage(error, data, "the email service didn't respond"), results: [] };
+    return { results: data.results || [] };
+  }
+
+  // What changed between the saved event and its edit, in plain words.
+  function describeChanges(before, after) {
+    const out = [];
+    function money(c) { return formatAmount(c); }
+    if (before.name !== after.name) out.push("Name: " + before.name + " \u2192 " + after.name);
+    if (formatEventDates(before) !== formatEventDates(after)) out.push("Date: " + formatEventDates(before) + " \u2192 " + formatEventDates(after));
+    if ((before.location || "") !== (after.location || "")) out.push("Location: " + (before.location || "(none)") + " \u2192 " + (after.location || "(none)"));
+    if ((before.levels || []).join(", ") !== (after.levels || []).join(", ")) out.push("Age / Level: " + ((after.levels || []).join(", ") || "(none)"));
+    if (before.fee_cents !== after.fee_cents) out.push("Team fee: " + money(before.fee_cents) + " \u2192 " + money(after.fee_cents));
+    if ((before.description || "") !== (after.description || "")) out.push("Description: " + (after.description || "(removed)"));
+    return out;
   }
 
   // Emails these invites; returns [{id, email, ok, reason}] (never throws).
@@ -265,28 +306,29 @@
   }
 
   // What happened, plus a link / "send from my email" for anyone not emailed.
-  function renderSendResults(el, invites, results, ev, invalid) {
+  function renderSendResults(el, invites, results, ev, invalid, update) {
     const byId = {};
     (results || []).forEach(function (r) { byId[r.id] = r; });
     const sent = invites.filter(function (i) { return byId[i.id] && byId[i.id].ok; });
     const notSent = invites.filter(function (i) { return !(byId[i.id] && byId[i.id].ok); });
     let html = '<div class="send-results">';
+    if (update) html += '<div style="font-weight:700;margin-bottom:6px;">Update email</div>';
     if (sent.length) html += "<h4 style=\"color:#1c7a3a;\">&#10003; Emailed " + sent.length + " team" + (sent.length === 1 ? "" : "s") + "</h4>" +
       '<div class="muted" style="font-size:13px;">' + sent.map(function (i) { return escapeHtml(i.contact_email); }).join(", ") + "</div>";
     if (notSent.length) {
       const reasons = notSent.map(function (i) { return (byId[i.id] || {}).reason; }).filter(Boolean);
       html += '<h4 style="color:#a12626;' + (sent.length ? "margin-top:12px;" : "") + '">Not emailed yet (' + notSent.length + ")</h4>" +
         '<div class="muted" style="font-size:13px;margin-bottom:6px;">' + escapeHtml(reasons[0] ? "The site couldn\u2019t send these: " + reasons[0] + "." : "The site couldn\u2019t send these.") +
-        " They\u2019re invited &mdash; send each one their link from your own email:</div>" +
+        (update ? " Send each one the update from your own email:</div>" : " They\u2019re invited &mdash; send each one their link from your own email:</div>") +
         notSent.map(function (i) {
           return '<div class="sr-row"><span>' + escapeHtml(i.contact_email) + "</span><span>" +
-            '<a class="btn btn-primary" href="' + escapeHtml(mailtoFor(i, ev)) + '">Send from My Email</a> ' +
+            '<a class="btn btn-primary" href="' + escapeHtml(mailtoFor(i, ev, update)) + '">Send from My Email</a> ' +
             '<button type="button" class="btn btn-outline-dark" data-copy-link="' + escapeHtml(buildInviteUrl(i.token)) + '">Copy Link</button></span></div>';
         }).join("");
     }
     if (invalid && invalid.length) html += '<div class="muted" style="font-size:13px;margin-top:8px;color:#a12626;">Skipped (not an email address): ' + escapeHtml(invalid.join(", ")) + "</div>";
     html += "</div>";
-    el.innerHTML = html;
+    el.insertAdjacentHTML("beforeend", html);
   }
 
   // Creates invites for these emails on an event (skipping anyone already
@@ -406,6 +448,7 @@
     document.getElementById("ev-fee").value = (ev.fee_cents / 100).toFixed(2);
     document.getElementById("ev-invite-emails").value = "";
     document.getElementById("event-invite-results").innerHTML = "";
+    showNotifyOption(ev.id);
 
     document.getElementById("ev-end-date").value = ev.end_date || "";
     extraDatesDraft = (ev.additional_dates || []).slice();
@@ -429,6 +472,25 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  // Editing: offer to email the teams already invited about the change.
+  async function showNotifyOption(eventId) {
+    const wrap = document.getElementById("ev-notify-wrap");
+    const countEl = document.getElementById("ev-notify-count");
+    document.getElementById("ev-notify").checked = false;
+    document.getElementById("ev-notify-note").value = "";
+    document.getElementById("ev-notify-note").style.display = "none";
+    const { data } = await supabaseClient.from("hosted_event_invites").select("status").eq("event_id", eventId);
+    const n = (data || []).length;
+    if (!n) { wrap.style.display = "none"; return; }
+    const paid = (data || []).filter(function (i) { return i.status === "paid"; }).length;
+    countEl.textContent = "Sends what changed to all " + n + " invited team" + (n === 1 ? "" : "s") +
+      (paid ? " (" + paid + " already paid)" : "") + " when you save.";
+    wrap.style.display = "block";
+  }
+  document.getElementById("ev-notify").addEventListener("change", function () {
+    document.getElementById("ev-notify-note").style.display = this.checked ? "block" : "none";
+  });
+
   function resetEventForm() {
     document.getElementById("event-form").reset();
     document.getElementById("ev-id").value = "";
@@ -436,6 +498,10 @@
     document.getElementById("event-submit-btn").textContent = "Add Event";
     document.getElementById("event-cancel-btn").style.display = "none";
     document.getElementById("ev-level-other-wrap").style.display = "none";
+    document.getElementById("ev-notify-wrap").style.display = "none";
+    document.getElementById("ev-notify").checked = false;
+    document.getElementById("ev-notify-note").value = "";
+    document.getElementById("ev-notify-note").style.display = "none";
     extraDatesDraft = [];
     renderExtraDates(extraDatesDraft);
     setDateMode("single");
@@ -483,6 +549,15 @@
     submitBtn.disabled = true;
 
     const id = document.getElementById("ev-id").value;
+    const before = id ? events.find(function (x) { return x.id === id; }) : null;
+    const notify = !!id && document.getElementById("ev-notify").checked && document.getElementById("ev-notify-wrap").style.display !== "none";
+    const notifyNote = document.getElementById("ev-notify-note").value.trim();
+    if (notify && before && !describeChanges(before, Object.assign({}, before, payload)).length && !notifyNote) {
+      submitBtn.disabled = false;
+      msg.className = "form-msg error";
+      msg.textContent = "Nothing changed to email the teams about \u2014 add a message for them, or untick \u201cEmail the invited teams\u201d.";
+      return;
+    }
     const result = id
       ? await supabaseClient.from("hosted_events").update(payload).eq("id", id).select("*").single()
       : await supabaseClient.from("hosted_events").insert(payload).select("*").single();
@@ -496,10 +571,12 @@
 
     msg.className = "form-msg success";
     msg.textContent = id ? "Event updated." : "Event added.";
+    let justInvitedIds = [];
     if (emails.valid.length) {
       msg.textContent += " Sending invites\u2026";
       try {
         const made = await createEmailInvites(result.data.id, emails.valid);
+        justInvitedIds = made.created.map(function (i) { return i.id; });
         const sendResults = await emailInvites(made.created.map(function (i) { return i.id; }));
         msg.textContent = (id ? "Event updated." : "Event added.") +
           (made.skipped.length ? " " + made.skipped.length + " already invited (skipped)." : "");
@@ -510,6 +587,20 @@
       }
     } else if (emails.invalid.length) {
       renderSendResults(resultsEl, [], [], result.data, emails.invalid);
+    }
+    if (notify && before) {
+      const update = { changes: describeChanges(before, result.data), note: notifyNote };
+      msg.textContent += " Emailing the teams\u2026";
+      const [{ data: teamInvites }, sent] = await Promise.all([
+        supabaseClient.from("hosted_event_invites").select("id, team_name, contact_email, token, status").eq("event_id", result.data.id),
+        emailEventUpdate(result.data.id, update.changes, update.note, justInvitedIds),
+      ]);
+      msg.textContent = msg.textContent.replace(" Emailing the teams\u2026", "");
+      const updated = (teamInvites || []).filter(function (i) { return justInvitedIds.indexOf(i.id) === -1; });
+      const results = sent.failed
+        ? updated.map(function (i) { return { id: i.id, ok: false, reason: sent.failed }; })
+        : sent.results;
+      if (updated.length) renderSendResults(resultsEl, updated, results, result.data, [], update);
     }
     submitBtn.disabled = false;
     resetEventForm();
@@ -666,6 +757,7 @@
         btn.disabled = true;
         btn.textContent = "Sending\u2026";
         const results = await emailInvites([inv.id]);
+        document.getElementById("invite-send-results").innerHTML = "";
         renderSendResults(document.getElementById("invite-send-results"), [inv], results, ev, []);
         loadInvites();
       });
@@ -726,6 +818,7 @@
     msg.textContent = "Sending\u2026";
     const results = await emailInvites([data.id]);
     msg.textContent = "";
+    document.getElementById("invite-send-results").innerHTML = "";
     renderSendResults(document.getElementById("invite-send-results"), [data], results, ev, []);
     const url = buildInviteUrl(data.token);
     document.getElementById("new-invite-url").value = url;

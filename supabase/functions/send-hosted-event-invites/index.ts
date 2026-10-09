@@ -3,6 +3,12 @@
 // or again later with "Email Invite". Each invite has its own token, so
 // every team gets its own link; nobody needs a login to pay.
 //
+// mode "update" (editing an event with "Email the invited teams" ticked):
+// emails every team invited to event_id -- paid ones too -- what changed,
+// with an optional note from the Manager, the current details and their
+// link. Teams invited in the same save (exclude_ids) already got the
+// current details in their invite, so they're skipped.
+//
 // Sent through Resend. Until the club's sending domain is verified in
 // Resend, Resend only delivers to the club's own address; those come back
 // as not sent (with the reason), and the page offers the link to send by
@@ -41,21 +47,27 @@ Deno.serve(async (req) => {
     if (!caller || caller.role !== "owner") return json({ error: "Manager access required" }, 403);
 
     const body = await req.json();
-    const inviteIds: string[] = Array.isArray(body.invite_ids)
-      ? body.invite_ids.map((x: unknown) => String(x)).filter(Boolean).slice(0, 200)
-      : [];
-    if (!inviteIds.length) return json({ error: "No invites to send" }, 400);
+    const isUpdate = body.mode === "update";
+    const ids = (v: unknown) => Array.isArray(v) ? v.map((x: unknown) => String(x)).filter(Boolean).slice(0, 200) : [];
+    const inviteIds = ids(body.invite_ids);
+    const excludeIds = ids(body.exclude_ids);
+    const eventId = String(body.event_id || "");
+    const changes: string[] = ids(body.changes).map((c) => c.slice(0, 300)).slice(0, 20);
+    const note = String(body.note || "").trim().slice(0, 2000);
+    if (isUpdate ? !eventId : !inviteIds.length) return json({ error: "No invites to send" }, 400);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: invites, error: invitesError } = await admin
+    let inviteQuery = admin
       .from("hosted_event_invites")
-      .select("id, event_id, team_name, contact_name, contact_email, token, status")
-      .in("id", inviteIds);
+      .select("id, event_id, team_name, contact_name, contact_email, token, status");
+    inviteQuery = isUpdate ? inviteQuery.eq("event_id", eventId) : inviteQuery.in("id", inviteIds);
+    const { data: allInvites, error: invitesError } = await inviteQuery;
     if (invitesError) return json({ error: invitesError.message }, 500);
+    const invites = (allInvites ?? []).filter((i) => excludeIds.indexOf(i.id) === -1);
 
     const eventIds = [...new Set((invites ?? []).map((i) => i.event_id))];
     const { data: events } = await admin
@@ -72,7 +84,7 @@ Deno.serve(async (req) => {
     for (const inv of invites ?? []) {
       const ev = eventById.get(inv.event_id);
       if (!ev) { results.push({ id: inv.id, email: inv.contact_email, ok: false, reason: "event not found" }); continue; }
-      if (inv.status === "paid") { results.push({ id: inv.id, email: inv.contact_email, ok: false, reason: "already paid" }); continue; }
+      if (inv.status === "paid" && !isUpdate) { results.push({ id: inv.id, email: inv.contact_email, ok: false, reason: "already paid" }); continue; }
       if (!apiKey) { results.push({ id: inv.id, email: inv.contact_email, ok: false, reason: "the club's email isn't set up" }); continue; }
 
       const link = `${siteUrl}/hosted-event-signup.html?token=${encodeURIComponent(inv.token)}`;
@@ -83,21 +95,42 @@ Deno.serve(async (req) => {
         ev.levels && ev.levels.length ? `Age / Level: ${ev.levels.join(", ")}` : null,
         `Team fee: ${formatAmount(ev.fee_cents)}`,
       ].filter(Boolean);
-      const lines = [
-        greeting,
-        "",
-        `${inv.team_name ? inv.team_name + " is" : "Your team is"} invited to ${ev.name}, hosted by San Diego East County Aquatics.`,
-        "",
-        ...details,
-        ...(ev.description ? ["", ev.description] : []),
-        "",
-        "Sign up and pay your team's fee here (no account needed):",
-        link,
-        "",
-        `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,
-        "",
-        "San Diego East County Aquatics",
-      ];
+      const paid = inv.status === "paid";
+      const lines = isUpdate
+        ? [
+          greeting,
+          "",
+          `There's an update to ${ev.name}, hosted by San Diego East County Aquatics.`,
+          ...(changes.length ? ["", "What changed:", ...changes.map((c) => `  - ${c}`)] : []),
+          ...(note ? ["", note] : []),
+          "",
+          "Event details now:",
+          ...details,
+          "",
+          paid
+            ? `${inv.team_name || "Your team"} is registered -- nothing else to do. Details and the latest schedule:`
+            : "Sign up and pay your team's fee here (no account needed):",
+          link,
+          "",
+          `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,
+          "",
+          "San Diego East County Aquatics",
+        ]
+        : [
+          greeting,
+          "",
+          `${inv.team_name ? inv.team_name + " is" : "Your team is"} invited to ${ev.name}, hosted by San Diego East County Aquatics.`,
+          "",
+          ...details,
+          ...(ev.description ? ["", ev.description] : []),
+          "",
+          "Sign up and pay your team's fee here (no account needed):",
+          link,
+          "",
+          `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,
+          "",
+          "San Diego East County Aquatics",
+        ];
       try {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -106,12 +139,12 @@ Deno.serve(async (req) => {
             from,
             to: inv.contact_email,
             reply_to: CLUB_EMAIL,
-            subject: `You're invited: ${ev.name}`,
+            subject: isUpdate ? `Update: ${ev.name}` : `You're invited: ${ev.name}`,
             text: lines.join("\n"),
           }),
         });
         if (res.ok) {
-          await admin.from("hosted_event_invites").update({ emailed_at: new Date().toISOString() }).eq("id", inv.id);
+          if (!isUpdate) await admin.from("hosted_event_invites").update({ emailed_at: new Date().toISOString() }).eq("id", inv.id);
           results.push({ id: inv.id, email: inv.contact_email, ok: true });
         } else {
           const detail = await res.text();

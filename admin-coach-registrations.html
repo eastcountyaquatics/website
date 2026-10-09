@@ -13,6 +13,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  .reg-photo{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap;}
+  .reg-photo img{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--gold);}
   .reg-item{background:#fff;border:1px solid #e3e6f0;border-radius:8px;margin-bottom:10px;}
   .reg-item summary{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 16px;cursor:pointer;list-style:none;}
   .reg-item summary::-webkit-details-marker{display:none;}
@@ -233,7 +235,17 @@
 
       return '<details class="reg-item"><summary><span><strong>' + escapeHtml(r.full_name) + "</strong>" + flags + "</span>" +
         '<span class="muted" style="font-size:13px;white-space:nowrap;" data-rate-label="' + r.id + '">' + (rate != null ? "$" + (rate / 100).toFixed(2) + "/hr" : "No rate set") + "</span></summary>" +
-        '<div class="reg-body"><dl class="reg-dl">' + dl + "</dl>" +
+        '<div class="reg-body">' +
+        (r.photo_url
+          ? '<div class="reg-photo"><img src="' + escapeHtml(r.photo_url) + '" alt="' + escapeHtml(r.full_name) + '">' +
+            (record
+              ? (record.photo_url === r.photo_url
+                  ? '<span class="muted" style="font-size:13px;">Shown on the Coaches page.</span>'
+                  : '<button type="button" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;" data-use-photo="' + r.id + '">Use on Coaches page</button>')
+              : '<span class="muted" style="font-size:13px;">Add them on the <a href="admin-coaches.html">Coaches</a> page to use this photo there.</span>') +
+            "</div>"
+          : "") +
+        '<dl class="reg-dl">' + dl + "</dl>" +
         '<div class="reg-owner">' +
           '<div class="field" style="margin:0;"><label style="font-size:13px;">Hourly Rate ($)</label>' +
             (profile || record
@@ -248,6 +260,24 @@
         '<div class="form-msg" data-msg-for="' + r.id + '" style="margin-top:8px;"></div>' +
         "</div></details>";
     }).join("");
+
+    // Put the registration headshot on the coach's Coaches page profile.
+    listEl.querySelectorAll("[data-use-photo]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const r = registrations.find(function (x) { return x.id === btn.dataset.usePhoto; });
+        const record = r && coachRecordFor(r, profileByEmail[r.email.toLowerCase()]);
+        if (!record) return;
+        btn.disabled = true;
+        const { error } = await supabaseClient.from("coaches").update({ photo_url: r.photo_url }).eq("id", record.id);
+        if (error) {
+          btn.disabled = false;
+          alert("Could not update the photo: " + error.message);
+          return;
+        }
+        record.photo_url = r.photo_url;
+        btn.replaceWith(Object.assign(document.createElement("span"), { className: "muted", textContent: "Shown on the Coaches page." }));
+      });
+    });
 
     listEl.querySelectorAll("[data-doc]").forEach(function (btn) {
       btn.addEventListener("click", async function () {
@@ -398,7 +428,7 @@
       supabaseClient.from("coach_registrations").select("*").order("created_at", { ascending: false }),
       supabaseClient.from("profiles").select("id, email, role"),
       supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
-      supabaseClient.from("coaches").select("id, full_name, profile_id, invite_email, contact_email"),
+      supabaseClient.from("coaches").select("id, full_name, profile_id, invite_email, contact_email, photo_url"),
       supabaseClient.from("coach_record_rates").select("coach_record_id, hourly_rate_cents"),
     ]);
     if (error) {

@@ -69,9 +69,14 @@
       <div id="claim-unclaimed-list"></div>
     </div>
 
-    <div class="admin-form" id="coach-form-wrap">
-      <h3 id="form-title">Add a Coach</h3>
-      <div id="form-msg" class="form-msg"></div>
+    <div class="admin-form" id="coach-form-wrap" style="padding:0;">
+      <button type="button" id="coach-form-toggle" aria-expanded="false" aria-controls="coach-form-body"
+        style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:none;border:0;padding:18px 26px;cursor:pointer;text-align:left;">
+        <h3 id="form-title" style="margin:0;">+ Add a Coach</h3>
+        <span id="coach-form-caret" aria-hidden="true" style="font-size:18px;color:var(--blue);">&#9662;</span>
+      </button>
+      <div id="form-msg" class="form-msg" style="margin:0 26px;"></div>
+      <div id="coach-form-body" style="display:none;padding:0 26px 26px;">
       <form id="coach-form">
         <input type="hidden" id="coach-id">
         <div class="field">
@@ -150,6 +155,7 @@
           <button type="button" id="cancel-edit-btn" class="btn btn-outline-dark" style="display:none;">Cancel</button>
         </div>
       </form>
+      </div>
     </div>
 
     <div id="coach-list"><p class="muted">Loading coaches&hellip;</p></div>
@@ -418,7 +424,11 @@
       return;
     }
 
-    const active = data.filter(function (c) { return c.is_active !== false; });
+    // Grouped by team group, A-Z by first name within each group.
+    const active = data.filter(function (c) { return c.is_active !== false; }).sort(function (a, b) {
+      const g = (a.team_group || "~").localeCompare(b.team_group || "~");
+      return g !== 0 ? g : (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" });
+    });
     const archived = data.filter(function (c) { return c.is_active === false; });
 
     function itemHtml(c) {
@@ -434,9 +444,9 @@
         (canEdit
           ? '<button data-edit="' + c.id + '">Edit</button>' +
             (c.is_active === false
-              ? '<button data-set-active="' + c.id + '" data-active="true">Make Active</button>' +
-                '<button data-delete="' + c.id + '" class="danger">Delete</button>'
-              : '<button data-set-active="' + c.id + '" data-active="false">Archive</button>')
+              ? '<button data-set-active="' + c.id + '" data-active="true">Make Active</button>'
+              : '<button data-set-active="' + c.id + '" data-active="false">Archive</button>') +
+            '<button data-delete="' + c.id + '" class="danger" title="Delete coach" aria-label="Delete ' + escapeHtml(c.full_name) + '">&#128465; Delete</button>'
           : "") +
         "</div>" +
         "</div>";
@@ -497,12 +507,19 @@
       });
       listEl.querySelectorAll("[data-delete]").forEach(function (btn) {
         btn.addEventListener("click", async function () {
-          if (!confirm("Delete this coach?")) return;
+          const coach = data.find(function (c) { return c.id === btn.dataset.delete; });
+          const name = coach ? coach.full_name : "this coach";
+          if (!confirm("Permanently delete " + name + "?\n\nThis removes their coach profile from the site and the pay rate saved on it. " +
+            "Hours and pay already logged under their website login are kept. Archive instead if they might come back.")) return;
           const { error } = await supabaseClient.from("coaches").delete().eq("id", btn.dataset.delete);
           if (error) {
             alert("Could not delete: " + error.message);
             return;
           }
+          const msg = document.getElementById("form-msg");
+          msg.className = "form-msg success";
+          msg.textContent = name + " was deleted.";
+          if (document.getElementById("coach-id").value === btn.dataset.delete) resetForm();
           loadCoaches();
         });
       });
@@ -512,6 +529,8 @@
   function startEdit(coach) {
     document.getElementById("photo-status").textContent = "";
     document.getElementById("form-title").textContent = "Edit Coach";
+    setCoachFormOpen(true);
+    document.getElementById("coach-form-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
     document.getElementById("coach-id").value = coach.id;
     document.getElementById("full_name").value = coach.full_name || "";
     setRoleTitleValue(coach.role_title || "");
@@ -541,6 +560,7 @@
     document.getElementById("photo-status").textContent = "";
     myCoachRecord = coach;
     document.getElementById("form-title").textContent = "Edit My Profile";
+    setCoachFormOpen(true);
     document.getElementById("coach-id").value = coach.id;
     const nameInput = document.getElementById("full_name");
     nameInput.value = coach.full_name || "";
@@ -581,6 +601,17 @@
     loadCoaches();
   }
 
+  // The Add/Edit form stays folded up until it's needed, so the coach list
+  // isn't pushed down the page.
+  function setCoachFormOpen(open) {
+    document.getElementById("coach-form-body").style.display = open ? "block" : "none";
+    document.getElementById("coach-form-toggle").setAttribute("aria-expanded", open ? "true" : "false");
+    document.getElementById("coach-form-caret").innerHTML = open ? "&#9652;" : "&#9662;";
+  }
+  document.getElementById("coach-form-toggle").addEventListener("click", function () {
+    setCoachFormOpen(document.getElementById("coach-form-body").style.display === "none");
+  });
+
   function resetForm() {
     document.getElementById("photo-status").textContent = "";
     document.getElementById("coach-form").reset();
@@ -590,9 +621,10 @@
     setTeamGroupValue("");
     delete document.getElementById("coach-form").dataset.origTeamGroup;
     document.getElementById("invite-email-field").style.display = "block";
-    document.getElementById("form-title").textContent = "Add a Coach";
+    document.getElementById("form-title").textContent = "+ Add a Coach";
     document.getElementById("submit-btn").textContent = "Add Coach";
     document.getElementById("cancel-edit-btn").style.display = "none";
+    setCoachFormOpen(false);
     updatePhotoPreview();
   }
 

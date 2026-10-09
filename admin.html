@@ -231,8 +231,7 @@
     document.getElementById("admin-email").textContent = auth.session.user.email;
     const roleLabels = { owner: "Manager", coach: "Coach", head_coach: "Head Coach", assistant_coach: "Assistant Coach" };
     document.getElementById("admin-role").textContent = roleLabels[auth.role] || auth.role;
-    // Which groups of cards each role sees. Founders and Finance log in
-    // with Manager ("owner") access, so they get everything too.
+    // Which groups of cards each role sees.
     const GROUPS_BY_ROLE = {
       owner: ["coaches", "teams", "tournaments", "website", "finance", "donations"],
       head_coach: ["coaches", "teams", "tournaments"],

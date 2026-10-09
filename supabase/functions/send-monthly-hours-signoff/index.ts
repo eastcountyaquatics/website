@@ -92,7 +92,9 @@ Deno.serve(async (req) => {
     if (coachIds.length === 0) return json({ ok: true, month, sent: 0, skipped: 0, message: "No hours logged that month." });
 
     const [{ data: profiles }, { data: existing }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email").in("id", coachIds),
+      // Coach-level accounts only (Coach / Head Coach / Assistant Coach) --
+      // Managers and Finance don't sign off on hours.
+      supabase.from("profiles").select("id, full_name, email").in("id", coachIds).in("role", ["coach", "head_coach", "assistant_coach"]),
       supabase.from("coach_hours_signoffs").select("id, coach_id, token, status").eq("period_month", periodStart).in("coach_id", coachIds),
     ]);
     const existingByCoach = new Map((existing || []).map((s) => [s.coach_id, s]));

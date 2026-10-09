@@ -533,6 +533,9 @@
       }).join(" &middot; ") + "</div>";
   }
 
+  // Only coach-level accounts sign off on hours (not Managers / Finance).
+  var coachLevelIds = new Set();
+
   // ---- Month-end sign-off -------------------------------------------------
   const SIGNOFF_LABELS = {
     pending: '<span style="color:#8a6d00;font-weight:700;">Waiting on coach</span>',
@@ -556,7 +559,12 @@
       listEl.innerHTML = '<p class="muted">No sign-off emails sent for this month yet.</p>';
       return;
     }
-    listEl.innerHTML = data
+    const rows = data.filter(function (r) { return coachLevelIds.has(r.coach_id); });
+    if (!rows.length) {
+      listEl.innerHTML = '<p class="muted">No sign-off emails sent for this month yet.</p>';
+      return;
+    }
+    listEl.innerHTML = rows
       .sort(function (a, b) { return (nameById[a.coach_id] || "").localeCompare(nameById[b.coach_id] || ""); })
       .map(function (r) {
         return '<div class="pay-row" style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e3edf3;font-size:14px;">' +
@@ -602,11 +610,14 @@
     document.getElementById("to-date").value = localToday();
 
     const [{ data: profiles }, { data: rates }] = await Promise.all([
-      supabaseClient.from("profiles").select("id, full_name, email"),
+      supabaseClient.from("profiles").select("id, full_name, email, role"),
       supabaseClient.from("coach_pay_rates").select("coach_id, hourly_rate_cents"),
     ]);
     rateHistory = await loadCoachRateHistory();
-    (profiles || []).forEach(function (p) { nameById[p.id] = p.full_name || p.email; });
+    (profiles || []).forEach(function (p) {
+      nameById[p.id] = p.full_name || p.email;
+      if (["coach", "head_coach", "assistant_coach"].indexOf(p.role) !== -1) coachLevelIds.add(p.id);
+    });
     const { data: staff } = await supabaseClient.rpc("list_staff_profiles");
     document.getElementById("reimb-coach").innerHTML = '<option value="">Choose a coach&hellip;</option>' +
       (staff || []).map(function (c) { return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.full_name) + "</option>"; }).join("");

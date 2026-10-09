@@ -84,10 +84,10 @@
     <h3 style="margin-top:32px;">Accounts</h3>
     <div id="user-list"><p class="muted">Loading accounts&hellip;</p></div>
 
-    <div id="deleted-wrap" style="margin-top:36px;display:none;">
+    <div id="deleted-wrap" style="margin-top:36px;padding-top:24px;border-top:2px solid #e3e6f0;">
       <h3>Deleted Accounts</h3>
       <p class="muted" style="font-size:13px;">Everything a deleted login had (coach hours, coach pay, reimbursements, Masters, athletes) is saved here under their name and email. Their payments stay in Sign-Ups as before.</p>
-      <div id="deleted-list"></div>
+      <div id="deleted-list"><p class="muted">Loading&hellip;</p></div>
     </div>
   </div>
 </section>
@@ -409,13 +409,14 @@
         " (if they were entered by mistake, remove them on Coaches' Hours Logged, then try again)");
       if (l.coach_payments) reasons.push("- " + plural(l.coach_payments, "coach payment") + " recorded on Coach Pay");
       if (l.purchases) reasons.push("- " + plural(l.purchases, "purchase") + " (registrations or payments)");
-      if (l.masters_subscriptions) reasons.push("- a paid Masters membership");
+      if (l.masters_subscriptions) reasons.push("- a paid Masters membership" + (l.live_masters ? " (still active)" : ""));
       const proceed = confirm(
         who + " has records the club normally keeps:\n\n" + reasons.join("\n") +
         '\n\nTo just take away their access, click Cancel and set their role to "No admin access".' +
         "\n\nClick OK to DELETE ANYWAY. Their login and athletes are removed, but every record above is saved " +
         "under their name and email in Deleted Accounts (bottom of this page)" +
-        (l.purchases ? ", and their payments stay in Sign-Ups" : "") + "."
+        (l.purchases ? ", and their payments stay in Sign-Ups" : "") + "." +
+        (l.live_masters ? " Their Masters membership will be canceled in Stripe first, so they won't be charged again." : "")
       );
       if (!proceed) return;
       const typed = prompt('Type DELETE to permanently delete ' + who + ".");
@@ -475,8 +476,10 @@
       .order("deleted_at", { ascending: false });
     const wrap = document.getElementById("deleted-wrap");
     const listEl = document.getElementById("deleted-list");
-    if (!data || !data.length) { wrap.style.display = "none"; return; }
-    wrap.style.display = "block";
+    if (!data || !data.length) {
+      listEl.innerHTML = '<p class="muted">No deleted accounts yet.</p>';
+      return;
+    }
     const n = function (r, key) { return (r.records && r.records[key] ? r.records[key].length : 0); };
     listEl.innerHTML = data.map(function (r) {
       const hours = (r.records.coach_hours || []).reduce(function (sum, h) { return sum + Number(h.hours || 0); }, 0);

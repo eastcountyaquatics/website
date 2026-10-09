@@ -7,8 +7,8 @@
 //     needs to keep for taxes/1099s. Remove that person's access by
 //     setting their role to "No admin access" instead.
 //   - action "delete" with force: true ("Delete anyway", typed-DELETE
-//     confirm on Team Access) goes ahead anyway. A still-running paid
-//     Masters membership still blocks it.
+//     confirm on Team Access) goes ahead anyway, first canceling any
+//     still-running paid Masters membership in Stripe so billing stops.
 //   - every delete first saves the account's records (coach hours, pay,
 //     reimbursements, sign-offs, Masters, athletes) to deleted_accounts
 //     under the person's name and email, and keeps their purchases,
@@ -17,8 +17,10 @@
 //     Manager would lock the whole club out).
 //
 // Deploy: supabase functions deploy delete-user
-// Secrets required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+// Secrets required: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
+// STRIPE_SECRET_KEY (to cancel a running Masters membership on Delete Anyway)
 
+import Stripe from "npm:stripe@^17";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -89,7 +91,16 @@ Deno.serve(async (req) => {
       count("coach_payments", "coach_id"),
       count("masters_subscriptions", "user_id", (q) => q.eq("comped", false)),
     ]);
-    const linked = { athletes, purchases, coach_hours: coachHours, coach_payments: coachPayments, masters_subscriptions: mastersSubs };
+    const { count: liveMastersCount } = await admin
+      .from("masters_subscriptions")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("comped", false)
+      .in("status", ["pending", "active", "paused", "past_due"]);
+    const linked = {
+      athletes, purchases, coach_hours: coachHours, coach_payments: coachPayments,
+      masters_subscriptions: mastersSubs, live_masters: liveMastersCount ?? 0,
+    };
     const blocked = purchases > 0 || coachHours > 0 || coachPayments > 0 || mastersSubs > 0;
 
     if (body.action === "preview") {
@@ -106,17 +117,31 @@ Deno.serve(async (req) => {
         }, 409);
       }
       if (force) {
-        // "Delete anyway" (the Manager typed DELETE to confirm). One thing
-        // still stops it: a paid Masters membership that's still running
-        // would keep billing their card in Stripe after the account is gone.
-        const { count: liveMasters } = await admin
+        // "Delete anyway" (the Manager typed DELETE to confirm). A paid
+        // Masters membership that's still running would keep billing their
+        // card in Stripe after the account is gone -- cancel it there first.
+        // If Stripe can't cancel it, stop: never delete an account that's
+        // still being charged.
+        const { data: liveSubs } = await admin
           .from("masters_subscriptions")
-          .select("*", { count: "exact", head: true })
+          .select("id, stripe_subscription_id")
           .eq("user_id", userId)
-          .eq("comped", false)
           .in("status", ["pending", "active", "paused", "past_due"]);
-        if ((liveMasters ?? 0) > 0) {
-          return json({ error: "Cancel their Masters membership first (Admin -> Masters Membership) -- otherwise Stripe keeps billing them." }, 409);
+        if (liveSubs && liveSubs.length) {
+          const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20" });
+          for (const sub of liveSubs) {
+            if (sub.stripe_subscription_id) {
+              try {
+                await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+              } catch (err) {
+                const already = err instanceof Error && /no such subscription|canceled/i.test(err.message);
+                if (!already) {
+                  return json({ error: "Could not cancel their Masters membership in Stripe, so nothing was deleted: " + (err instanceof Error ? err.message : String(err)) }, 502);
+                }
+              }
+            }
+            await admin.from("masters_subscriptions").update({ status: "canceled" }).eq("id", sub.id);
+          }
         }
       }
 

@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await supabase
       .from("zeffy_pay_links")
-      .select("code, amount_due_cents, paid_cents, status")
+      .select("code, amount_due_cents, paid_cents, status, discount_code")
       .eq("tournament_invite_id", invite.id)
       .maybeSingle();
 
@@ -81,7 +81,9 @@ Deno.serve(async (req) => {
       return json(payLinkResponse(existing.code, existing.amount_due_cents, existing.paid_cents, "short", formUrl, tier.label));
     }
 
-    if (!payerEmail || !payerEmail.includes("@")) return json({ error: "Enter a valid email address" }, 400);
+    // Reopening the invite keeps a discount already applied to this code.
+    const reusingDiscount = !discountCode && !!existing?.discount_code;
+    if (reusingDiscount) discountCode = existing!.discount_code;
 
     // A payment code (ECA-XXXXXX) pasted into the discount box isn't a
     // discount: ignore it rather than reject the form.
@@ -95,20 +97,29 @@ Deno.serve(async (req) => {
     let appliedCode: string | null = null;
     if (discountCode) {
       const discounted = await applyDiscount(supabase, discountCode, tournament.id, amount, invite.id);
-      if ("error" in discounted) return json({ error: discounted.error }, 400);
+      if ("error" in discounted) {
+        // The saved code has since expired or run out: keep the price they
+        // were already quoted rather than block the page.
+        if (reusingDiscount) {
+          return json(payLinkResponse(existing!.code, existing!.amount_due_cents, existing!.paid_cents, existing!.status, formUrl, tier.label));
+        }
+        return json({ error: discounted.error }, 400);
+      }
       amount = discounted.amount;
       appliedCode = discounted.code;
     }
 
-    const fields = {
+    // Name/email are optional: Zeffy collects the payer's, and the webhook
+    // emails that address. Only overwrite what was actually sent.
+    const fields: Record<string, unknown> = {
       amount_due_cents: amount,
       tier_label: tier.label,
       discount_code: appliedCode,
-      payer_name: payerName || null,
-      payer_email: payerEmail,
-      shirt_size: shirtSize,
       updated_at: new Date().toISOString(),
     };
+    if (payerName) fields.payer_name = payerName;
+    if (payerEmail.includes("@")) fields.payer_email = payerEmail;
+    if (shirtSize) fields.shirt_size = shirtSize;
 
     let code = existing?.code;
     if (code) {
@@ -138,7 +149,7 @@ Deno.serve(async (req) => {
         user_id: null, athlete_id: athlete.id, tournament_id: tournament.id, tournament_invite_id: invite.id,
         description: `${tournament.name} — ${athlete.full_name} (${tier.label}, code ${appliedCode})`,
         amount_cents: 0, currency: "usd", status: "paid", program_kind: "tournament",
-        payer_name: payerName || null, payer_email: payerEmail,
+        payer_name: payerName || null, payer_email: payerEmail.includes("@") ? payerEmail : null,
       });
       await supabase.from("zeffy_pay_links").update({ status: "paid" }).eq("code", code);
       await supabase.from("tournament_invites").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", invite.id);

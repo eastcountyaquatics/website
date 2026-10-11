@@ -211,8 +211,14 @@
     });
   }
 
-  // Zeffy tournaments: the site works out the price (and discount code),
-  // then the family pays it on the club's Zeffy form with their code.
+  // Zeffy tournaments: the site works out the price (and any discount code),
+  // then the family pays it on the club's Zeffy form with their payment
+  // code. The invite is already for one athlete and Zeffy collects the
+  // payer's name and email, so nothing to fill in here but a shirt size
+  // (when the tournament asks) or a discount code (if they have one).
+  let payBoxEl = null;
+  let chosenShirtSize = null;
+
   function renderZeffy(data) {
     if (data.pay_link && data.pay_link.status === "short") {
       const note = document.createElement("div");
@@ -222,58 +228,51 @@
         ". <strong>" + escapeHtml(data.athlete.full_name) + " isn't on the roster until the " + formatAmount(data.pay_link.balance_cents) +
         " balance is paid.</strong>";
       cardEl.appendChild(note);
-      requestPayLink({ token: token }, null);
+      requestPayLink({ token: token }, null, false);
+      return;
+    }
+
+    if (!data.tournament.shirt_size_enabled) {
+      requestPayLink({ token: token }, null, true);
       return;
     }
 
     const form = document.createElement("form");
     form.id = "invite-form";
     form.innerHTML =
-      '<div class="field"><label for="payer_name">Your Name</label><input type="text" id="payer_name" required></div>' +
-      '<div class="field"><label for="payer_email">Your Email</label><input type="email" id="payer_email" required></div>' +
-      (data.tournament.shirt_size_enabled
-        ? '<div class="field"><label for="shirt_size">Shirt Size</label>' +
-          '<select id="shirt_size"><option value="">Select one...</option>' +
-          "<option>Youth Small</option><option>Youth Medium</option><option>Youth Large</option>" +
-          "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
-          "</select></div>"
-        : "") +
-      '<div class="field"><label for="discount_code">Discount Code (optional)</label><input type="text" id="discount_code" style="text-transform:uppercase;">' +
-      '<p class="muted" style="font-size:12px;margin-top:4px;">Only if the club gave you a discount. Leave blank otherwise &mdash; your payment code comes on the next screen.</p></div>' +
+      '<div class="field"><label for="shirt_size">Shirt Size</label>' +
+      '<select id="shirt_size" required><option value="">Select one...</option>' +
+      "<option>Youth Small</option><option>Youth Medium</option><option>Youth Large</option>" +
+      "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
+      "</select></div>" +
       '<div id="invite-msg" class="form-msg"></div>' +
       '<button type="submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>';
     cardEl.appendChild(form);
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      const payload = {
-        token: token,
-        payer_name: document.getElementById("payer_name").value.trim(),
-        payer_email: document.getElementById("payer_email").value.trim(),
-      };
-      const shirtSizeEl = document.getElementById("shirt_size");
-      if (shirtSizeEl) payload.shirt_size = shirtSizeEl.value;
-      const discountCode = document.getElementById("discount_code").value.trim();
-      if (discountCode) payload.discount_code = discountCode;
-      requestPayLink(payload, form);
+      chosenShirtSize = document.getElementById("shirt_size").value;
+      requestPayLink({ token: token, shirt_size: chosenShirtSize }, form, true);
     });
   }
 
-  async function requestPayLink(payload, form) {
-    const msg = form ? document.getElementById("invite-msg") : null;
-    const submitBtn = form ? form.querySelector("button[type=submit]") : null;
+  async function requestPayLink(payload, form, allowDiscount) {
+    const msg = form ? document.getElementById("invite-msg") : document.getElementById("discount-msg");
+    const submitBtn = form ? form.querySelector("button[type=submit]") : document.getElementById("discount-apply");
+    const idleLabel = submitBtn ? submitBtn.textContent : "";
     if (msg) msg.className = "form-msg";
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Getting your payment code..."; }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "One moment..."; }
 
     const { data: link, error } = await supabaseClient.functions.invoke("create-zeffy-pay-link", { body: payload });
     if (error || !link || !link.code) {
       const text = await functionErrorMessage(error, link, "Could not get your payment code. Please try again.");
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Continue to Payment"; }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = idleLabel; }
       if (msg) { msg.className = "form-msg error"; msg.textContent = text; }
       else renderError(text);
       return;
     }
     if (form) form.remove();
+    if (payBoxEl) payBoxEl.remove();
 
     if (link.free) {
       cardEl.innerHTML = "<h3>You're registered!</h3><p class=\"muted\">Your discount code covered the full amount &mdash; nothing to pay.</p>";
@@ -292,9 +291,17 @@
       '<a class="btn btn-primary" style="width:100%;text-align:center;margin:8px 0 12px;" href="' + escapeHtml(link.form_url) + '" target="_blank" rel="noopener">3. Open the Zeffy Payment Page</a>' +
       '<p class="muted" style="font-size:13px;">Zeffy will suggest an optional tip to Zeffy (not the club). You can change it to $0.</p>' +
       '<p class="muted" style="font-size:13px;">Enter exactly <strong>' + amount + "</strong> &mdash; " + escapeHtml(data_athlete_name) +
-      " is added to the roster once the full amount comes in. Paid? This page updates within a minute or two.</p>" +
-      '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">I\'ve Paid &mdash; Check Status</button>';
+      " is added to the roster once the full amount comes in, and you'll get a confirmation email. Paid? This page updates within a minute or two.</p>" +
+      '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">I\'ve Paid &mdash; Check Status</button>' +
+      (allowDiscount
+        ? '<p style="margin-top:14px;font-size:13px;"><a href="#" id="discount-toggle">Have a discount code from the club?</a></p>' +
+          '<div id="discount-wrap" style="display:none;"><div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<input type="text" id="discount_code" placeholder="Discount code" style="flex:1;min-width:160px;text-transform:uppercase;">' +
+          '<button type="button" class="btn btn-outline-dark" id="discount-apply" style="padding:6px 14px;">Apply</button></div>' +
+          '<div id="discount-msg" class="form-msg"></div></div>'
+        : "");
     cardEl.appendChild(box);
+    payBoxEl = box;
 
     box.addEventListener("click", async function (e) {
       const copyBtn = e.target.closest("[data-copy]");
@@ -308,7 +315,20 @@
         setTimeout(function () { copyBtn.textContent = "Copy"; }, 2000);
         return;
       }
-      if (e.target.id === "check-paid") window.location.reload();
+      if (e.target.id === "check-paid") { window.location.reload(); return; }
+      if (e.target.id === "discount-toggle") {
+        e.preventDefault();
+        document.getElementById("discount-wrap").style.display = "block";
+        document.getElementById("discount_code").focus();
+        return;
+      }
+      if (e.target.id === "discount-apply") {
+        const code = document.getElementById("discount_code").value.trim();
+        if (!code) return;
+        const next = { token: token, discount_code: code };
+        if (chosenShirtSize) next.shirt_size = chosenShirtSize;
+        requestPayLink(next, null, true);
+      }
     });
   }
 

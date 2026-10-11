@@ -1049,6 +1049,11 @@
     myAthletes = data || [];
     const activeIds = await loadActiveAthleteIds();
     myAthletes.forEach(function (a) { a.active = activeIds.has(a.id); });
+    // BAND group invite links are private: only registered athletes get
+    // their team's (my_band_links checks that server-side).
+    const bandByAthlete = {};
+    const bandRes = await supabaseClient.rpc("my_band_links");
+    (bandRes.data || []).forEach(function (b) { bandByAthlete[b.athlete_id] = b; });
     if (myAthletes.length === 0) {
       listEl.innerHTML = '<p class="muted">No athletes added yet.</p>';
     } else {
@@ -1066,6 +1071,9 @@
             "</h4>" +
             '<div class="admin-list-actions"><button data-edit-athlete="' + a.id + '">Edit</button><button data-remove-athlete="' + a.id + '" class="danger">Remove</button></div>' +
             "</div>" +
+            (bandByAthlete[a.id] && /^https:\/\//.test(bandByAthlete[a.id].url)
+              ? '<div style="margin-top:8px;"><a class="btn btn-primary" style="padding:6px 14px;font-size:13px;" target="_blank" rel="noopener" href="' + escapeHtml(bandByAthlete[a.id].url) + '">Join ' + escapeHtml(bandByAthlete[a.id].label) + ' BAND Group</a></div>'
+              : "") +
             '<div class="athlete-detail" style="display:none;padding-top:10px;margin-top:10px;border-top:1px solid #eef1f7;">' +
             detailRow("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "") +
             detailRow("Sex", a.sex) +
@@ -1081,7 +1089,7 @@
         .join("");
       listEl.querySelectorAll("[data-athlete-row]").forEach(function (row) {
         row.addEventListener("click", function (e) {
-          if (e.target.closest("button")) return;
+          if (e.target.closest("button, a")) return;
           const detail = row.querySelector(".athlete-detail");
           detail.style.display = detail.style.display === "none" ? "block" : "none";
         });

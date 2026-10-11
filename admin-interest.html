@@ -60,8 +60,8 @@
       <form id="ann-form">
         <input type="hidden" id="ann-id">
         <div class="field">
-          <label for="ann-team">Team</label>
-          <select id="ann-team" required><option value="">Choose a team&hellip;</option></select>
+          <label>Teams (check one or more)</label>
+          <div id="ann-team" style="display:flex;flex-wrap:wrap;gap:6px 16px;border:1px solid #e3edf3;border-radius:8px;padding:10px 12px;"></div>
         </div>
         <div class="field">
           <label for="ann-title">Title</label>
@@ -131,7 +131,7 @@
       supabaseClient.from("athletes").select("id, team_slug, birthdate, sex"),
       loadActiveAthleteIds(),
     ]);
-    teams = teamRows || [];
+    teams = (teamRows || []).filter(function (t) { return t.team_slug !== "splashball"; });
     // Team = assigned team, else worked out from birthdate/sex (most
     // athletes have no hand-assigned team).
     // Registered athletes only (paid session, free trial or Masters).
@@ -141,8 +141,10 @@
       const slug = athleteTournamentTeam(a);
       if (slug) athleteCountByTeam[slug] = (athleteCountByTeam[slug] || 0) + 1;
     });
-    document.getElementById("ann-team").innerHTML = '<option value="">Choose a team&hellip;</option>' +
-      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+    document.getElementById("ann-team").innerHTML = teams.map(function (t) {
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:400;white-space:nowrap;">' +
+        '<input type="checkbox" value="' + escapeHtml(t.team_slug) + '" style="width:auto;"> ' + escapeHtml(t.team_label) + "</label>";
+    }).join("");
   }
   function teamLabel(slug) {
     const t = teams.find(function (x) { return x.team_slug === slug; });
@@ -299,22 +301,30 @@
     const msg = document.getElementById("form-msg");
     msg.className = "form-msg";
 
-    const payload = {
-      team_slug: document.getElementById("ann-team").value,
+    const slugs = Array.prototype.slice.call(document.querySelectorAll("#ann-team input:checked")).map(function (cb) { return cb.value; });
+    if (!slugs.length) {
+      msg.className = "form-msg error";
+      msg.textContent = "Choose at least one team.";
+      return;
+    }
+    const base = {
       title: document.getElementById("ann-title").value.trim(),
       body: document.getElementById("ann-body").value.trim() || null,
       deadline: document.getElementById("ann-deadline").value || null,
       estimated_cost: document.getElementById("ann-cost").value.trim() || null,
     };
 
-    const { error } = await supabaseClient.from("team_announcements").insert(payload);
+    // One post per team, so each team's families see and answer their own.
+    const { error } = await supabaseClient.from("team_announcements").insert(slugs.map(function (slug) {
+      return Object.assign({ team_slug: slug }, base);
+    }));
     if (error) {
       msg.className = "form-msg error";
       msg.textContent = error.message;
       return;
     }
     msg.className = "form-msg success";
-    msg.textContent = "Posted. Families on that team will see it on their dashboard.";
+    msg.textContent = slugs.length > 1 ? "Posted to " + slugs.length + " teams. Families will see it on their dashboard." : "Posted. Families on that team will see it on their dashboard.";
     resetForm();
     loadAnnouncements();
   });

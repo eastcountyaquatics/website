@@ -47,10 +47,6 @@
 <section class="section-tight">
   <div class="container" style="max-width:760px;">
 
-    <div class="notice" style="margin-bottom:24px;">
-      The amount below is what Stripe actually charges &mdash; a matching Stripe Price is created automatically, so there's nothing to set up in the Stripe dashboard.
-    </div>
-
     <div class="admin-form" id="reg-form-wrap">
       <h3 id="form-title">Add a Registration Option</h3>
       <div id="form-msg" class="form-msg"></div>
@@ -109,34 +105,8 @@
     </div>
 
     <div class="admin-form" style="margin-top:24px;">
-      <h3 style="cursor:pointer;" id="quick-tournament-toggle">+ Add a Tournament <span class="muted" style="font-weight:400;font-size:13px;">(quick add, without leaving this page)</span></h3>
-      <div id="quick-tournament-body" style="display:none;margin-top:14px;">
-        <div id="qt-msg" class="form-msg"></div>
-        <form id="quick-tournament-form">
-          <div class="field">
-            <label for="qt-name">Tournament Name</label>
-            <input type="text" id="qt-name" required>
-          </div>
-          <div class="field">
-            <label for="qt-date">Date</label>
-            <input type="date" id="qt-date" required>
-          </div>
-          <div class="field">
-            <label for="qt-description">Description (optional)</label>
-            <textarea id="qt-description" rows="2"></textarea>
-          </div>
-          <div class="field">
-            <label for="qt-hotel-name">Hotel (optional)</label>
-            <input type="text" id="qt-hotel-name" placeholder="e.g. Hampton Inn Riverside">
-          </div>
-          <div class="field">
-            <label for="qt-hotel-url">Hotel Booking Link (optional)</label>
-            <input type="url" id="qt-hotel-url" placeholder="https://...">
-          </div>
-          <button type="submit" class="btn btn-primary">Add Tournament</button>
-        </form>
-        <p class="muted" style="font-size:12px;margin-top:10px;">Price tiers, team RSVP and invite links are managed on the <a href="admin-tournaments.html">Tournaments</a> page &mdash; this just gets it on the list quickly.</p>
-      </div>
+      <h3 style="margin:0;"><a href="admin-tournaments.html">+ Add a Tournament &rarr;</a></h3>
+      <p class="muted" style="font-size:13px;margin:6px 0 0;">Opens the Tournaments page, where the full Add a Tournament form lives (price tiers, teams, RSVP and invite links).</p>
     </div>
 
     <div id="reg-list" style="margin-top:32px;"><p class="muted">Loading&hellip;</p></div>
@@ -407,38 +377,6 @@
     saveSeasonDefaults();
     resetForm();
     loadOptions();
-  });
-
-  document.getElementById("quick-tournament-toggle").addEventListener("click", function () {
-    const body = document.getElementById("quick-tournament-body");
-    body.style.display = body.style.display === "none" ? "block" : "none";
-  });
-
-  document.getElementById("quick-tournament-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    const msg = document.getElementById("qt-msg");
-    msg.className = "form-msg";
-
-    const payload = {
-      name: document.getElementById("qt-name").value.trim(),
-      event_date: document.getElementById("qt-date").value,
-      description: document.getElementById("qt-description").value.trim() || null,
-      hotel_name: document.getElementById("qt-hotel-name").value.trim() || null,
-      hotel_url: document.getElementById("qt-hotel-url").value.trim() || null,
-    };
-
-    const { error } = await supabaseClient.from("tournaments").insert(payload);
-    if (error) {
-      msg.className = "form-msg error";
-      msg.textContent = error.message;
-      return;
-    }
-
-    msg.className = "form-msg success";
-    // Static, trusted markup (not user input) -- innerHTML is fine here.
-    msg.innerHTML = 'Tournament added. Set up price tiers and invites on the ' +
-      '<a href="admin-tournaments.html" style="color:inherit;font-weight:700;">Tournaments page</a>.';
-    document.getElementById("quick-tournament-form").reset();
   });
 
   (async function () {

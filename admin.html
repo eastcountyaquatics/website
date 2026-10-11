@@ -96,12 +96,6 @@
             <p class="muted">Post a question to a team and see who's interested.</p>
           </a>
         </div>
-        <div class="admin-nav-card" id="tournaments-card">
-          <a href="admin-tournaments.html" style="display:block;color:inherit;">
-            <h3>Tournaments</h3>
-            <p class="muted">Set age/gender pricing and send invite-only payment links.</p>
-          </a>
-        </div>
       </div>
     </div>
     <div class="admin-group" data-group="website" style="display:none;">
@@ -147,6 +141,12 @@
           <a href="admin-band-links.html" style="display:block;color:inherit;">
             <h3>BAND Links</h3>
             <p class="muted">Update each team's BAND group invite link &mdash; these change every session.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="tournaments-card">
+          <a href="admin-tournaments.html" style="display:block;color:inherit;">
+            <h3>Tournaments</h3>
+            <p class="muted">Set age/gender pricing and send invite-only payment links.</p>
           </a>
         </div>
         <div class="admin-nav-card" id="hosted-events-card">
@@ -253,6 +253,9 @@
     } else {
       setUpAgeCalcYear();
     }
+    // Head Coaches don't see the Admin group, so their Tournaments card
+    // stays with Team Interest.
+    if (auth.role === "head_coach") document.querySelector('[data-group="tournaments"] .admin-nav-cards').appendChild(document.getElementById("tournaments-card"));
     // Team Coaches: Manager and Head Coaches only (not Assistant Coaches).
     if (auth.role !== "owner" && auth.role !== "head_coach") document.getElementById("team-coaches-card").remove();
     (GROUPS_BY_ROLE[auth.role] || []).forEach(function (group) {

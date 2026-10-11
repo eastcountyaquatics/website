@@ -141,6 +141,14 @@
           <input type="checkbox" id="t-shirt-enabled" style="width:auto;">
           <label for="t-shirt-enabled" style="margin:0;">Ask for a shirt size on the invite page</label>
         </div>
+        <div class="field">
+          <label for="t-payment-provider">How families pay</label>
+          <select id="t-payment-provider">
+            <option value="stripe">Card on the invite page (Stripe)</option>
+            <option value="zeffy">Zeffy &mdash; no card fees (family copies an amount + code)</option>
+          </select>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Prices and discount codes work the same either way. Zeffy needs the club's Zeffy payment form set on Admin &rarr; Zeffy first.</p>
+        </div>
         <div class="field" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="t-published" style="width:auto;">
           <label for="t-published" style="margin:0;">Published (visible if you build a general listing later; invite links work either way)</label>
@@ -256,7 +264,8 @@
           "<div>" +
           "<h4>" + escapeHtml(t.name) + " " +
           '<span class="status-pill ' + t.status + '">' + (t.status === "interest" ? "Interest Form" : "Live") + "</span>" +
-          (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') + "</h4>" +
+          (t.is_published ? "" : ' <span class="muted" style="font-weight:400;">(unpublished)</span>') +
+          (t.payment_provider === "zeffy" ? ' <span class="muted" style="font-weight:400;">&middot; pays on Zeffy</span>' : "") + "</h4>" +
           '<div class="muted" style="font-size:13px;">' + formatTournamentDates(t) + (tournamentTeams(t).length ? " &middot; " + escapeHtml(tournamentTeams(t).map(teamLabel).join(", ")) : "") + (t.location ? " &middot; " + escapeHtml(t.location) : "") + (t.estimated_cost_note ? " &middot; " + escapeHtml(t.estimated_cost_note) : "") + (t.max_age ? " &middot; " + t.max_age + "U max" : "") + "</div>" +
           "</div>" +
           (canEdit
@@ -364,6 +373,7 @@
     document.getElementById("t-requirements").value = t.requirements || "";
     document.getElementById("t-shirt-enabled").checked = !!t.shirt_size_enabled;
     document.getElementById("t-published").checked = !!t.is_published;
+    document.getElementById("t-payment-provider").value = t.payment_provider === "zeffy" ? "zeffy" : "stripe";
     document.getElementById("t-submit-btn").textContent = "Save Changes";
     document.getElementById("t-cancel-btn").style.display = "inline-block";
 
@@ -428,6 +438,7 @@
       requirements: document.getElementById("t-requirements").value.trim() || null,
       shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,
       is_published: document.getElementById("t-published").checked,
+      payment_provider: document.getElementById("t-payment-provider").value,
     };
 
     const id = document.getElementById("t-id").value;

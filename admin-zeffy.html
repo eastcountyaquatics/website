@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zeffy Payments | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .band-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;}
+  .band-row label{font-weight:700;min-width:110px;}
+  .band-row input[type="url"]{flex:1;min-width:220px;}
+  .band-row .muted{font-size:12px;}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Zeffy Payments</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container" style="max-width:900px;">
+    <h2 style="font-size:22px;">Needs a Look</h2>
+    <p class="muted">Payments that came in on Zeffy but couldn't be tied to an athlete automatically &mdash; usually a different email than the family's ECA account, or a misspelled name. Pick the athlete and click Assign; they're registered right away.</p>
+    <div id="unmatched-msg" class="form-msg"></div>
+    <div id="unmatched-list"><p class="muted">Loading&hellip;</p></div>
+
+    <h2 style="font-size:22px;margin-top:40px;">Zeffy Forms</h2>
+    <p class="muted">Tell the site what each Zeffy form is for. <strong>Registration</strong> and <strong>Masters</strong> forms register the athlete; <strong>Tournament</strong> forms mark that tournament paid. Set this before sharing a new form &mdash; a form's first payment shows up here as &ldquo;Other&rdquo; until you do. Each form should have a question with &ldquo;Athlete&rdquo; in it (per ticket on multi-athlete forms) asking for the athlete's full name.</p>
+    <div id="campaigns-msg" class="form-msg"></div>
+    <div id="campaign-list"><p class="muted">Loading&hellip;</p></div>
+
+    <h2 style="font-size:22px;margin-top:40px;">Webhook Setup</h2>
+    <p class="muted">In Zeffy: <strong>Settings &rarr; Integrations &rarr; Webhook</strong>. Paste this URL and subscribe to <code>payment.completed</code> and <code>payment.updated</code>:</p>
+    <p><code id="webhook-url" style="word-break:break-all;"></code></p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  function money(cents, currency) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: (currency || "usd").toUpperCase() }).format((cents || 0) / 100);
+  }
+  function showMsg(id, text, ok) {
+    const el = document.getElementById(id);
+    el.className = "form-msg " + (ok ? "success" : "error");
+    el.textContent = text;
+  }
+
+  const KINDS = [
+    ["registration", "Registration"],
+    ["tournament", "Tournament"],
+    ["masters", "Masters"],
+    ["donation", "Donation / Sponsorship"],
+    ["other", "Other"],
+  ];
+  const KIND_LABEL = Object.fromEntries(KINDS);
+
+  let athleteOptions = "";
+
+  async function loadUnmatched() {
+    const listEl = document.getElementById("unmatched-list");
+    const [{ data, error }, { data: athletes }] = await Promise.all([
+      supabaseClient.from("zeffy_unmatched").select("*").is("resolved_at", null).order("paid_at", { ascending: false }),
+      supabaseClient.from("athletes").select("id, full_name, birthdate").order("full_name", { ascending: true }),
+    ]);
+    if (error) {
+      listEl.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>";
+      return;
+    }
+    athleteOptions = '<option value="">Choose athlete&hellip;</option>' + (athletes || []).map(function (a) {
+      return '<option value="' + escapeHtml(a.id) + '">' + escapeHtml(a.full_name) + (a.birthdate ? " (" + escapeHtml(a.birthdate.slice(0, 4)) + ")" : "") + "</option>";
+    }).join("");
+    if (!data || !data.length) {
+      listEl.innerHTML = '<p class="muted">Nothing needs a look. Every Zeffy payment is tied to an athlete.</p>';
+      return;
+    }
+    listEl.innerHTML = data.map(function (u) {
+      return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;gap:8px;">' +
+        "<div><h4 style=\"margin:0;\">" + escapeHtml(u.campaign_title || "Zeffy payment") +
+        ' <span class="muted" style="font-weight:400;">&middot; ' + escapeHtml(KIND_LABEL[u.kind] || u.kind) + " &middot; " + money(u.amount_cents, u.currency) + "</span></h4>" +
+        '<div class="muted" style="font-size:13px;">Typed athlete name: <strong>' + escapeHtml(u.typed_name || "(none)") + "</strong> &middot; Paid by " +
+        escapeHtml(u.buyer_name || "") + " " + escapeHtml(u.buyer_email || "") + " &middot; " + escapeHtml(new Date(u.paid_at).toLocaleDateString("en-US")) + "</div></div>" +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;"><select data-athlete-for="' + escapeHtml(u.id) + '" style="flex:1;min-width:220px;">' + athleteOptions + "</select>" +
+        '<button type="button" class="btn btn-primary" style="padding:8px 16px;" data-assign="' + escapeHtml(u.id) + '">Assign</button></div>' +
+        "</div>";
+    }).join("");
+  }
+
+  document.getElementById("unmatched-list").addEventListener("click", async function (e) {
+    const btn = e.target.closest("[data-assign]");
+    if (!btn) return;
+    const id = btn.dataset.assign;
+    const athleteId = document.querySelector('[data-athlete-for="' + id + '"]').value;
+    if (!athleteId) { showMsg("unmatched-msg", "Choose the athlete first.", false); return; }
+    btn.disabled = true;
+    const { error } = await supabaseClient.rpc("resolve_zeffy_unmatched", { p_id: id, p_athlete_id: athleteId });
+    if (error) {
+      btn.disabled = false;
+      showMsg("unmatched-msg", error.message, false);
+      return;
+    }
+    showMsg("unmatched-msg", "Assigned.", true);
+    loadUnmatched();
+  });
+
+  let tournamentOptions = "";
+
+  async function loadCampaigns() {
+    const listEl = document.getElementById("campaign-list");
+    const [fnRes, { data: saved }, { data: tournaments }] = await Promise.all([
+      supabaseClient.functions.invoke("zeffy-campaigns", { body: {} }),
+      supabaseClient.from("zeffy_campaigns").select("campaign_id, title, kind, tournament_id"),
+      supabaseClient.from("tournaments").select("id, name, event_date").order("event_date", { ascending: false }),
+    ]);
+    tournamentOptions = '<option value="">Which tournament?</option>' + (tournaments || []).map(function (t) {
+      return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + (t.event_date ? " (" + escapeHtml(t.event_date) + ")" : "") + "</option>";
+    }).join("");
+
+    const savedById = {};
+    (saved || []).forEach(function (r) { savedById[r.campaign_id] = r; });
+    const rows = [];
+    if (fnRes.error) {
+      const detail = await functionErrorMessage(fnRes.error, fnRes.data, "Zeffy didn't respond.");
+      showMsg("campaigns-msg", "Could not load forms from Zeffy: " + detail + " Showing forms that have already taken payments.", false);
+    } else {
+      ((fnRes.data && fnRes.data.campaigns) || []).forEach(function (c) {
+        if (c.is_archived && !savedById[c.id]) return;
+        rows.push({ id: c.id, title: c.title, url: c.url, saved: savedById[c.id] });
+        delete savedById[c.id];
+      });
+    }
+    Object.keys(savedById).forEach(function (id) {
+      rows.push({ id: id, title: savedById[id].title, url: null, saved: savedById[id] });
+    });
+
+    if (!rows.length) {
+      listEl.innerHTML = '<p class="muted">No Zeffy forms yet.</p>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function (r) {
+      const kind = (r.saved && r.saved.kind) || "other";
+      return '<div class="admin-list-item" data-campaign="' + escapeHtml(r.id) + '" data-title="' + escapeHtml(r.title || "") + '" style="flex-direction:column;align-items:stretch;gap:8px;">' +
+        "<h4 style=\"margin:0;\">" + escapeHtml(r.title || r.id) +
+        (r.url && /^https:\/\//.test(r.url) ? ' <a href="' + escapeHtml(r.url) + '" target="_blank" rel="noopener" style="font-size:13px;font-weight:400;">open</a>' : "") + "</h4>" +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+        '<select class="kind-select">' + KINDS.map(function (k) {
+          return '<option value="' + k[0] + '"' + (k[0] === kind ? " selected" : "") + ">" + k[1] + "</option>";
+        }).join("") + "</select>" +
+        '<select class="tournament-select" style="' + (kind === "tournament" ? "" : "display:none;") + '">' + tournamentOptions + "</select>" +
+        '<button type="button" class="btn btn-outline-dark campaign-save" style="padding:8px 16px;">Save</button>' +
+        '<span class="muted campaign-status"></span></div></div>';
+    }).join("");
+    rows.forEach(function (r) {
+      if (r.saved && r.saved.tournament_id) {
+        listEl.querySelector('[data-campaign="' + CSS.escape(r.id) + '"] .tournament-select').value = r.saved.tournament_id;
+      }
+    });
+  }
+
+  document.getElementById("campaign-list").addEventListener("change", function (e) {
+    if (!e.target.classList.contains("kind-select")) return;
+    const row = e.target.closest("[data-campaign]");
+    row.querySelector(".tournament-select").style.display = e.target.value === "tournament" ? "" : "none";
+  });
+
+  document.getElementById("campaign-list").addEventListener("click", async function (e) {
+    const btn = e.target.closest(".campaign-save");
+    if (!btn) return;
+    const row = btn.closest("[data-campaign]");
+    const kind = row.querySelector(".kind-select").value;
+    const tournamentId = row.querySelector(".tournament-select").value || null;
+    const status = row.querySelector(".campaign-status");
+    if (kind === "tournament" && !tournamentId) { status.textContent = "Pick the tournament."; return; }
+    btn.disabled = true;
+    const { error } = await supabaseClient.from("zeffy_campaigns").upsert({
+      campaign_id: row.dataset.campaign,
+      title: row.dataset.title || null,
+      kind: kind,
+      tournament_id: kind === "tournament" ? tournamentId : null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "campaign_id" });
+    btn.disabled = false;
+    status.textContent = error ? "Could not save: " + error.message : "Saved.";
+    setTimeout(function () { status.textContent = ""; }, 3000);
+  });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    document.getElementById("webhook-url").textContent = SUPABASE_URL + "/functions/v1/zeffy-webhook";
+    loadUnmatched();
+    loadCampaigns();
+  })();
+</script>
+</body>
+</html>

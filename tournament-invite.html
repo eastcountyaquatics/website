@@ -237,7 +237,10 @@
   let chosenShirtSize = null;
 
   function renderZeffy(data) {
-    if (data.pay_link && data.pay_link.status === "short") {
+    // Same shape as the card flow: details, then a Pay button. Tapping it
+    // shows the amount to enter and the family's payment code.
+    const short = data.pay_link && data.pay_link.status === "short";
+    if (short) {
       const note = document.createElement("div");
       note.className = "notice";
       note.style.marginBottom = "16px";
@@ -248,31 +251,37 @@
       const history = document.createElement("div");
       history.innerHTML = paymentsHtml(data.payments);
       cardEl.appendChild(history);
-      requestPayLink({ token: token }, null, false);
-      return;
     }
 
-    if (!data.tournament.shirt_size_enabled) {
-      requestPayLink({ token: token }, null, true);
-      return;
-    }
+    const payAmount = short ? data.pay_link.balance_cents
+      : (data.pay_link && data.pay_link.status === "open" ? data.pay_link.amount_due_cents : data.tier.amount_cents);
+    const payLabel = short ? "Pay " + formatAmount(payAmount) + " Balance" : "Pay " + formatAmount(payAmount);
 
     const form = document.createElement("form");
     form.id = "invite-form";
     form.innerHTML =
-      '<div class="field"><label for="shirt_size">Shirt Size</label>' +
-      '<select id="shirt_size" required><option value="">Select one...</option>' +
-      "<option>Youth Small</option><option>Youth Medium</option><option>Youth Large</option>" +
-      "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
-      "</select></div>" +
+      (!short && data.tournament.shirt_size_enabled
+        ? '<div class="field"><label for="shirt_size">Shirt Size</label>' +
+          '<select id="shirt_size" required><option value="">Select one...</option>' +
+          "<option>Youth Small</option><option>Youth Medium</option><option>Youth Large</option>" +
+          "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
+          "</select></div>"
+        : "") +
+      (!short
+        ? '<div class="field"><label for="discount_code">Discount Code (optional)</label><input type="text" id="discount_code" style="text-transform:uppercase;"></div>'
+        : "") +
       '<div id="invite-msg" class="form-msg"></div>' +
-      '<button type="submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>';
+      '<button type="submit" class="btn btn-primary" style="width:100%;">' + payLabel + "</button>";
     cardEl.appendChild(form);
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      chosenShirtSize = document.getElementById("shirt_size").value;
-      requestPayLink({ token: token, shirt_size: chosenShirtSize }, form, true);
+      const payload = { token: token };
+      const shirtSizeEl = document.getElementById("shirt_size");
+      if (shirtSizeEl) { chosenShirtSize = shirtSizeEl.value; payload.shirt_size = chosenShirtSize; }
+      const discountEl = document.getElementById("discount_code");
+      if (discountEl && discountEl.value.trim()) payload.discount_code = discountEl.value.trim();
+      requestPayLink(payload, form, false);
     });
   }
 

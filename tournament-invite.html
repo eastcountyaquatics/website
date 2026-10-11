@@ -93,6 +93,22 @@
   const checkoutStatus = params.get("checkout");
   const cardEl = document.getElementById("invite-card");
 
+  // Payments made on this invite, each with its Zeffy receipt when there is
+  // one (card payments' receipts come by email from Stripe).
+  function paymentsHtml(payments) {
+    if (!payments || !payments.length) return "";
+    return '<div style="margin:12px 0 16px;"><div class="muted" style="font-size:13px;font-weight:700;margin-bottom:6px;">Payments</div>' +
+      payments.map(function (p) {
+        const safeReceipt = p.receipt_url && /^https:\/\//.test(p.receipt_url);
+        return '<div style="display:flex;justify-content:space-between;gap:10px;border-top:1px solid #eef1f6;padding:8px 0;font-size:14px;">' +
+          "<span>" + formatDate(String(p.paid_at).slice(0, 10)) + " &middot; " + formatAmount(p.amount_cents) + "</span>" +
+          (safeReceipt
+            ? '<a href="' + escapeHtml(p.receipt_url) + '" target="_blank" rel="noopener" style="color:var(--blue);font-weight:700;text-decoration:underline;">View receipt</a>'
+            : '<span class="muted">' + (p.via === "stripe" ? "Receipt emailed" : "Receipt pending") + "</span>") +
+          "</div>";
+      }).join("") + "</div>";
+  }
+
   function renderError(message) {
     cardEl.innerHTML = "<p>" + escapeHtml(message) + "</p>";
   }
@@ -116,7 +132,8 @@
     if (checkoutStatus === "success" || data.status === "paid") {
       cardEl.innerHTML =
         "<h3>You're registered!</h3>" +
-        "<p class=\"muted\">" + escapeHtml(data.athlete.full_name) + " is signed up for " + escapeHtml(data.tournament.name) + ". A receipt was sent to your email.</p>";
+        "<p class=\"muted\">" + escapeHtml(data.athlete.full_name) + " is signed up for " + escapeHtml(data.tournament.name) + ". A receipt was sent to your email.</p>" +
+        paymentsHtml(data.payments);
       return;
     }
     // Payment cutoff passed, event over, or tournament not published yet:
@@ -228,6 +245,9 @@
         ". <strong>" + escapeHtml(data.athlete.full_name) + " isn't on the roster until the " + formatAmount(data.pay_link.balance_cents) +
         " balance is paid.</strong>";
       cardEl.appendChild(note);
+      const history = document.createElement("div");
+      history.innerHTML = paymentsHtml(data.payments);
+      cardEl.appendChild(history);
       requestPayLink({ token: token }, null, false);
       return;
     }

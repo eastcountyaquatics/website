@@ -360,6 +360,7 @@
                 <th>Description</th>
                 <th>Amount</th>
                 <th>Status</th>
+                <th>Receipt</th>
               </tr>
             </thead>
             <tbody id="purchases-tbody"></tbody>
@@ -635,6 +636,24 @@
       return;
     }
 
+    // Zeffy tournaments: what's been paid against each invite (balance due)
+    // and the receipts, keyed by invite id.
+    const inviteIds = (inviteRows || []).map(function (i) { return i.id; });
+    const [{ data: payLinkRows }, { data: invitePayments }] = await Promise.all([
+      inviteIds.length
+        ? supabaseClient.from("zeffy_pay_links").select("tournament_invite_id, code, amount_due_cents, paid_cents, status").in("tournament_invite_id", inviteIds)
+        : Promise.resolve({ data: [] }),
+      inviteIds.length
+        ? supabaseClient.from("purchases").select("tournament_invite_id, amount_cents, currency, receipt_url").eq("status", "paid").in("tournament_invite_id", inviteIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const payLinkByInvite = {};
+    (payLinkRows || []).forEach(function (l) { payLinkByInvite[l.tournament_invite_id] = l; });
+    const receiptsByInvite = {};
+    (invitePayments || []).forEach(function (p) {
+      if (p.receipt_url && /^https:\/\//.test(p.receipt_url)) (receiptsByInvite[p.tournament_invite_id] = receiptsByInvite[p.tournament_invite_id] || []).push(p.receipt_url);
+    });
+
     const { data: rsvpRows } = await supabaseClient
       .from("tournament_rsvps")
       .select("tournament_id, athlete_id, response, on_roster")
@@ -697,9 +716,22 @@
 
         const isLive = c.t.status === "live";
         const paid = c.invite && c.invite.status === "paid";
+        const payLink = c.invite ? payLinkByInvite[c.invite.id] : null;
+        const receipts = c.invite ? (receiptsByInvite[c.invite.id] || []) : [];
+        const receiptLinks = receipts.length
+          ? '<p style="margin-top:6px;font-size:13px;">' + receipts.map(function (url, i) {
+              return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + (receipts.length > 1 ? "Receipt " + (i + 1) : "View receipt") + "</a>";
+            }).join(" &middot; ") + "</p>"
+          : "";
 
         if (paid) {
-          body += '<div class="form-msg success">Paid / Registered' + (onRoster ? " — you're on the roster!" : "") + "</div>";
+          body += '<div class="form-msg success">Paid / Registered' + (onRoster ? " — you're on the roster!" : "") + "</div>" + receiptLinks;
+        } else if (payLink && payLink.status === "short") {
+          // Paid part of it on Zeffy: show the balance and send them back to
+          // their invite page (same amount + payment code) to finish.
+          body += '<div class="form-msg">Paid ' + formatAmount(payLink.paid_cents) + " of " + formatAmount(payLink.amount_due_cents) +
+            " &mdash; <strong>" + formatAmount(payLink.amount_due_cents - payLink.paid_cents) + " balance due</strong></div>" + receiptLinks +
+            '<a class="btn btn-primary" href="tournament-invite.html?token=' + encodeURIComponent(c.invite.token) + '">Pay Balance</a>';
         } else if (isLive && response === "yes") {
           // Accepting a live tournament sends the family straight to
           // checkout (see the click handler below); if they abandon it,
@@ -1585,7 +1617,7 @@
     const myAthleteIds = (myAthletes || []).map(function (a) { return a.id; });
     const { data: purchases, error: purchasesError } = await supabaseClient
       .from("purchases")
-      .select("id, description, amount_cents, currency, status, created_at")
+      .select("id, description, amount_cents, currency, status, created_at, receipt_url")
       .or("user_id.eq." + user.id + (myAthleteIds.length ? ",athlete_id.in.(" + myAthleteIds.join(",") + ")" : ""))
       .order("created_at", { ascending: false });
 
@@ -1605,6 +1637,9 @@
           "<td>" + escapeHtml(p.description) + "</td>" +
           "<td>" + formatAmount(p.amount_cents, p.currency) + "</td>" +
           '<td><span class="status-pill ' + p.status + '">' + p.status + "</span></td>" +
+          "<td>" + (p.receipt_url && /^https:\/\//.test(p.receipt_url)
+            ? '<a href="' + escapeHtml(p.receipt_url) + '" target="_blank" rel="noopener">View</a>'
+            : '<span class="muted">&mdash;</span>') + "</td>" +
           "</tr>"
         );
       })

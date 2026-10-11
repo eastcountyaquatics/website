@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     const payerName = String(body.payer_name || "").trim().slice(0, 120);
     const payerEmail = String(body.payer_email || "").trim().slice(0, 200);
     const shirtSize = typeof body.shirt_size === "string" ? body.shirt_size.trim().slice(0, 20) : null;
-    const discountCode = typeof body.discount_code === "string" ? body.discount_code.trim().slice(0, 40) : "";
+    let discountCode = typeof body.discount_code === "string" ? body.discount_code.trim().slice(0, 40) : "";
 
     if (!token) return json({ error: "Missing token" }, 400);
 
@@ -82,6 +82,14 @@ Deno.serve(async (req) => {
     }
 
     if (!payerEmail || !payerEmail.includes("@")) return json({ error: "Enter a valid email address" }, 400);
+
+    // A payment code (ECA-XXXXXX) pasted into the discount box isn't a
+    // discount: ignore it rather than reject the form.
+    const asPayCode = discountCode.toUpperCase().replace(/[\s-]/g, "").match(/^ECA([0-9A-Z]{6})$/);
+    if (asPayCode) {
+      const { data: isPayCode } = await supabase.from("zeffy_pay_links").select("code").eq("code", "ECA-" + asPayCode[1]).maybeSingle();
+      if (isPayCode) discountCode = "";
+    }
 
     let amount = tier.amount_cents;
     let appliedCode: string | null = null;

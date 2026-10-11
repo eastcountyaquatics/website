@@ -15,12 +15,20 @@
 // RECEIPT_EMAIL_FROM.
 //
 // Then in Zeffy: Settings -> Integrations -> Webhook, paste this
-// function's URL and subscribe to payment.completed and payment.updated.
+// function's URL and subscribe to payment.completed, payment.updated and
+// payment.deleted.
+//
+// Pay links: on a tournament set to pay on Zeffy, the site prices the
+// invite and gives the family a code (create-zeffy-pay-link). A payment
+// carrying a valid code is applied to that invite -- paid in full marks it
+// paid, less emails the family the balance -- whatever form it came in on.
 
 import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const ZEFFY_API = "https://api.zeffy.com/api/v1";
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
+// NOTE: alphabet and check character duplicated in create-zeffy-pay-link.
+const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 type QuestionAnswer = { question: string; type: string; answer: string | string[] | boolean | null };
 type Item = {
@@ -37,6 +45,7 @@ type Payment = {
   currency: string;
   status: string;
   refund_status: "none" | "partial" | "full";
+  dispute: { status: "needs_response" | "won" | "lost" } | null;
   description: string;
   campaign_id: string;
   buyer: { email: string; first_name: string; last_name: string; company_name: string | null } | null;
@@ -64,10 +73,22 @@ Deno.serve(async (req) => {
   try {
     let result: string;
     if (event.type === "payment.completed") {
-      result = await recordPayment(supabase, event.data as unknown as Payment);
+      // Read the payment's current state rather than trusting the event: a
+      // delivery retried days later still carries the original payload, by
+      // which time the payment may have been refunded.
+      let payment = event.data as unknown as Payment;
+      try {
+        payment = await fetchPayment(payment.id);
+      } catch (err) {
+        console.error("Using event payload; could not re-read payment:", err);
+      }
+      result = await recordPayment(supabase, payment);
+      if (isReversed(payment)) result += "; " + await syncRefund(supabase, payment);
     } else if (event.type === "payment.updated") {
       // Updated events carry only the id -- read the payment's current state.
       result = await syncRefund(supabase, await fetchPayment(paymentRef!));
+    } else if (event.type === "payment.deleted") {
+      result = await removePayment(supabase, paymentRef!);
     } else {
       result = "ignored";
     }
@@ -163,9 +184,99 @@ async function campaignFor(supabase: SupabaseClient, payment: Payment): Promise<
   return { kind: "other", title: payment.description, tournament_id: null };
 }
 
+// "ECA-7K2Q9X", "eca 7k2q9x", "ECA7K2Q9X" -> "ECA-7K2Q9X" when the check
+// character is right; null otherwise.
+function payCodeFrom(text: string): string | null {
+  const m = text.toUpperCase().replace(/[\s-]/g, "").match(/ECA([0-9A-Z]{6})/);
+  if (!m) return null;
+  const body = m[1].slice(0, 5);
+  if ([...m[1]].some((c) => !CODE_ALPHABET.includes(c))) return null;
+  return checkChar(body) === m[1][5] ? "ECA-" + m[1] : null;
+}
+
+function checkChar(body: string): string {
+  let sum = 0;
+  for (let i = 0; i < body.length; i++) sum += (i + 1) * CODE_ALPHABET.indexOf(body[i]);
+  return CODE_ALPHABET[sum % CODE_ALPHABET.length];
+}
+
+// Every text answer on the payment, buyer questions and per-ticket ones.
+function allAnswers(payment: Payment): string[] {
+  const qs = [...(payment.buyer_questions ?? []), ...(payment.items ?? []).flatMap((i) => i.questions ?? [])];
+  return qs.flatMap((q) => typeof q.answer === "string" ? [q.answer] : Array.isArray(q.answer) ? q.answer : []);
+}
+
+// What the family paid toward the fee: the tickets/donation, not an extra
+// donation added on top (Zeffy's tip to itself isn't in the items at all).
+function feePaidCents(payment: Payment): number {
+  const lines = (payment.items ?? []).filter((i) => i.type === "ticket" || i.type === "donation");
+  return lines.length ? lines.reduce((sum, i) => sum + (i.amount || 0), 0) : payment.amount;
+}
+
+// A payment with a valid pay-link code, or any payment on the club's
+// pay-link form. Returns null when it's neither, so the normal per-form
+// matching runs.
+async function recordPayLink(supabase: SupabaseClient, payment: Payment): Promise<string | null> {
+  const answers = allAnswers(payment);
+  const code = answers.map(payCodeFrom).find(Boolean) ?? null;
+
+  const { data: setting } = await supabase.from("site_settings").select("value").eq("key", "zeffy_paylink_form").maybeSingle();
+  const form = (setting?.value ?? {}) as { campaign_id?: string; url?: string };
+  const onPayLinkForm = !!form.campaign_id && form.campaign_id === payment.campaign_id;
+  if (!code && !onPayLinkForm) return null;
+
+  const buyerEmail = (payment.buyer?.email || "").trim().toLowerCase() || null;
+  const buyerName = [payment.buyer?.first_name, payment.buyer?.last_name].filter(Boolean).join(" ") || null;
+  const currency = (payment.currency || "usd").toLowerCase();
+  const paidAt = new Date((payment.created || Date.now() / 1000) * 1000).toISOString();
+  const amount = feePaidCents(payment);
+
+  const { data: result, error } = code
+    ? await supabase.rpc("apply_zeffy_pay_link", {
+      p_code: code, p_payment_id: payment.id, p_amount_cents: amount, p_currency: currency,
+      p_buyer_name: buyerName, p_buyer_email: buyerEmail, p_paid_at: paidAt,
+    })
+    : { data: null, error: null };
+  if (error) throw error;
+
+  if (!result) {
+    // Mistyped or missing code: the Manager types the right one on Admin > Zeffy.
+    const { error: insertError } = await supabase.from("zeffy_unmatched").insert({
+      zeffy_payment_id: payment.id, zeffy_item_id: null, campaign_id: payment.campaign_id,
+      campaign_title: payment.description, kind: "paylink",
+      typed_name: answers.filter((a) => a.trim()).join(" · ").slice(0, 200) || null,
+      buyer_email: buyerEmail, buyer_name: buyerName, amount_cents: amount, currency, paid_at: paidAt,
+    });
+    if (insertError && insertError.code !== "23505") throw insertError;
+    return "pay link: code not recognized";
+  }
+
+  const r = result as { status: string; paid_cents: number; due_cents: number; code: string; payer_email: string | null; tournament_name: string; athlete_name: string };
+  const to = r.payer_email || buyerEmail;
+  if (to && r.status === "paid") {
+    await sendEmail(to, `You're registered for ${r.tournament_name}!`,
+      `Thank you! ${r.athlete_name} is signed up for ${r.tournament_name}. ` +
+      `Your receipt was sent separately by Zeffy.`);
+  } else if (to && r.status === "short") {
+    const balance = r.due_cents - r.paid_cents;
+    await sendEmail(to, `Balance due for ${r.tournament_name}`,
+      `Thank you -- we received ${dollars(r.paid_cents)} toward ${r.athlete_name}'s spot in ${r.tournament_name}, ` +
+      `but the total is ${dollars(r.due_cents)}. ${r.athlete_name} isn't on the roster until the remaining ` +
+      `${dollars(balance)} is paid.\n\nPay the balance here: ${form.url ?? "the link on your invite page"}\n` +
+      `Enter ${dollars(balance)} and the same payment code: ${r.code}`);
+  }
+  return `pay link ${r.code}: ${r.status}`;
+}
+
+function dollars(cents: number): string {
+  return "$" + (cents / 100).toFixed(2);
+}
+
 type Athlete = { id: string; full_name: string; parent_id: string };
 
 async function recordPayment(supabase: SupabaseClient, payment: Payment): Promise<string> {
+  const payLink = await recordPayLink(supabase, payment);
+  if (payLink) return payLink;
   const campaign = await campaignFor(supabase, payment);
   const buyerEmail = (payment.buyer?.email || "").trim().toLowerCase();
   const buyerName = [payment.buyer?.first_name, payment.buyer?.last_name].filter(Boolean).join(" ") ||
@@ -269,14 +380,39 @@ async function matchAthlete(supabase: SupabaseClient, family: Athlete[], name: s
   return null;
 }
 
-// payment.updated: a full refund takes the registration away.
+// A full refund, or a chargeback the club lost, takes the money back.
+function isReversed(payment: Payment): boolean {
+  return payment.refund_status === "full" || payment.dispute?.status === "lost";
+}
+
+// payment.updated: a full refund or lost chargeback takes the registration
+// away; a pay-link invite is re-settled from what's left.
 async function syncRefund(supabase: SupabaseClient, payment: Payment): Promise<string> {
-  if (payment.refund_status !== "full") return "ignored";
-  const { error } = await supabase.from("purchases").update({ status: "refunded" })
-    .eq("zeffy_payment_id", payment.id).eq("status", "paid");
+  if (!isReversed(payment)) return "ignored";
+  const { data: rows, error } = await supabase.from("purchases").update({ status: "refunded" })
+    .eq("zeffy_payment_id", payment.id).eq("status", "paid").select("tournament_invite_id");
   if (error) throw error;
   await supabase.from("zeffy_unmatched").delete().eq("zeffy_payment_id", payment.id).is("resolved_at", null);
-  return "refunded";
+  await resettle(supabase, rows ?? []);
+  return payment.refund_status === "full" ? "refunded" : "chargeback lost";
+}
+
+// payment.deleted (an offline payment removed in Zeffy): same as a refund.
+async function removePayment(supabase: SupabaseClient, paymentId: string): Promise<string> {
+  const { data: rows, error } = await supabase.from("purchases").update({ status: "canceled" })
+    .eq("zeffy_payment_id", paymentId).eq("status", "paid").select("tournament_invite_id");
+  if (error) throw error;
+  await supabase.from("zeffy_unmatched").delete().eq("zeffy_payment_id", paymentId).is("resolved_at", null);
+  await resettle(supabase, rows ?? []);
+  return "deleted";
+}
+
+async function resettle(supabase: SupabaseClient, rows: { tournament_invite_id: string | null }[]) {
+  const invites = [...new Set(rows.map((r) => r.tournament_invite_id).filter(Boolean))];
+  for (const id of invites) {
+    const { error } = await supabase.rpc("zeffy_settle_invite", { p_invite_id: id });
+    if (error) throw error;
+  }
 }
 
 async function sendEmail(to: string, subject: string, text: string): Promise<void> {

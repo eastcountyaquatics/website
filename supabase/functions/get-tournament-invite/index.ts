@@ -33,6 +33,18 @@ Deno.serve(async (req) => {
     const result = await resolveInvite(supabase, token);
     if ("error" in result) return json({ error: result.error }, result.status);
 
+    // Zeffy tournaments: the family's code and what's come in against it,
+    // so a parent coming back sees their balance instead of a fresh form.
+    let payLink = null;
+    if (result.tournament.payment_provider === "zeffy") {
+      const { data } = await supabase
+        .from("zeffy_pay_links")
+        .select("code, amount_due_cents, paid_cents, status")
+        .eq("tournament_invite_id", result.invite.id)
+        .maybeSingle();
+      if (data) payLink = { ...data, balance_cents: Math.max(0, data.amount_due_cents - data.paid_cents) };
+    }
+
     return json({
       status: result.invite.status,
       // Non-null when payment is no longer possible, so the page can say why
@@ -52,6 +64,8 @@ Deno.serve(async (req) => {
       },
       athlete: { full_name: result.athlete.full_name },
       tier: { label: result.tier.label, amount_cents: result.tier.amount_cents },
+      payment_provider: result.tournament.payment_provider === "zeffy" ? "zeffy" : "stripe",
+      pay_link: payLink,
     });
   } catch (err) {
     console.error(err);
@@ -74,7 +88,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, location, hotel_name, hotel_url")
+    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, location, hotel_name, hotel_url, payment_provider")
     .eq("id", invite.tournament_id)
     .maybeSingle();
   if (tournamentError || !tournament) return { error: "This tournament could not be found.", status: 404 } as const;

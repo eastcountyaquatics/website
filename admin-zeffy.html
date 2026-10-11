@@ -57,13 +57,21 @@
     <div id="unmatched-msg" class="form-msg"></div>
     <div id="unmatched-list"><p class="muted">Loading&hellip;</p></div>
 
+    <h2 style="font-size:22px;margin-top:40px;">Balances Due</h2>
+    <p class="muted">Families who paid less than their total on a Zeffy tournament. They've been emailed the balance and their code; the athlete goes on the roster once it's paid in full.</p>
+    <div id="short-list"><p class="muted">Loading&hellip;</p></div>
+
+    <h2 style="font-size:22px;margin-top:40px;">Payment Form for Site Prices</h2>
+    <p class="muted">Tournaments set to <strong>Zeffy</strong> on Admin &rarr; Tournaments send families to one Zeffy form with the amount and a payment code from the site &mdash; prices and discount codes stay on this site. Build it once in Zeffy: an <strong>event</strong> form with a single <strong>pay-what-you-want</strong> ticket (minimum $1) and one required question on the ticket, <strong>&ldquo;Payment code (from your ECA invite)&rdquo;</strong>. Then click <strong>Use for Site Prices</strong> on it below.</p>
+    <p id="paylink-current" class="muted"></p>
+
     <h2 style="font-size:22px;margin-top:40px;">Zeffy Forms</h2>
     <p class="muted">Tell the site what each Zeffy form is for. <strong>Registration</strong> and <strong>Masters</strong> forms register the athlete; <strong>Tournament</strong> forms mark that tournament paid. Set this before sharing a new form &mdash; a form's first payment shows up here as &ldquo;Other&rdquo; until you do. Each form should have a question with &ldquo;Athlete&rdquo; in it (per ticket on multi-athlete forms) asking for the athlete's full name.</p>
     <div id="campaigns-msg" class="form-msg"></div>
     <div id="campaign-list"><p class="muted">Loading&hellip;</p></div>
 
     <h2 style="font-size:22px;margin-top:40px;">Webhook Setup</h2>
-    <p class="muted">In Zeffy: <strong>Settings &rarr; Integrations &rarr; Webhook</strong>. Paste this URL and subscribe to <code>payment.completed</code> and <code>payment.updated</code>:</p>
+    <p class="muted">In Zeffy: <strong>Settings &rarr; Integrations &rarr; Webhook</strong>. Paste this URL and subscribe to <code>payment.completed</code>, <code>payment.updated</code> and <code>payment.deleted</code>:</p>
     <p><code id="webhook-url" style="word-break:break-all;"></code></p>
   </div>
 </section>
@@ -107,7 +115,8 @@
     ["donation", "Donation / Sponsorship"],
     ["other", "Other"],
   ];
-  const KIND_LABEL = Object.fromEntries(KINDS);
+  const KIND_LABEL = Object.assign(Object.fromEntries(KINDS), { paylink: "Site-priced payment" });
+  let paylinkForm = null;
 
   let athleteOptions = "";
 
@@ -129,6 +138,16 @@
       return;
     }
     listEl.innerHTML = data.map(function (u) {
+      if (u.kind === "paylink") {
+        return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;gap:8px;">' +
+          "<div><h4 style=\"margin:0;\">" + escapeHtml(u.campaign_title || "Zeffy payment") +
+          ' <span class="muted" style="font-weight:400;">&middot; payment code didn\'t match &middot; ' + money(u.amount_cents, u.currency) + "</span></h4>" +
+          '<div class="muted" style="font-size:13px;">What they typed: <strong>' + escapeHtml(u.typed_name || "(nothing)") + "</strong> &middot; Paid by " +
+          escapeHtml(u.buyer_name || "") + " " + escapeHtml(u.buyer_email || "") + " &middot; " + escapeHtml(new Date(u.paid_at).toLocaleDateString("en-US")) + "</div></div>" +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;"><input type="text" data-code-for="' + escapeHtml(u.id) + '" placeholder="Correct code, e.g. ECA-7K2Q9X" style="flex:1;min-width:220px;text-transform:uppercase;">' +
+          '<button type="button" class="btn btn-primary" style="padding:8px 16px;" data-apply-code="' + escapeHtml(u.id) + '">Apply Code</button></div>' +
+          "</div>";
+      }
       return '<div class="admin-list-item" style="flex-direction:column;align-items:stretch;gap:8px;">' +
         "<div><h4 style=\"margin:0;\">" + escapeHtml(u.campaign_title || "Zeffy payment") +
         ' <span class="muted" style="font-weight:400;">&middot; ' + escapeHtml(KIND_LABEL[u.kind] || u.kind) + " &middot; " + money(u.amount_cents, u.currency) + "</span></h4>" +
@@ -141,6 +160,21 @@
   }
 
   document.getElementById("unmatched-list").addEventListener("click", async function (e) {
+    const codeBtn = e.target.closest("[data-apply-code]");
+    if (codeBtn) {
+      const uid = codeBtn.dataset.applyCode;
+      const code = document.querySelector('[data-code-for="' + uid + '"]').value.trim();
+      if (!code) { showMsg("unmatched-msg", "Type the family's payment code first (it's on their invite page, and in Balances Due).", false); return; }
+      codeBtn.disabled = true;
+      const { data: res, error: rpcError } = await supabaseClient.rpc("resolve_zeffy_unmatched_code", { p_id: uid, p_code: code });
+      codeBtn.disabled = false;
+      if (rpcError) { showMsg("unmatched-msg", rpcError.message, false); return; }
+      showMsg("unmatched-msg", res && res.status === "paid" ? "Applied — the invite is paid." :
+        "Applied — they still owe " + money((res.due_cents || 0) - (res.paid_cents || 0)) + ".", true);
+      loadUnmatched();
+      loadShort();
+      return;
+    }
     const btn = e.target.closest("[data-assign]");
     if (!btn) return;
     const id = btn.dataset.assign;
@@ -202,6 +236,9 @@
         }).join("") + "</select>" +
         '<select class="tournament-select" style="' + (kind === "tournament" ? "" : "display:none;") + '">' + tournamentOptions + "</select>" +
         '<button type="button" class="btn btn-outline-dark campaign-save" style="padding:8px 16px;">Save</button>' +
+        (paylinkForm && paylinkForm.campaign_id === r.id
+          ? '<span class="muted"><strong>&check; Used for site prices</strong></span>'
+          : (r.url ? '<button type="button" class="btn btn-outline-dark paylink-use" data-url="' + escapeHtml(r.url) + '" style="padding:8px 16px;">Use for Site Prices</button>' : "")) +
         '<span class="muted campaign-status"></span></div></div>';
     }).join("");
     rows.forEach(function (r) {
@@ -218,6 +255,19 @@
   });
 
   document.getElementById("campaign-list").addEventListener("click", async function (e) {
+    const useBtn = e.target.closest(".paylink-use");
+    if (useBtn) {
+      const row = useBtn.closest("[data-campaign]");
+      useBtn.disabled = true;
+      const value = { campaign_id: row.dataset.campaign, url: useBtn.dataset.url, title: row.dataset.title || null };
+      const { error } = await supabaseClient.from("site_settings").upsert(
+        { key: "zeffy_paylink_form", value: value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) { useBtn.disabled = false; showMsg("campaigns-msg", "Could not save: " + error.message, false); return; }
+      paylinkForm = value;
+      showPaylinkCurrent();
+      loadCampaigns();
+      return;
+    }
     const btn = e.target.closest(".campaign-save");
     if (!btn) return;
     const row = btn.closest("[data-campaign]");
@@ -238,11 +288,40 @@
     setTimeout(function () { status.textContent = ""; }, 3000);
   });
 
+  function showPaylinkCurrent() {
+    const el = document.getElementById("paylink-current");
+    el.innerHTML = paylinkForm && paylinkForm.url
+      ? "Currently using: <strong>" + escapeHtml(paylinkForm.title || "Zeffy form") + '</strong> &middot; <a href="' + escapeHtml(paylinkForm.url) + '" target="_blank" rel="noopener">open</a>'
+      : "<strong>Not set yet</strong> &mdash; Zeffy tournaments can't take payments until it is.";
+  }
+
+  async function loadShort() {
+    const el = document.getElementById("short-list");
+    const { data, error } = await supabaseClient
+      .from("zeffy_pay_links")
+      .select("code, amount_due_cents, paid_cents, payer_name, payer_email, updated_at, tournament_invites(athletes(full_name), tournaments(name))")
+      .eq("status", "short")
+      .order("updated_at", { ascending: false });
+    if (error) { el.innerHTML = '<p class="muted">Could not load: ' + escapeHtml(error.message) + "</p>"; return; }
+    if (!data || !data.length) { el.innerHTML = '<p class="muted">No balances due.</p>'; return; }
+    el.innerHTML = data.map(function (l) {
+      const inv = l.tournament_invites || {};
+      return '<div class="admin-list-item"><div><h4 style="margin:0;">' + escapeHtml((inv.athletes && inv.athletes.full_name) || "Athlete") +
+        ' <span class="muted" style="font-weight:400;">&middot; ' + escapeHtml((inv.tournaments && inv.tournaments.name) || "Tournament") + "</span></h4>" +
+        '<div class="muted" style="font-size:13px;">Owes <strong>' + money(l.amount_due_cents - l.paid_cents) + "</strong> (paid " + money(l.paid_cents) + " of " + money(l.amount_due_cents) +
+        ") &middot; code " + escapeHtml(l.code) + " &middot; " + escapeHtml(l.payer_name || "") + " " + escapeHtml(l.payer_email || "") + "</div></div></div>";
+    }).join("");
+  }
+
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
     document.getElementById("webhook-url").textContent = SUPABASE_URL + "/functions/v1/zeffy-webhook";
+    const { data: setting } = await supabaseClient.from("site_settings").select("value").eq("key", "zeffy_paylink_form").maybeSingle();
+    paylinkForm = setting ? setting.value : null;
+    showPaylinkCurrent();
     loadUnmatched();
+    loadShort();
     loadCampaigns();
   })();
 </script>

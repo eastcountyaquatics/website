@@ -51,12 +51,33 @@ Deno.serve(async (req) => {
     const closed = paymentClosedReason(tournament);
     if (closed) return json({ error: closed }, 409);
 
+    const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
+    const returnUrl = `${siteUrl}/tournament-invite.html?token=${encodeURIComponent(token)}`;
+
+    // Tournament paid on Zeffy: My Account's Accept / Resume Payment buttons
+    // call this endpoint, so send them to the invite page, which shows the
+    // Zeffy amount and payment code.
+    if (tournament.payment_provider === "zeffy") {
+      return json({ url: returnUrl });
+    }
+
+    // Switched back to Stripe after the family already paid part of it on
+    // Zeffy: charge only what's left, never the full price twice.
+    const { data: zeffyPaid } = await supabase
+      .from("purchases")
+      .select("amount_cents")
+      .eq("tournament_invite_id", invite.id)
+      .eq("status", "paid")
+      .not("zeffy_payment_id", "is", null);
+    const zeffyCredit = (zeffyPaid ?? []).reduce((sum, p) => sum + (p.amount_cents || 0), 0);
+    const amountDue = tier.amount_cents - zeffyCredit;
+    if (amountDue <= 0) {
+      return json({ error: "This invite is already paid in full. Please contact the club if it doesn't show as paid." }, 409);
+    }
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
       apiVersion: "2024-06-20",
     });
-
-    const siteUrl = Deno.env.get("SITE_URL") ?? "https://eastcountyaquatics.github.io/website";
-    const returnUrl = `${siteUrl}/tournament-invite.html?token=${encodeURIComponent(token)}`;
 
     // Same rule as registration checkout: a code works for the specific
     // tournament it was created for, or for everything ("all"), checked
@@ -92,10 +113,12 @@ Deno.serve(async (req) => {
         {
           price_data: {
             currency: "usd",
-            unit_amount: tier.amount_cents,
+            unit_amount: amountDue,
             product_data: {
               name: `${tournament.name} — ${athlete.full_name}`,
-              description: tier.label,
+              description: zeffyCredit > 0
+                ? `${tier.label} (balance after $${(zeffyCredit / 100).toFixed(2)} already paid)`
+                : tier.label,
             },
           },
           quantity: 1,
@@ -137,7 +160,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline")
+    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, payment_provider")
     .eq("id", invite.tournament_id)
     .maybeSingle();
   if (tournamentError || !tournament) return { error: "This tournament could not be found.", status: 404 } as const;

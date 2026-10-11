@@ -45,6 +45,22 @@ Deno.serve(async (req) => {
       if (data) payLink = { ...data, balance_cents: Math.max(0, data.amount_due_cents - data.paid_cents) };
     }
 
+    // Payments made against this invite (either processor), with Zeffy's
+    // receipt link when there is one.
+    const { data: paymentRows } = await supabase
+      .from("purchases")
+      .select("amount_cents, currency, created_at, receipt_url, zeffy_payment_id")
+      .eq("tournament_invite_id", result.invite.id)
+      .eq("status", "paid")
+      .order("created_at", { ascending: true });
+    const payments = (paymentRows ?? []).map((p) => ({
+      amount_cents: p.amount_cents,
+      currency: p.currency,
+      paid_at: p.created_at,
+      receipt_url: p.receipt_url,
+      via: p.zeffy_payment_id ? "zeffy" : "stripe",
+    }));
+
     return json({
       status: result.invite.status,
       // Non-null when payment is no longer possible, so the page can say why
@@ -66,6 +82,7 @@ Deno.serve(async (req) => {
       tier: { label: result.tier.label, amount_cents: result.tier.amount_cents },
       payment_provider: result.tournament.payment_provider === "zeffy" ? "zeffy" : "stripe",
       pay_link: payLink,
+      payments,
     });
   } catch (err) {
     console.error(err);

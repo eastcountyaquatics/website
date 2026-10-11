@@ -51,6 +51,7 @@ type Payment = {
   buyer: { email: string; first_name: string; last_name: string; company_name: string | null } | null;
   buyer_questions: QuestionAnswer[] | null;
   items: Item[] | null;
+  receipt_url: string | null;
 };
 type Kind = "registration" | "tournament" | "masters" | "donation" | "other";
 
@@ -83,10 +84,13 @@ Deno.serve(async (req) => {
         console.error("Using event payload; could not re-read payment:", err);
       }
       result = await recordPayment(supabase, payment);
+      await saveReceipt(supabase, payment);
       if (isReversed(payment)) result += "; " + await syncRefund(supabase, payment);
     } else if (event.type === "payment.updated") {
       // Updated events carry only the id -- read the payment's current state.
-      result = await syncRefund(supabase, await fetchPayment(paymentRef!));
+      const payment = await fetchPayment(paymentRef!);
+      await saveReceipt(supabase, payment);
+      result = await syncRefund(supabase, payment);
     } else if (event.type === "payment.deleted") {
       result = await removePayment(supabase, paymentRef!);
     } else {
@@ -378,6 +382,15 @@ async function matchAthlete(supabase: SupabaseClient, family: Athlete[], name: s
   }
   if (lineCount === 1 && family.length === 1) return family[0];
   return null;
+}
+
+// Zeffy's receipt link, shown to the family on My Account and the invite
+// page. payment.updated also fires when the receipt is (re)issued.
+async function saveReceipt(supabase: SupabaseClient, payment: Payment) {
+  if (!payment.receipt_url || !/^https:\/\//.test(payment.receipt_url)) return;
+  const { error } = await supabase.from("purchases").update({ receipt_url: payment.receipt_url })
+    .eq("zeffy_payment_id", payment.id);
+  if (error) console.error("Could not save receipt link:", error);
 }
 
 // A full refund, or a chargeback the club lost, takes the money back.

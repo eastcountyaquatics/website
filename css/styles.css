@@ -457,7 +457,7 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 .receipt-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px;}
 @media (max-width:560px){.receipt-card{padding:20px;}.receipt-head{flex-direction:column;align-items:flex-start;}}
 @media print{
-  body *{visibility:hidden;}
+  body:has(#donation-receipt) *{visibility:hidden;}
   #donation-receipt,#donation-receipt *{visibility:visible;}
   #donation-receipt{position:absolute;left:0;top:0;width:100%;}
   #donation-receipt .no-print{display:none;}

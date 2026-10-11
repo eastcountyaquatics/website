@@ -74,14 +74,74 @@
     });
   }
 
+  // Bios and headshots of this team's coaches, as the last section of the
+  // page (photo/bio come from each coach's own registration/profile).
+  function renderBios(coaches) {
+    var footer = document.querySelector("footer.site-footer");
+    if (!footer || document.getElementById("team-coach-bios")) return;
+    var rank = { "Head Coach": 0, "Coach": 1, "Assistant Coach": 2 };
+    var sorted = coaches.slice().sort(function (a, b) {
+      var r = (rank[a.role_title] != null ? rank[a.role_title] : 3) - (rank[b.role_title] != null ? rank[b.role_title] : 3);
+      return r !== 0 ? r : (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" });
+    });
+    var section = document.createElement("section");
+    section.id = "team-coach-bios";
+    section.className = "alt";
+    var container = document.createElement("div");
+    container.className = "container";
+    var head = document.createElement("div");
+    head.className = "section-head";
+    head.innerHTML = '<span class="kicker">Meet the Coaches</span><h2></h2>';
+    head.querySelector("h2").textContent = teamLabel + " Coaching Staff";
+    container.appendChild(head);
+    var grid = document.createElement("div");
+    grid.className = "grid grid-3";
+    sorted.forEach(function (c) {
+      var card = document.createElement("div");
+      card.className = "card";
+      card.style.textAlign = "center";
+      if (c.photo_url && /^https:\/\//.test(c.photo_url)) {
+        var img = document.createElement("img");
+        img.src = c.photo_url;
+        img.alt = c.full_name;
+        img.loading = "lazy";
+        img.style.cssText = "width:140px;height:140px;object-fit:cover;border-radius:50%;margin:0 auto 12px;display:block;";
+        card.appendChild(img);
+      }
+      var name = document.createElement("h3");
+      name.textContent = c.full_name;
+      card.appendChild(name);
+      if (c.role_title) {
+        var role = document.createElement("p");
+        role.className = "muted";
+        role.style.fontWeight = "700";
+        role.textContent = c.role_title;
+        card.appendChild(role);
+      }
+      if (c.bio) {
+        var bio = document.createElement("p");
+        bio.className = "muted";
+        bio.style.whiteSpace = "pre-line";
+        bio.textContent = c.bio;
+        card.appendChild(bio);
+      }
+      grid.appendChild(card);
+    });
+    container.appendChild(grid);
+    section.appendChild(container);
+    footer.parentNode.insertBefore(section, footer);
+  }
+
   supabaseClient
     .from("coaches")
-    .select("full_name, role_title, team_group, contact_email, sort_order")
+    .select("full_name, role_title, team_group, contact_email, sort_order, bio, photo_url")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .then(function (res) {
       var coaches = (res.data || []).filter(coachesThisTeam);
       if (coaches.length) renderCoachList(coaches);
+      var withProfile = coaches.filter(function (c) { return c.bio || c.photo_url; });
+      if (withProfile.length) renderBios(withProfile);
       var heads = coaches.filter(function (c) { return c.role_title === "Head Coach" && c.contact_email; });
       if (heads.length) render(heads);
     });

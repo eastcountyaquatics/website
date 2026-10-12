@@ -52,6 +52,7 @@ type Payment = {
   buyer_questions: QuestionAnswer[] | null;
   items: Item[] | null;
   receipt_url: string | null;
+  discount: { code: string; amount: number } | null;
 };
 type Kind = "registration" | "tournament" | "masters" | "donation" | "other";
 
@@ -217,60 +218,86 @@ function feePaidCents(payment: Payment): number {
   return lines.length ? lines.reduce((sum, i) => sum + (i.amount || 0), 0) : payment.amount;
 }
 
-// A payment with a valid pay-link code, or any payment on the club's
-// pay-link form. Returns null when it's neither, so the normal per-form
-// matching runs.
+// A payment carrying payment codes, or any payment on the club's generic
+// pay-link form. Each ticket on the order is matched by the code typed on
+// that ticket -- one code is one player's invite -- so a two-kid order
+// credits each kid separately. With no per-ticket codes, a code anywhere on
+// the payment takes the whole fee. Returns null when there are no codes and
+// it isn't the pay-link form, so the normal per-form matching runs.
 async function recordPayLink(supabase: SupabaseClient, payment: Payment): Promise<string | null> {
+  const codeIn = (qs: QuestionAnswer[] | null | undefined) =>
+    (qs ?? []).flatMap((q) => typeof q.answer === "string" ? [q.answer] : Array.isArray(q.answer) ? q.answer : [])
+      .map(payCodeFrom).find(Boolean) ?? null;
   const answers = allAnswers(payment);
-  const code = answers.map(payCodeFrom).find(Boolean) ?? null;
+  const anyCode = answers.map(payCodeFrom).find(Boolean) ?? null;
 
   const { data: setting } = await supabase.from("site_settings").select("value").eq("key", "zeffy_paylink_form").maybeSingle();
   const form = (setting?.value ?? {}) as { campaign_id?: string; url?: string };
   const onPayLinkForm = !!form.campaign_id && form.campaign_id === payment.campaign_id;
-  if (!code && !onPayLinkForm) return null;
+  if (!anyCode && !onPayLinkForm) return null;
 
   const buyerEmail = (payment.buyer?.email || "").trim().toLowerCase() || null;
   const buyerName = [payment.buyer?.first_name, payment.buyer?.last_name].filter(Boolean).join(" ") || null;
   const currency = (payment.currency || "usd").toLowerCase();
   const paidAt = new Date((payment.created || Date.now() / 1000) * 1000).toISOString();
-  const amount = feePaidCents(payment);
+  const discountCode = payment.discount?.code || null;
 
-  const { data: result, error } = code
-    ? await supabase.rpc("apply_zeffy_pay_link", {
-      p_code: code, p_payment_id: payment.id, p_amount_cents: amount, p_currency: currency,
-      p_buyer_name: buyerName, p_buyer_email: buyerEmail, p_paid_at: paidAt,
-    })
-    : { data: null, error: null };
-  if (error) throw error;
+  // One line per ticket that has its own code; otherwise the whole payment.
+  const tickets = (payment.items ?? []).filter((i) => i.type === "ticket");
+  const perTicket = tickets.some((t) => codeIn(t.questions));
+  const lines = perTicket
+    ? tickets.map((t) => ({ itemId: t.id as string | null, amount: t.amount, code: codeIn(t.questions), typed: (t.questions ?? []).map((q) => String(q.answer ?? "")).join(" · ") }))
+    : [{ itemId: null as string | null, amount: feePaidCents(payment), code: anyCode, typed: answers.join(" · ") }];
 
-  if (!result) {
-    // Mistyped or missing code: the Manager types the right one on Admin > Zeffy.
-    const { error: insertError } = await supabase.from("zeffy_unmatched").insert({
-      zeffy_payment_id: payment.id, zeffy_item_id: null, campaign_id: payment.campaign_id,
-      campaign_title: payment.description, kind: "paylink",
-      typed_name: answers.filter((a) => a.trim()).join(" · ").slice(0, 200) || null,
-      buyer_email: buyerEmail, buyer_name: buyerName, amount_cents: amount, currency, paid_at: paidAt,
-    });
-    if (insertError && insertError.code !== "23505") throw insertError;
-    return "pay link: code not recognized";
+  const outcomes: string[] = [];
+  const emails = new Map<string, { to: string | null; r: PayResult }>();
+  for (const line of lines) {
+    let result: PayResult | null = null;
+    if (line.code) {
+      const { data, error } = await supabase.rpc("apply_zeffy_pay_code", {
+        p_code: line.code, p_payment_id: payment.id, p_item_id: line.itemId, p_amount_cents: line.amount,
+        p_currency: currency, p_buyer_name: buyerName, p_buyer_email: buyerEmail, p_paid_at: paidAt,
+        p_discount_code: discountCode,
+      });
+      if (error) throw error;
+      result = data as PayResult | null;
+    }
+    if (!result) {
+      // Mistyped or missing code: the Manager types the right one on Admin > Zeffy.
+      const { error: insertError } = await supabase.from("zeffy_unmatched").insert({
+        zeffy_payment_id: payment.id, zeffy_item_id: line.itemId, campaign_id: payment.campaign_id,
+        campaign_title: payment.description, kind: "paylink",
+        typed_name: line.typed.trim().slice(0, 200) || null,
+        buyer_email: buyerEmail, buyer_name: buyerName, amount_cents: line.amount, currency, paid_at: paidAt,
+      });
+      if (insertError && insertError.code !== "23505") throw insertError;
+      outcomes.push("code not recognized");
+      continue;
+    }
+    // Last result per code wins (it reflects every line applied so far).
+    emails.set(result.code, { to: result.payer_email || buyerEmail, r: result });
+    outcomes.push(`${result.code}: ${result.status}`);
   }
 
-  const r = result as { status: string; paid_cents: number; due_cents: number; code: string; payer_email: string | null; tournament_name: string; athlete_name: string };
-  const to = r.payer_email || buyerEmail;
-  if (to && r.status === "paid") {
-    await sendEmail(to, `You're registered for ${r.tournament_name}!`,
-      `Thank you! ${r.athlete_name} is signed up for ${r.tournament_name}. ` +
-      `Your receipt was sent separately by Zeffy.`);
-  } else if (to && r.status === "short") {
-    const balance = r.due_cents - r.paid_cents;
-    await sendEmail(to, `Balance due for ${r.tournament_name}`,
-      `Thank you -- we received ${dollars(r.paid_cents)} toward ${r.athlete_name}'s spot in ${r.tournament_name}, ` +
-      `but the total is ${dollars(r.due_cents)}. ${r.athlete_name} isn't on the roster until the remaining ` +
-      `${dollars(balance)} is paid.\n\nPay the balance here: ${form.url ?? "the link on your invite page"}\n` +
-      `Enter ${dollars(balance)} and the same payment code: ${r.code}`);
+  for (const { to, r } of emails.values()) {
+    if (!to) continue;
+    if (r.status === "paid") {
+      await sendEmail(to, `You're registered for ${r.tournament_name}!`,
+        `Thank you! ${r.athlete_name} is signed up for ${r.tournament_name}. ` +
+        `Your receipt was sent separately by Zeffy.`);
+    } else if (r.status === "short") {
+      const balance = r.due_cents - r.paid_cents;
+      await sendEmail(to, `Balance due for ${r.tournament_name}`,
+        `Thank you -- we received ${dollars(r.paid_cents)} toward ${r.athlete_name}'s spot in ${r.tournament_name}, ` +
+        `but the total is ${dollars(r.due_cents)}. ${r.athlete_name} isn't on the roster until the remaining ` +
+        `${dollars(balance)} is paid. Open your invite link from the club to pay the balance with the same ` +
+        `payment code: ${r.code}`);
+    }
   }
-  return `pay link ${r.code}: ${r.status}`;
+  return "pay link: " + outcomes.join(", ");
 }
+
+type PayResult = { status: string; paid_cents: number; due_cents: number; code: string; payer_email: string | null; tournament_name: string; athlete_name: string };
 
 function dollars(cents: number): string {
   return "$" + (cents / 100).toFixed(2);

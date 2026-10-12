@@ -267,7 +267,8 @@
           "<option>Adult Small</option><option>Adult Medium</option><option>Adult Large</option><option>Adult XL</option>" +
           "</select></div>"
         : "") +
-      (!short
+      // Set-price forms take discount codes on Zeffy itself.
+      (!short && !data.tournament.zeffy_set_price
         ? '<div class="field"><label for="discount_code">Discount Code (optional)</label><input type="text" id="discount_code" style="text-transform:uppercase;"></div>'
         : "") +
       '<div id="invite-msg" class="form-msg"></div>' +
@@ -310,7 +311,22 @@
 
     const amount = formatAmount(link.balance_cents);
     const box = document.createElement("div");
-    box.innerHTML =
+    // The tournament's own Zeffy form has a ticket per price: copy the code,
+    // pick the ticket, paste the code. Nothing to type for the amount.
+    if (link.set_price) {
+      box.innerHTML =
+        '<h3 style="margin-top:4px;">Pay on Zeffy</h3>' +
+        '<p class="muted">The club takes payments through Zeffy, which charges the club no fees.</p>' +
+        '<div class="pay-step"><span class="num">1</span><div style="flex:1;"><div class="muted" style="font-size:13px;">Your payment code &mdash; copy it</div><div class="val">' + escapeHtml(link.code) + "</div></div>" +
+        '<button type="button" class="btn btn-outline-dark" style="padding:6px 14px;" data-copy="' + escapeHtml(link.code) + '">Copy</button></div>' +
+        '<div class="pay-step"><span class="num">2</span><div style="flex:1;"><div class="muted" style="font-size:13px;">On Zeffy, pick this ticket</div><div class="val">' +
+          escapeHtml(link.tier_label || "") + " &mdash; " + amount + "</div></div></div>" +
+        '<div class="pay-step"><span class="num">3</span><div style="flex:1;font-size:14px;">Paste your code into <strong>&ldquo;Payment code&rdquo;</strong> on that ticket and pay.</div></div>' +
+        '<a class="btn btn-primary" style="width:100%;text-align:center;margin:8px 0 12px;" href="' + escapeHtml(link.form_url) + '" target="_blank" rel="noopener">Open Zeffy</a>' +
+        '<p class="muted" style="font-size:13px;">Paying for more than one swimmer? Add a ticket for each, with each swimmer&rsquo;s own code. Zeffy will suggest an optional tip to Zeffy (not the club) &mdash; you can change it to $0.</p>' +
+        '<p class="muted" style="font-size:13px;">' + escapeHtml(data_athlete_name) + " is added to the roster as soon as the payment comes in, and you'll get a confirmation email.</p>" +
+        '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">I\'ve Paid &mdash; Check Status</button>';
+    } else box.innerHTML =
       '<h3 style="margin-top:4px;">Pay ' + amount + " on Zeffy</h3>" +
       '<p class="muted">The club takes payments through Zeffy, which charges the club no fees. Copy these two things, then open the payment page:</p>' +
       '<div class="pay-step"><span class="num">1</span><div style="flex:1;"><div class="muted" style="font-size:13px;">Amount to enter</div><div class="val">' + amount + "</div></div>" +

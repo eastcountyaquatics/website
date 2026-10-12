@@ -70,19 +70,26 @@ Deno.serve(async (req) => {
       .select("value")
       .eq("key", "zeffy_paylink_form")
       .maybeSingle();
-    const formUrl = (formSetting?.value as { url?: string } | null)?.url;
-    if (!formUrl || !/^https:\/\/(www\.)?zeffy\.com\//.test(formUrl)) {
+    // The tournament's own set-price form when it has one (the family picks
+    // their ticket there), else the club's generic pay-what-you-want form.
+    const isZeffyUrl = (u: unknown): u is string => typeof u === "string" && /^https:\/\/(www\.)?zeffy\.com\//.test(u);
+    const setPrice = isZeffyUrl(tournament.zeffy_form_url);
+    const formUrl = setPrice ? tournament.zeffy_form_url : (formSetting?.value as { url?: string } | null)?.url;
+    if (!isZeffyUrl(formUrl)) {
       return json({ error: "Online payment for this tournament isn't set up yet. Please contact the club." }, 503);
     }
 
     // Money already came in against this code (a short payment): keep the
     // price it was quoted at and just show the balance.
     if (existing && existing.status === "short") {
-      return json(payLinkResponse(existing.code, existing.amount_due_cents, existing.paid_cents, "short", formUrl, tier.label));
+      return json(payLinkResponse(existing.code, existing.amount_due_cents, existing.paid_cents, "short", formUrl, tier.label, setPrice));
     }
 
+    // Set-price forms: discount codes are entered on Zeffy, not here.
+    if (setPrice) discountCode = "";
+
     // Reopening the invite keeps a discount already applied to this code.
-    const reusingDiscount = !discountCode && !!existing?.discount_code;
+    const reusingDiscount = !setPrice && !discountCode && !!existing?.discount_code;
     if (reusingDiscount) discountCode = existing!.discount_code;
 
     // A payment code (ECA-XXXXXX) pasted into the discount box isn't a
@@ -101,7 +108,7 @@ Deno.serve(async (req) => {
         // The saved code has since expired or run out: keep the price they
         // were already quoted rather than block the page.
         if (reusingDiscount) {
-          return json(payLinkResponse(existing!.code, existing!.amount_due_cents, existing!.paid_cents, existing!.status, formUrl, tier.label));
+          return json(payLinkResponse(existing!.code, existing!.amount_due_cents, existing!.paid_cents, existing!.status, formUrl, tier.label, setPrice));
         }
         return json({ error: discounted.error }, 400);
       }
@@ -153,18 +160,19 @@ Deno.serve(async (req) => {
       });
       await supabase.from("zeffy_pay_links").update({ status: "paid" }).eq("code", code);
       await supabase.from("tournament_invites").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", invite.id);
-      return json({ ...payLinkResponse(code, 0, 0, "paid", formUrl, tier.label), free: true });
+      return json({ ...payLinkResponse(code, 0, 0, "paid", formUrl, tier.label, setPrice), free: true });
     }
 
-    return json(payLinkResponse(code, amount, 0, "open", formUrl, tier.label));
+    return json(payLinkResponse(code, amount, 0, "open", formUrl, tier.label, setPrice));
   } catch (err) {
     console.error(err);
     return json({ error: "Something went wrong getting your payment code" }, 500);
   }
 });
 
-function payLinkResponse(code: string, due: number, paid: number, status: string, formUrl: string, tierLabel: string) {
+function payLinkResponse(code: string, due: number, paid: number, status: string, formUrl: string, tierLabel: string, setPrice = false) {
   return {
+    set_price: setPrice,
     code,
     amount_due_cents: due,
     paid_cents: paid,
@@ -248,7 +256,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, payment_provider")
+    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, payment_provider, zeffy_form_url")
     .eq("id", invite.tournament_id)
     .maybeSingle();
   if (tournamentError || !tournament) return { error: "This tournament could not be found.", status: 404 } as const;

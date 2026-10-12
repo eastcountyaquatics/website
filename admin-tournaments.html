@@ -149,6 +149,11 @@
           </select>
           <p class="muted" style="font-size:12px;margin-top:4px;">Prices and discount codes work the same either way. Zeffy needs the club's Zeffy payment form set on Admin &rarr; Zeffy first.</p>
         </div>
+        <div class="field" id="t-zeffy-url-wrap" style="display:none;">
+          <label for="t-zeffy-url">This tournament's Zeffy form link (set prices)</label>
+          <input type="url" id="t-zeffy-url" placeholder="https://www.zeffy.com/en-US/ticketing/...">
+          <p class="muted" style="font-size:12px;margin-top:4px;">An Event form on Zeffy with one ticket per price (named like the price groups below, e.g. &ldquo;14U&rdquo;) and a required question on the ticket: &ldquo;Payment code (from your ECA invite)&rdquo;. Ticket prices must match the prices set here. Discount codes go on the Zeffy form. Leave blank to use the club's pay-what-you-want form instead.</p>
+        </div>
         <div class="field" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="t-published" style="width:auto;">
           <label for="t-published" style="margin:0;">Published (visible if you build a general listing later; invite links work either way)</label>
@@ -374,6 +379,8 @@
     document.getElementById("t-shirt-enabled").checked = !!t.shirt_size_enabled;
     document.getElementById("t-published").checked = !!t.is_published;
     document.getElementById("t-payment-provider").value = t.payment_provider === "zeffy" ? "zeffy" : "stripe";
+    document.getElementById("t-zeffy-url").value = t.zeffy_form_url || "";
+    document.getElementById("t-zeffy-url-wrap").style.display = t.payment_provider === "zeffy" ? "block" : "none";
     document.getElementById("t-submit-btn").textContent = "Save Changes";
     document.getElementById("t-cancel-btn").style.display = "inline-block";
 
@@ -395,6 +402,7 @@
     document.getElementById("t-age-as-of-wrap").style.display = "none";
     document.getElementById("t-travel-days-wrap").style.display = "none";
     document.getElementById("t-travel-days").dataset.touched = "";
+    document.getElementById("t-zeffy-url-wrap").style.display = "none";
     document.getElementById("tournament-form-title").textContent = "Add a Tournament";
     document.getElementById("t-submit-btn").textContent = "Add Tournament";
     document.getElementById("t-cancel-btn").style.display = "none";
@@ -403,6 +411,9 @@
     setDateMode("single");
   }
   document.getElementById("t-cancel-btn").addEventListener("click", resetTournamentForm);
+  document.getElementById("t-payment-provider").addEventListener("change", function () {
+    document.getElementById("t-zeffy-url-wrap").style.display = this.value === "zeffy" ? "block" : "none";
+  });
 
   document.getElementById("tournament-form").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -439,7 +450,13 @@
       shirt_size_enabled: document.getElementById("t-shirt-enabled").checked,
       is_published: document.getElementById("t-published").checked,
       payment_provider: document.getElementById("t-payment-provider").value,
+      zeffy_form_url: document.getElementById("t-zeffy-url").value.trim() || null,
     };
+    if (payload.zeffy_form_url && !/^https:\/\/(www\.)?zeffy\.com\//.test(payload.zeffy_form_url)) {
+      msg.className = "form-msg error";
+      msg.textContent = "The Zeffy form link should start with https://www.zeffy.com/";
+      return;
+    }
 
     const id = document.getElementById("t-id").value;
     const result = id

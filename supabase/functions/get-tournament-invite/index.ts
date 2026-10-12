@@ -77,6 +77,9 @@ Deno.serve(async (req) => {
         hotel_url: result.tournament.hotel_url,
         requirements: result.tournament.requirements,
         shirt_size_enabled: result.tournament.shirt_size_enabled,
+        // Its own Zeffy form with a ticket per price: the family picks their
+        // ticket there instead of typing an amount.
+        zeffy_set_price: typeof result.tournament.zeffy_form_url === "string" && /^https:\/\/(www\.)?zeffy\.com\//.test(result.tournament.zeffy_form_url),
       },
       athlete: { full_name: result.athlete.full_name },
       tier: { label: result.tier.label, amount_cents: result.tier.amount_cents },
@@ -105,7 +108,7 @@ async function resolveInvite(supabase: ReturnType<typeof createClient>, token: s
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
-    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, location, hotel_name, hotel_url, payment_provider")
+    .select("id, name, description, event_date, requirements, shirt_size_enabled, is_published, rsvp_deadline, location, hotel_name, hotel_url, payment_provider, zeffy_form_url")
     .eq("id", invite.tournament_id)
     .maybeSingle();
   if (tournamentError || !tournament) return { error: "This tournament could not be found.", status: 404 } as const;

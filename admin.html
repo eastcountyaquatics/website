@@ -79,12 +79,6 @@
             <p class="muted">Take attendance for practice &mdash; check off who's present, saves automatically.</p>
           </a>
         </div>
-        <div class="admin-nav-card" id="team-coaches-card">
-          <a href="admin-team-coaches.html" style="display:block;color:inherit;">
-            <h3>Team Coaches</h3>
-            <p class="muted">Put coaches and assistant coaches on a team, move them between teams, or take them off.</p>
-          </a>
-        </div>
       </div>
     </div>
     <div class="admin-group" data-group="tournaments" style="display:none;">
@@ -101,6 +95,12 @@
     <div class="admin-group" data-group="website" style="display:none;">
       <h2 class="admin-group-title">Admin</h2>
       <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="team-coaches-card">
+          <a href="admin-team-coaches.html" style="display:block;color:inherit;">
+            <h3>Team Coaches</h3>
+            <p class="muted">Put coaches and assistant coaches on a team, move them between teams, or take them off.</p>
+          </a>
+        </div>
         <div class="admin-nav-card" id="editor-card">
           <a href="admin-editor.html" style="display:block;color:inherit;">
             <h3>Edit Website</h3>
@@ -262,7 +262,10 @@
     // Head Coaches don't see the Admin group, so their Tournaments card
     // stays with Team Interest.
     if (auth.role === "head_coach") document.querySelector('[data-group="tournaments"] .admin-nav-cards').appendChild(document.getElementById("tournaments-card"));
-    // Team Coaches: Manager and Head Coaches only (not Assistant Coaches).
+    // Team Coaches: Manager (under Admin) and Head Coaches only, not
+    // Assistant Coaches. Head Coaches don't see the Admin group, so theirs
+    // sits under Teams.
+    if (auth.role === "head_coach") document.querySelector('[data-group="teams"] .admin-nav-cards').appendChild(document.getElementById("team-coaches-card"));
     if (auth.role !== "owner" && auth.role !== "head_coach") document.getElementById("team-coaches-card").remove();
     (GROUPS_BY_ROLE[auth.role] || []).forEach(function (group) {
       document.querySelector('[data-group="' + group + '"]').style.display = "block";

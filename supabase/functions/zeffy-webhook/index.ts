@@ -254,13 +254,20 @@ async function recordPayLink(supabase: SupabaseClient, payment: Payment): Promis
   for (const line of lines) {
     let result: PayResult | null = null;
     if (line.code) {
-      const { data, error } = await supabase.rpc("apply_zeffy_pay_code", {
+      const args = {
         p_code: line.code, p_payment_id: payment.id, p_item_id: line.itemId, p_amount_cents: line.amount,
         p_currency: currency, p_buyer_name: buyerName, p_buyer_email: buyerEmail, p_paid_at: paidAt,
         p_discount_code: discountCode,
-      });
-      if (error) throw error;
-      result = data as PayResult | null;
+      };
+      // A tournament invite's code, else a registration code (one kid, one session).
+      const tournament = await supabase.rpc("apply_zeffy_pay_code", args);
+      if (tournament.error) throw tournament.error;
+      result = tournament.data as PayResult | null;
+      if (!result) {
+        const registration = await supabase.rpc("apply_zeffy_registration_code", args);
+        if (registration.error) throw registration.error;
+        result = registration.data as PayResult | null;
+      }
     }
     if (!result) {
       // Mistyped or missing code: the Manager types the right one on Admin > Zeffy.
@@ -287,17 +294,20 @@ async function recordPayLink(supabase: SupabaseClient, payment: Payment): Promis
         `Your receipt was sent separately by Zeffy.`);
     } else if (r.status === "short") {
       const balance = r.due_cents - r.paid_cents;
+      const reg = r.kind === "registration";
+      const how = reg
+        ? `Go to My Account and tap Register & Pay for the same session to pay the balance with the same payment code: ${r.code}`
+        : `Open your invite link from the club to pay the balance with the same payment code: ${r.code}`;
       await sendEmail(to, `Balance due for ${r.tournament_name}`,
         `Thank you -- we received ${dollars(r.paid_cents)} toward ${r.athlete_name}'s spot in ${r.tournament_name}, ` +
-        `but the total is ${dollars(r.due_cents)}. ${r.athlete_name} isn't on the roster until the remaining ` +
-        `${dollars(balance)} is paid. Open your invite link from the club to pay the balance with the same ` +
-        `payment code: ${r.code}`);
+        `but the total is ${dollars(r.due_cents)}. ${r.athlete_name} isn't ${reg ? "registered" : "on the roster"} until the remaining ` +
+        `${dollars(balance)} is paid. ${how}`);
     }
   }
   return "pay link: " + outcomes.join(", ");
 }
 
-type PayResult = { status: string; paid_cents: number; due_cents: number; code: string; payer_email: string | null; tournament_name: string; athlete_name: string };
+type PayResult = { status: string; paid_cents: number; due_cents: number; code: string; payer_email: string | null; tournament_name: string; athlete_name: string; kind?: string };
 
 function dollars(cents: number): string {
   return "$" + (cents / 100).toFixed(2);
@@ -430,7 +440,7 @@ function isReversed(payment: Payment): boolean {
 async function syncRefund(supabase: SupabaseClient, payment: Payment): Promise<string> {
   if (!isReversed(payment)) return "ignored";
   const { data: rows, error } = await supabase.from("purchases").update({ status: "refunded" })
-    .eq("zeffy_payment_id", payment.id).eq("status", "paid").select("tournament_invite_id");
+    .eq("zeffy_payment_id", payment.id).in("status", ["paid", "pending"]).select("tournament_invite_id, zeffy_registration_code");
   if (error) throw error;
   await supabase.from("zeffy_unmatched").delete().eq("zeffy_payment_id", payment.id).is("resolved_at", null);
   await resettle(supabase, rows ?? []);
@@ -440,17 +450,22 @@ async function syncRefund(supabase: SupabaseClient, payment: Payment): Promise<s
 // payment.deleted (an offline payment removed in Zeffy): same as a refund.
 async function removePayment(supabase: SupabaseClient, paymentId: string): Promise<string> {
   const { data: rows, error } = await supabase.from("purchases").update({ status: "canceled" })
-    .eq("zeffy_payment_id", paymentId).eq("status", "paid").select("tournament_invite_id");
+    .eq("zeffy_payment_id", paymentId).in("status", ["paid", "pending"]).select("tournament_invite_id, zeffy_registration_code");
   if (error) throw error;
   await supabase.from("zeffy_unmatched").delete().eq("zeffy_payment_id", paymentId).is("resolved_at", null);
   await resettle(supabase, rows ?? []);
   return "deleted";
 }
 
-async function resettle(supabase: SupabaseClient, rows: { tournament_invite_id: string | null }[]) {
+async function resettle(supabase: SupabaseClient, rows: { tournament_invite_id: string | null; zeffy_registration_code: string | null }[]) {
   const invites = [...new Set(rows.map((r) => r.tournament_invite_id).filter(Boolean))];
   for (const id of invites) {
     const { error } = await supabase.rpc("zeffy_settle_invite", { p_invite_id: id });
+    if (error) throw error;
+  }
+  const codes = [...new Set(rows.map((r) => r.zeffy_registration_code).filter(Boolean))];
+  for (const code of codes) {
+    const { error } = await supabase.rpc("zeffy_settle_registration", { p_code: code });
     if (error) throw error;
   }
 }

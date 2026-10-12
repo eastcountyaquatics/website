@@ -90,6 +90,18 @@
           <input type="number" id="amount_dollars" step="0.01" min="0" placeholder="185.00" required>
         </div>
         <div class="field">
+          <label for="payment_provider">How families pay</label>
+          <select id="payment_provider">
+            <option value="stripe">Card on this site (Stripe)</option>
+            <option value="zeffy">Zeffy &mdash; no card fees (family copies a code)</option>
+          </select>
+        </div>
+        <div class="field" id="zeffy-url-wrap" style="display:none;">
+          <label for="zeffy_form_url">This session's Zeffy form link</label>
+          <input type="url" id="zeffy_form_url" placeholder="https://www.zeffy.com/en-US/ticketing/...">
+          <p class="muted" style="font-size:12px;margin-top:4px;">An Event form on Zeffy with a ticket at this price and a required question on the ticket: &ldquo;Payment code (from your ECA account)&rdquo;. Its price must match the Amount above. Discount codes go on the Zeffy form. Families still pick their athletes and agree to the consent here, then get one payment code per athlete. Switch back to the card any time.</p>
+        </div>
+        <div class="field">
           <label for="sort_order">Display Order (lower shows first)</label>
           <input type="number" id="sort_order" value="0">
         </div>
@@ -260,7 +272,7 @@
           '<div class="admin-list-item">' +
           "<div>" +
           "<h4>" + escapeHtml(o.label) + (o.is_open ? "" : ' <span class="muted" style="font-weight:400;">(closed)</span>') + "</h4>" +
-          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.season ? " &middot; " + escapeHtml(o.season) : "") +
+          '<div class="muted" style="font-size:13px;">' + formatAmount(o.amount_cents) + (o.payment_provider === "zeffy" ? " &middot; pays on Zeffy" : "") + (o.season ? " &middot; " + escapeHtml(o.season) : "") +
           ((o.team_slugs && o.team_slugs.length) ? " &middot; " + escapeHtml(o.team_slugs.map(teamLabel).join(", ")) : "") + "</div>" +
           ((o.team_slugs && o.team_slugs.length) ? "" : '<div style="font-size:12.5px;color:#a12626;font-weight:600;">No age groups checked &mdash; families can&rsquo;t see this program. Click Edit and check its teams.</div>') +
           "</div>" +
@@ -305,6 +317,9 @@
     applySeasonFields(parseSeason(o.season));
     document.getElementById("sort_order").value = o.sort_order || 0;
     document.getElementById("is_open").checked = !!o.is_open;
+    document.getElementById("payment_provider").value = o.payment_provider === "zeffy" ? "zeffy" : "stripe";
+    document.getElementById("zeffy_form_url").value = o.zeffy_form_url || "";
+    document.getElementById("zeffy-url-wrap").style.display = o.payment_provider === "zeffy" ? "block" : "none";
     document.getElementById("submit-btn").textContent = "Save Changes";
     document.getElementById("cancel-edit-btn").style.display = "inline-block";
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -315,6 +330,7 @@
     document.getElementById("reg-id").value = "";
     document.getElementById("label").dataset.touched = "";
     document.getElementById("is_open").checked = true;
+    document.getElementById("zeffy-url-wrap").style.display = "none";
     document.getElementById("form-title").textContent = "Add a Registration Option";
     document.getElementById("submit-btn").textContent = "Add Registration Option";
     document.getElementById("cancel-edit-btn").style.display = "none";
@@ -322,6 +338,9 @@
   }
 
   document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
+  document.getElementById("payment_provider").addEventListener("change", function () {
+    document.getElementById("zeffy-url-wrap").style.display = this.value === "zeffy" ? "block" : "none";
+  });
 
   document.getElementById("reg-form").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -369,6 +388,26 @@
     if (error || !data || data.error) {
       msg.className = "form-msg error";
       msg.textContent = await functionErrorMessage(error, data, "Could not save registration option.");
+      return;
+    }
+
+    // How families pay + the Zeffy form link are plain settings on the
+    // option (Owners can update registration options), saved right after.
+    const provider = document.getElementById("payment_provider").value;
+    const zeffyUrl = document.getElementById("zeffy_form_url").value.trim();
+    if (provider === "zeffy" && !/^https:\/\/(www\.)?zeffy\.com\//.test(zeffyUrl)) {
+      msg.className = "form-msg error";
+      msg.textContent = "Saved, but the card is still on: the Zeffy form link should start with https://www.zeffy.com/";
+      loadOptions();
+      return;
+    }
+    const savedId = id || (data.option && data.option.id);
+    const { error: providerError } = await supabaseClient.from("registration_options")
+      .update({ payment_provider: provider, zeffy_form_url: provider === "zeffy" ? zeffyUrl : null }).eq("id", savedId);
+    if (providerError) {
+      msg.className = "form-msg error";
+      msg.textContent = "Saved, but could not set how families pay: " + providerError.message;
+      loadOptions();
       return;
     }
 

@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const optionIds = [...new Set(items.map((i: any) => i.registration_option_id))];
     const { data: options, error: optionsError } = await supabase
       .from("registration_options")
-      .select("id, label, stripe_price_id, is_open, team_slugs")
+      .select("id, label, stripe_price_id, is_open, team_slugs, payment_provider")
       .in("id", optionIds);
     if (optionsError || !options) {
       return json({ error: "Could not load registration options" }, 400);
@@ -81,6 +81,24 @@ Deno.serve(async (req) => {
       }
       if (!option.is_open) {
         return json({ error: `"${option.label}" is not currently open for registration` }, 400);
+      }
+      // A session paid on Zeffy has its own checkout (create-zeffy-registration).
+      if (option.payment_provider === "zeffy") {
+        return json({ error: `"${option.label}" is paid on Zeffy -- tap Register & Pay again to get your payment code.` }, 409);
+      }
+      // Switched back to card after money already came in on Zeffy: never
+      // charge the full price twice.
+      const { data: zeffyCode } = await supabase
+        .from("zeffy_registration_codes")
+        .select("status, paid_cents")
+        .eq("athlete_id", athlete.id)
+        .eq("registration_option_id", option.id)
+        .maybeSingle();
+      if (zeffyCode?.status === "paid") {
+        return json({ error: `${athlete.full_name} is already registered for "${option.label}".` }, 409);
+      }
+      if (zeffyCode && zeffyCode.paid_cents > 0) {
+        return json({ error: `${athlete.full_name} has a partial payment on Zeffy for "${option.label}". Please contact the club to finish it.` }, 409);
       }
       if (!athleteFitsProgram(athlete, option.team_slugs || [])) {
         return json({ error: `${athlete.full_name} isn't in the age group for "${option.label}".` }, 400);

@@ -324,7 +324,7 @@
       <input type="text" id="consent-referral-name" placeholder="Their name &mdash; they can earn a coupon code for next session">
     </div>
 
-    <div class="field">
+    <div class="field" id="consent-discount-field">
       <label for="consent-discount-code">Discount Code <span class="muted" style="font-weight:400;">(optional)</span></label>
       <input type="text" id="consent-discount-code" placeholder="e.g. ecasibling2" autocomplete="off">
       <p class="muted" data-cms="dashboard-consent-discount-info" style="font-size:12px;margin-top:4px;">Only use if you have 2 or more athletes playing this session (not including Splashball), or a 10U/12U/14U athlete new to ECA this session. Sibling #2: "ecasibling2"; Sibling #3: "ecasibling3"; Sibling #4: "ecasibling4"; New athlete: "NewAthlete26".</p>
@@ -333,6 +333,20 @@
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
       <button type="button" id="consent-continue-btn" class="btn btn-primary">Continue to Payment</button>
       <button type="button" id="consent-cancel-btn" class="btn btn-outline-dark">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="zeffy-reg-overlay" class="consent-overlay" style="display:none;">
+  <div class="consent-modal">
+    <h3 id="zreg-title">Pay on Zeffy</h3>
+    <p class="muted" style="font-size:13px;margin-bottom:14px;">The club takes payments through Zeffy, which charges the club no fees. Each athlete has their own payment code &mdash; copy it, pick the ticket on Zeffy, and paste the code on that athlete's ticket.</p>
+    <div id="zreg-codes"></div>
+    <a id="zreg-open" class="btn btn-primary" style="width:100%;text-align:center;margin:10px 0;" target="_blank" rel="noopener" href="#">Open Zeffy</a>
+    <p class="muted" style="font-size:12.5px;">Registering more than one athlete? Add a ticket for each, with each athlete's own code. Zeffy will suggest an optional tip to Zeffy (not the club) &mdash; you can change it to $0. Athletes are registered as soon as the full payment comes in, and you'll get a confirmation email.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+      <button type="button" id="zreg-paid-btn" class="btn btn-outline-dark">I've Paid &mdash; Refresh</button>
+      <button type="button" id="zreg-close-btn" class="btn btn-outline-dark">Close</button>
     </div>
   </div>
 </div>
@@ -1319,7 +1333,7 @@
     const wrap = document.getElementById("registration-options");
     const { data: options, error } = await supabaseClient
       .from("registration_options")
-      .select("id, label, description, amount_cents, season, team_slugs")
+      .select("id, label, description, amount_cents, season, team_slugs, payment_provider")
       .eq("is_open", true)
       .order("sort_order", { ascending: true });
 
@@ -1395,7 +1409,10 @@
         const items = Array.from(checked).map(function (c) {
           return { athlete_id: c.value, registration_option_id: optionId };
         });
-        openConsentModal(items, btn, msgEl);
+        // Sessions paid on Zeffy get a payment code per athlete instead of
+        // the card checkout.
+        const picked = shown.find(function (o) { return o.id === optionId; });
+        openConsentModal(items, btn, msgEl, !!picked && picked.payment_provider === "zeffy");
       });
     });
   }
@@ -1455,8 +1472,10 @@
     });
   }
 
-  function openConsentModal(items, btn, msgEl) {
-    pendingCheckout = { items: items, btn: btn, msgEl: msgEl };
+  function openConsentModal(items, btn, msgEl, zeffy) {
+    pendingCheckout = { items: items, btn: btn, msgEl: msgEl, zeffy: !!zeffy };
+    // Zeffy sessions take discount codes on Zeffy, not here.
+    document.getElementById("consent-discount-field").style.display = zeffy ? "none" : "";
     consentOpener = btn;
     document.getElementById("consent-msg").textContent = "";
     document.querySelectorAll("[data-consent-required]").forEach(function (cb) { cb.checked = false; });
@@ -1479,6 +1498,35 @@
     }
   }
   document.getElementById("consent-cancel-btn").addEventListener("click", closeConsentModal);
+
+  // Zeffy sessions: each athlete's payment code (one code per athlete per
+  // session) with the amount, and the link to the session's Zeffy form.
+  function showZeffyCodes(data) {
+    document.getElementById("zreg-title").textContent = "Pay on Zeffy \u2014 " + data.option_label;
+    document.getElementById("zreg-codes").innerHTML = data.codes.map(function (c) {
+      const owing = c.paid_cents > 0
+        ? '<div class="muted" style="font-size:12.5px;">Paid ' + formatAmount(c.paid_cents, "usd") + " of " + formatAmount(c.amount_due_cents, "usd") +
+          " &mdash; <strong>" + formatAmount(c.balance_cents, "usd") + " balance due</strong></div>"
+        : '<div class="muted" style="font-size:12.5px;">Pick the ticket for ' + formatAmount(c.amount_due_cents, "usd") + "</div>";
+      return '<div style="border:1px solid #e3e6f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:150px;"><div style="font-weight:700;">' + escapeHtml(c.athlete_name) + "</div>" + owing +
+        '<div style="font-size:20px;font-weight:800;letter-spacing:.5px;">' + escapeHtml(c.code) + "</div></div>" +
+        '<button type="button" class="btn btn-outline-dark" style="padding:6px 14px;" data-zreg-copy="' + escapeHtml(c.code) + '">Copy</button></div>';
+    }).join("");
+    const open = document.getElementById("zreg-open");
+    open.href = /^https:\/\//.test(data.form_url) ? data.form_url : "#";
+    document.getElementById("zeffy-reg-overlay").style.display = "flex";
+  }
+  document.getElementById("zreg-codes").addEventListener("click", async function (e) {
+    const b = e.target.closest("[data-zreg-copy]");
+    if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.zregCopy); b.textContent = "Copied"; } catch (err) { b.textContent = b.dataset.zregCopy; }
+    setTimeout(function () { b.textContent = "Copy"; }, 2000);
+  });
+  document.getElementById("zreg-close-btn").addEventListener("click", function () {
+    document.getElementById("zeffy-reg-overlay").style.display = "none";
+  });
+  document.getElementById("zreg-paid-btn").addEventListener("click", function () { window.location.reload(); });
 
   // Escape and a click on the backdrop both dismiss it, the way every other
   // dialog on the web does. Without these the only way out was the Cancel
@@ -1531,17 +1579,28 @@
       agreed_at: new Date().toISOString(),
     };
 
-    const { items, btn, msgEl } = pendingCheckout;
+    const { items, btn, msgEl, zeffy } = pendingCheckout;
     const continueBtn = document.getElementById("consent-continue-btn");
     continueBtn.disabled = true;
-    continueBtn.textContent = "Redirecting to payment...";
+    continueBtn.textContent = zeffy ? "Getting your payment codes..." : "Redirecting to payment...";
 
-    const { data, error } = await supabaseClient.functions.invoke("create-checkout-session", {
+    const { data, error } = await supabaseClient.functions.invoke(zeffy ? "create-zeffy-registration" : "create-checkout-session", {
       body: { items: items, consent: consent },
     });
 
     continueBtn.disabled = false;
     continueBtn.textContent = "Continue to Payment";
+
+    if (zeffy) {
+      if (error || !data || !data.codes) {
+        consentMsg.className = "form-msg error";
+        consentMsg.textContent = await functionErrorMessage(error, data, "Could not get your payment codes. Please try again.");
+        return;
+      }
+      closeConsentModal();
+      showZeffyCodes(data);
+      return;
+    }
 
     if (error || !data || !data.url) {
       consentMsg.className = "form-msg error";

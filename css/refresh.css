@@ -270,3 +270,62 @@ h3{font-size:21px;font-weight:700;}
   .reg-navy{padding-top:100px;}
   .page-hero{padding:44px 0 80px;}
 }
+
+
+/* ---------- v6: polish ---------- */
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+h1,h2,h3{text-wrap:balance;}
+p,li{text-wrap:pretty;}
+h1{letter-spacing:-.015em;}
+h2{letter-spacing:-.01em;}
+:root{--r:18px;}
+
+/* Header lines up with the page content */
+.nav-wrap{max-width:1240px;}
+
+/* Hero: the pool, large and clean */
+.collage{aspect-ratio:1/0.86;}
+.collage .c-block{right:-5%;top:-5%;width:70%;height:76%;border-radius:var(--r);}
+.collage .c-main{width:90%;height:88%;border-radius:var(--r);}
+.home-hero::after{left:auto;right:-70px;bottom:-70px;width:200px;height:200px;}
+
+/* One corner radius everywhere */
+.tile,.sessions,.trial-box,.card,.gallery-track img,.photo-row img{border-radius:var(--r);}
+.btn{border-radius:12px;}
+
+/* Footer: tidy two-column link list, readable sizes */
+.site-footer ul{columns:2;column-gap:28px;}
+.site-footer li{break-inside:avoid;}
+.footer-grid{grid-template-columns:1.6fr 1.4fr 1fr;gap:48px;}
+.footer-grid > div:last-child ul{columns:1;}
+.site-footer a{transition:color .15s ease;}
+
+/* Keyboard users see where they are */
+a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{
+  outline:3px solid var(--gold);outline-offset:3px;border-radius:8px;
+}
+.nav-menu a:focus-visible{outline-color:var(--blue);}
+
+/* Quiet motion for people who ask for it */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}
+  .gallery-track{animation:none !important;}
+}
+
+/* Section rhythm */
+.section-head,.about h2,.tiles-section h2{margin-bottom:28px;}
+.eyebrow{letter-spacing:.01em;}
+.lead{line-height:1.6;}
+@media(max-width:1150px){.nav-wrap{max-width:none;}}
+@media(max-width:860px){.footer-grid{grid-template-columns:1fr;}.site-footer ul{columns:1;}}
+
+/* v6.1 */
+.nav-wrap{max-width:1120px;padding:0 24px;}
+.hl{white-space:nowrap;}
+/* Gold dot tucked behind the photo's corner instead of cut off at the edge */
+.home-hero::after{display:none;}
+.collage::after{content:"";position:absolute;left:-34px;bottom:2%;width:128px;height:128px;border-radius:50%;background:var(--gold);z-index:-1;}
+.collage{z-index:0;}
+/* Quieter lane lines so they never fight the text */
+:root{--lanes:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 84px);}
+@media(max-width:860px){.collage::after{width:84px;height:84px;left:-16px;}}

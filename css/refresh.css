@@ -105,3 +105,44 @@ h3{font-size:21px;font-weight:700;}
   .trial-box{padding:28px 22px;}
   .support .actions{justify-self:start;}
 }
+
+/* ---------- Inner pages (everything except the home layout above) ---------- */
+
+/* Page header: light and left-aligned, like the home page -- not a heavy bar */
+.page-hero{background:var(--tint);border-bottom:1px solid var(--line);padding:56px 0 48px;color:var(--navy);}
+.page-hero h1{color:var(--navy);margin:0 0 12px;}
+.page-hero p{color:#4a5068;font-size:19px;max-width:40em;}
+.breadcrumb{display:inline-block;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue);margin-bottom:14px;padding-bottom:6px;border-bottom:3px solid var(--gold);}
+
+/* Labels above headings: plain, not tiny uppercase */
+.kicker,.section-head .kicker,.head-coach-card .kicker{
+  display:inline-block;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue);
+  margin-bottom:12px;padding-bottom:5px;border-bottom:3px solid var(--gold);
+}
+.section-head{margin:0 0 40px;max-width:720px;text-align:left;}
+.section-head h2{margin-bottom:12px;}
+
+/* Cards: flat and quiet -- no colored stripe, no emoji badges */
+.card,.team-panel,.founder-card,.head-coach-card,.coach-card{
+  border:1px solid var(--line);border-top:1px solid var(--line);border-radius:var(--radius);box-shadow:none;
+}
+.card{padding:28px;}
+.card:hover{transform:none;box-shadow:var(--shadow);}
+.icon-badge{display:none;}
+.info-list .info-icon{display:none;}
+.info-list li{gap:0;}
+.notice{border-radius:var(--radius);}
+.founder-card{border-top:1px solid var(--line);}
+
+/* Dark bands that stay: calmer corners, same navy */
+.navy-block{border-radius:0;}
+.navy-block h2{font-size:clamp(28px,3.4vw,38px);}
+.navy-block .btn-primary{background:var(--gold);border-color:var(--gold);color:#1a1a00;}
+
+/* Tables and small buttons */
+.btn-outline-dark{border-width:2px;}
+.team-panel-buttons .btn{padding:9px 18px;}
+/* Outline buttons placed on navy need light text */
+.cta-band .btn-outline-dark,.navy-block .btn-outline-dark,.band .btn-outline-dark,.support .btn-outline-dark,[style*="background:var(--navy)"] .btn-outline-dark{color:#fff;border-color:#fff;}
+.cta-band .btn-outline-dark:hover,.navy-block .btn-outline-dark:hover,.band .btn-outline-dark:hover{background:#fff;color:var(--navy);}
+.cta-band{border-top:none;border-radius:var(--radius);}

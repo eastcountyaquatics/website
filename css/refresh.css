@@ -43,7 +43,7 @@ h3{font-size:21px;font-weight:700;}
 .home-hero .lead{margin:0 0 28px;}
 .home-hero .actions{display:flex;gap:12px;flex-wrap:wrap;}
 .home-hero .photo{border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3.2;background:var(--tint);}
-.home-hero .photo img{width:100%;height:100%;object-fit:cover;}
+.home-hero .photo img{width:100%;height:100%;object-fit:cover;object-position:center 60%;}
 
 /* Registration: facts on the left, live sessions on the right */
 .reg{background:var(--tint);}
@@ -59,9 +59,18 @@ h3{font-size:21px;font-weight:700;}
 .session-row .s-price{font-weight:700;color:#1f2433;white-space:nowrap;margin-left:auto;}
 .sessions-empty{padding:26px 22px;color:#6b7189;}
 
-/* Photo row: real kids, no frills */
-.photo-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-.photo-row img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--radius);}
+/* Scrolling photo gallery: a slow, endless strip of real team photos.
+   Pauses on hover; still (and swipeable) if the visitor prefers less motion. */
+.gallery{padding:8px 0 56px;overflow:hidden;}
+.gallery-track{display:flex;gap:14px;width:max-content;animation:eca-scroll 70s linear infinite;}
+.gallery-track img{height:260px;width:auto;border-radius:var(--radius);flex:none;}
+.gallery:hover .gallery-track{animation-play-state:paused;}
+@keyframes eca-scroll{from{transform:translateX(0);}to{transform:translateX(calc(-50% - 7px));}}
+@media(prefers-reduced-motion:reduce){
+  .gallery{overflow-x:auto;}
+  .gallery-track{animation:none;}
+  .gallery-track img[aria-hidden="true"]{display:none;}
+}
 
 /* About + why: two plain columns */
 .about .wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start;}
@@ -93,8 +102,7 @@ h3{font-size:21px;font-weight:700;}
   .home-hero{padding:32px 0 48px;}
   .home-hero .wrap,.reg .wrap,.about .wrap,.trial-box,.support .wrap{grid-template-columns:1fr;gap:30px;}
   .home-hero .photo{order:-1;aspect-ratio:16/10;}
-  .photo-row{grid-template-columns:1fr 1fr;}
-  .photo-row img:last-child{display:none;}
+  .gallery-track img{height:190px;}
   .trial-box{padding:28px 22px;}
   .support .actions{justify-self:start;}
 }

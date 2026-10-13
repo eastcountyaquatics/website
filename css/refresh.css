@@ -340,3 +340,12 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
 .splash-wrap{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center;}
 .splash-logo{width:100%;max-width:560px;height:auto;justify-self:center;filter:drop-shadow(0 10px 18px rgba(10,31,107,.18));}
 @media(max-width:860px){.splash-wrap{grid-template-columns:1fr;gap:28px;}.splash-logo{max-width:420px;}.splash-hero{padding:40px 0 84px;}}
+
+/* Splashball mascots in a row */
+.mascot-row{background:#eaf6fd;padding:44px 0 36px;position:relative;}
+.mascot-row .container{display:flex;justify-content:center;align-items:flex-end;gap:clamp(14px,5vw,80px);}
+.mascot-row img{width:30%;max-width:230px;height:auto;min-width:0;animation:eca-bob 4.5s ease-in-out infinite;}
+.mascot-row img:nth-child(2){animation-delay:-1.5s;}
+.mascot-row img:nth-child(3){animation-delay:-3s;}
+@keyframes eca-bob{0%,100%{transform:translateY(0) rotate(-1.5deg);}50%{transform:translateY(-9px) rotate(1.5deg);}}
+@media(prefers-reduced-motion:reduce){.mascot-row img{animation:none;}}

@@ -195,3 +195,78 @@ h3{font-size:21px;font-weight:700;}
   .tiles{grid-template-columns:1fr 1fr;}
 }
 .reg-navy a[style]{color:var(--gold) !important;}
+
+/* ---------- v5: designed, not plain (no photos needed) ---------- */
+:root{
+  --wave:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath d='M0,30 C240,62 480,0 720,28 C960,56 1200,4 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E");
+  --lanes:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 2px,transparent 2px 58px);
+}
+
+/* Highlighter-yellow accent, like the club's old site */
+.hl{background:linear-gradient(transparent 60%,var(--gold) 60% 92%,transparent 92%);padding:0 .1em;margin:0 -.1em;}
+
+/* Wavy edges between sections */
+.reg-navy,.support,.page-hero,.site-footer{position:relative;}
+.reg-navy::before,.support::before{
+  content:"";position:absolute;left:0;right:0;top:-1px;height:56px;background:#fff;transform:scaleY(-1);
+  -webkit-mask:var(--wave) center/100% 100% no-repeat;mask:var(--wave) center/100% 100% no-repeat;z-index:1;
+}
+.reg-navy{padding-top:130px;}
+.support{padding-top:120px;}
+.site-footer{margin-top:70px;}
+.site-footer::before{
+  content:"";position:absolute;left:0;right:0;top:-55px;height:56px;background:var(--navy);
+  -webkit-mask:var(--wave) center/100% 100% no-repeat;mask:var(--wave) center/100% 100% no-repeat;
+}
+
+/* Pool lane lines on every dark band */
+.reg-navy,.support,.site-footer,.page-hero,.cta-band,.navy-block{background-image:var(--lanes);background-color:var(--navy);}
+
+/* Inner-page headers: navy, with a wavy bottom edge */
+.page-hero{background-color:var(--navy);border-bottom:none;padding:64px 0 96px;overflow:hidden;}
+.page-hero h1{color:#fff;}
+.page-hero p{color:#d6dcf7;}
+.page-hero .breadcrumb{color:var(--gold);}
+.page-hero::before{ /* ripple rings in the corner */
+  content:"";position:absolute;right:-120px;top:-140px;width:520px;height:520px;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(255,255,255,.07) 0 2px,transparent 2px 36px);
+}
+.page-hero .container{position:relative;z-index:1;}
+.page-hero::after{
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:48px;background:#fff;
+  -webkit-mask:var(--wave) center/100% 100% no-repeat;mask:var(--wave) center/100% 100% no-repeat;
+}
+
+/* Home hero: ripple rings behind the words */
+.home-hero::before{
+  content:"";position:absolute;left:-180px;top:-200px;width:560px;height:560px;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(0,0,255,.07) 0 2px,transparent 2px 38px);
+}
+.home-hero .container{position:relative;z-index:1;}
+
+/* Trial: a bold blue block instead of a pale box */
+.trial-box{background:var(--blue);border:none;color:#fff;position:relative;overflow:hidden;}
+.trial-box::before{
+  content:"";position:absolute;right:-110px;bottom:-150px;width:440px;height:440px;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(255,255,255,.1) 0 2px,transparent 2px 36px);
+}
+.trial-box > *{position:relative;}
+.trial-box h2{color:#fff;}
+.trial-box p{color:#e3e7ff;}
+.trial-box .fine{color:#c3cbff;}
+.trial-box a[style]{color:var(--gold) !important;}
+.trial-box .btn-gold{box-shadow:0 8px 20px rgba(0,0,0,.25);}
+
+/* Cards: a touch of lift and a gold tick so they don't feel like blank boxes */
+.card{position:relative;transition:transform .2s ease,box-shadow .2s ease;}
+.card::before{content:"";position:absolute;left:28px;top:0;width:40px;height:4px;background:var(--gold);border-radius:0 0 4px 4px;}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
+
+/* Buttons: arrow on the main calls to action */
+.home-hero .btn-primary::after,.statement .btn-gold::after,.trial-box .btn-gold::after{content:"\2192";margin-left:10px;display:inline-block;transition:transform .15s ease;}
+.home-hero .btn-primary:hover::after,.statement .btn-gold:hover::after,.trial-box .btn-gold:hover::after{transform:translateX(4px);}
+
+@media(max-width:860px){
+  .reg-navy{padding-top:100px;}
+  .page-hero{padding:44px 0 80px;}
+}

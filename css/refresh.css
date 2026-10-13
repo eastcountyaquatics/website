@@ -1,0 +1,103 @@
+/* ECA visual refresh -- bolder, more inviting, same brand colors.
+   Loaded AFTER styles.css on public pages only (admin/My Account keep the
+   plain look). Remove the <link> to roll back a page; nothing else depends
+   on it. Palette is unchanged: navy #0a1f6b, blue #0000ff, gold #ffd400. */
+
+:root{
+  --display:"Oswald","Arial Narrow",Impact,sans-serif;
+  --radius:16px;
+  --shadow:0 10px 30px rgba(10,31,107,.12);
+}
+
+body{font-size:17px;line-height:1.65;background:#fff;}
+
+/* Headlines: big, condensed, uppercase -- the "this is a team" voice. */
+h1,h2{
+  font-family:var(--display);font-weight:700;text-transform:uppercase;
+  letter-spacing:.015em;line-height:1.08;
+}
+h3,h4{font-family:var(--display);font-weight:600;letter-spacing:.02em;text-transform:none;}
+.section-head h2,.container > h2{font-size:clamp(30px,4.2vw,46px);}
+.section-head .kicker{font-family:var(--display);font-size:14px;letter-spacing:.18em;font-weight:500;color:var(--blue);}
+.section-head{margin-bottom:48px;}
+section{padding:88px 0;}
+.section-tight{padding:64px 0;}
+
+/* Nav: condensed caps, roomier */
+.site-header{box-shadow:0 4px 18px rgba(0,0,0,.18);}
+.main-nav a{font-family:var(--display);font-weight:500;font-size:15px;letter-spacing:.06em;text-transform:uppercase;padding:8px 11px;}
+.brand-text strong{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:.05em;text-transform:uppercase;}
+.main-nav a.active{border-bottom-color:var(--gold);}
+
+/* Buttons: pills */
+.btn{
+  border-radius:999px;padding:14px 32px;
+  font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.12em;text-transform:uppercase;
+}
+.btn-primary{background:var(--blue);border-color:var(--blue);}
+.btn-light{background:#fff;color:var(--navy);border-color:#fff;}
+.btn-light:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.25);}
+.btn-navy{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.55);}
+.btn-navy:hover{background:#fff;color:var(--navy);transform:translateY(-2px);}
+.btn-outline{border-radius:999px;}
+.btn-outline-dark{border-radius:999px;}
+
+/* Hero: full-bleed photo, centered, tall */
+.hero-photo{min-height:min(86vh,720px);align-items:center;justify-content:center;text-align:center;border-bottom:none;}
+.hero-photo-img{background-position:center 55%;}
+.hero-photo-overlay{background:linear-gradient(180deg,rgba(7,20,70,.35) 0%,rgba(10,31,107,.55) 60%,rgba(10,31,107,.85) 100%);}
+.hero-photo .container{padding-top:120px;padding-bottom:150px;width:100%;}
+.hero-photo h1{font-size:clamp(44px,8vw,104px);max-width:none;margin:0 auto .3em;text-shadow:0 4px 30px rgba(0,0,0,.35);}
+.hero-photo h1 em{font-style:normal;color:var(--gold);}
+.hero-photo p.lead{margin:0 auto;max-width:760px;font-size:clamp(17px,2vw,21px);color:#fff;}
+.hero-photo .hero-actions{justify-content:center;margin-top:34px;}
+.hero-photo{clip-path:none;}
+.angle-bottom{position:relative;}
+.angle-bottom::after{
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:70px;background:#fff;
+  clip-path:polygon(0 100%,100% 100%,100% 0,50% 70%,0 0);
+}
+.angle-bottom.to-navy::after{background:var(--navy);}
+
+/* Stats */
+.stats{border-radius:var(--radius);margin-top:-86px;padding:38px 32px;}
+.stat strong{font-family:var(--display);font-weight:700;font-size:38px;text-transform:uppercase;letter-spacing:.02em;}
+.stat span{font-family:var(--display);font-weight:400;letter-spacing:.14em;font-size:13px;}
+
+/* Cards */
+.card{border-radius:var(--radius);border:none;border-top:none;box-shadow:var(--shadow);padding:34px 30px;transition:transform .2s ease,box-shadow .2s ease;}
+.card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(10,31,107,.18);}
+.card h3{font-size:24px;}
+.icon-badge{border-radius:50%;width:58px;height:58px;}
+
+/* Navy bands */
+.navy-block{background:var(--navy);}
+.navy-block h2{font-size:clamp(32px,4.6vw,52px);}
+.band{background:var(--navy);color:#fff;}
+.band h2{color:#fff;}
+.band .muted{color:#c9d2f5;}
+
+/* Open sessions table (home) */
+.sessions{max-width:960px;margin:34px auto 0;text-align:left;}
+.sessions-head,.session-row{display:grid;grid-template-columns:1fr 130px 170px;gap:18px;align-items:center;padding:16px 8px;}
+.sessions-head{font-family:var(--display);text-transform:uppercase;letter-spacing:.12em;font-size:15px;color:#fff;border-bottom:2px solid #fff;}
+.session-row{border-bottom:1px solid rgba(255,255,255,.18);}
+.session-row .s-name{font-weight:700;font-size:17px;}
+.session-row .s-desc{color:#c9d2f5;font-size:14px;font-weight:400;margin-top:2px;}
+.session-row .s-price{font-family:var(--display);font-size:22px;}
+.session-row .btn{padding:10px 20px;font-size:13px;text-align:center;}
+.sessions-empty{padding:26px 8px;color:#c9d2f5;text-align:center;}
+@media(max-width:700px){
+  .sessions-head{display:none;}
+  .session-row{grid-template-columns:1fr auto;}
+  .session-row .btn{grid-column:1 / -1;}
+}
+
+/* Footer */
+.site-footer h4{font-family:var(--display);letter-spacing:.1em;text-transform:uppercase;font-size:17px;}
+
+@media(max-width:700px){
+  section{padding:60px 0;}
+  .hero-photo .container{padding-top:90px;padding-bottom:120px;}
+  .stats{margin-top:-60px;}
+}

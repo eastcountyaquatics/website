@@ -329,3 +329,18 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
 /* Quieter lane lines so they never fight the text */
 :root{--lanes:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 84px);}
 @media(max-width:860px){.collage::after{width:84px;height:84px;left:-16px;}}
+
+
+/* ---------- Splashball page: bright, playful, uses the program's own art ---------- */
+.splash-hero{background:linear-gradient(135deg,#d9f0fc 0%,#eaf6fd 55%,#fff7d1 100%);background-image:none;color:var(--navy);padding:56px 0 100px;}
+.splash-hero::before{background:repeating-radial-gradient(circle,rgba(41,168,224,.16) 0 2px,transparent 2px 36px);}
+.splash-hero h1{color:var(--navy);}
+.splash-hero p{color:#33466f;}
+.splash-hero .breadcrumb{color:var(--navy);}
+.splash-wrap{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center;}
+.splash-logo{width:100%;max-width:560px;height:auto;justify-self:center;filter:drop-shadow(0 10px 18px rgba(10,31,107,.18));}
+.level-card{text-align:center;}
+.level-card .mascot{background:#eaf6fd;border-radius:var(--r);height:190px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;}
+.level-card .mascot img{max-height:150px;width:auto;max-width:80%;}
+.level-card::before{display:none;}
+@media(max-width:860px){.splash-wrap{grid-template-columns:1fr;gap:28px;}.splash-logo{max-width:420px;}.splash-hero{padding:40px 0 84px;}}

@@ -26,7 +26,6 @@ MENU = [
         ("18U Girls", "team-18u-girls.html"),
         ("Masters", "masters.html"),
         ("Summer League", "summer-league.html"),
-        ("St. Patty's Day Shootout", "st-pattys-day-shootout.html"),
     ]),
     ("Register", [
         ("Open sessions", "index.html#sessions"),

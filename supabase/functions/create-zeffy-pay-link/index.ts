@@ -135,6 +135,9 @@ Deno.serve(async (req) => {
     } else {
       for (let attempt = 0; attempt < 5 && !code; attempt++) {
         const candidate = newCode();
+        // Codes are shared with registration codes: never reuse one.
+        const { data: taken } = await supabase.from("zeffy_registration_codes").select("code").eq("code", candidate).maybeSingle();
+        if (taken) continue;
         const { error } = await supabase.from("zeffy_pay_links").insert({ code: candidate, tournament_invite_id: invite.id, ...fields });
         if (!error) code = candidate;
         else if (error.code !== "23505") throw error;

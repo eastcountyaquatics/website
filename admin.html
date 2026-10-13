@@ -28,6 +28,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
@@ -53,12 +54,12 @@
         <div class="admin-nav-card" id="hours-card">
           <a href="admin-hours.html" style="display:block;color:inherit;">
             <h3>Coaches&rsquo; Hours Logged</h3>
-            <p class="muted">Summary of coach's logged hours. Coaches log hours on the Attendance page when taking roll and tournament hours on Tournament Coach Hours.</p>
+            <p class="muted">Summary of coach's logged hours. Coaches log hours on the Attendance page when taking roll and tournament hours on Tournament Hours.</p>
           </a>
         </div>
         <div class="admin-nav-card" id="tournament-hours-card">
           <a href="admin-tournament-hours.html" style="display:block;color:inherit;">
-            <h3>Tournament Coach Hours</h3>
+            <h3>Tournament Hours</h3>
             <p class="muted">Log coaching hours and travel days for a tournament, start to end date.</p>
           </a>
         </div>
@@ -71,6 +72,12 @@
           <a href="admin-athletes.html" style="display:block;color:inherit;">
             <h3>Registered Athletes</h3>
             <p class="muted">See every registered athlete, their parent's contact info, and what they've signed up for.</p>
+          </a>
+        </div>
+        <div class="admin-nav-card" id="team-groups-card">
+          <a href="admin-team-groups.html" style="display:block;color:inherit;">
+            <h3>Team Groups &amp; Messages</h3>
+            <p class="muted">Split a team into groups and send a message to the whole team or one group &mdash; it shows on families&rsquo; accounts and goes out by email.</p>
           </a>
         </div>
         <div class="admin-nav-card" id="attendance-card">
@@ -176,6 +183,17 @@
           </div>
           <div id="adc-admin-msg" class="form-msg" style="margin-top:6px;"></div>
         </div>
+        <div class="admin-nav-card" id="suit-store-card">
+          <h3>Suit Store Link</h3>
+          <p class="muted">The Suit Store link is different every session. Paste the new one here when the store opens (first 2 weeks); clear it when it closes. It shows on the Team Store page.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;">
+            <input type="url" id="suit-url" placeholder="https://&hellip;" style="flex:1;min-width:200px;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;">
+            <input type="text" id="suit-label" placeholder="Session, e.g. Winter 2027" style="width:190px;padding:8px 10px;border:1px solid #d7e6ee;border-radius:6px;">
+            <button type="button" id="suit-save" class="btn btn-primary" style="padding:8px 16px;">Save</button>
+            <button type="button" id="suit-clear" class="btn btn-outline-dark" style="padding:8px 16px;">Clear</button>
+          </div>
+          <div id="suit-msg" class="form-msg" style="margin-top:6px;"></div>
+        </div>
         <div class="admin-nav-card" id="signups-card">
           <a href="admin-signups.html" style="display:block;color:inherit;">
             <h3>Sign-Ups</h3>
@@ -258,6 +276,7 @@
       document.querySelector('[data-group="coaches"] .admin-nav-cards').appendChild(document.getElementById("coach-registrations-card"));
     } else {
       setUpAgeCalcYear();
+      setUpSuitStore();
     }
     // Head Coaches don't see the Admin group, so their Tournaments card
     // stays with Team Interest.
@@ -267,10 +286,37 @@
     // sits under Teams.
     if (auth.role === "head_coach") document.querySelector('[data-group="teams"] .admin-nav-cards').appendChild(document.getElementById("team-coaches-card"));
     if (auth.role !== "owner" && auth.role !== "head_coach") document.getElementById("team-coaches-card").remove();
+    // Group messaging: Manager and Head Coaches only.
+    if (auth.role !== "owner" && auth.role !== "head_coach") document.getElementById("team-groups-card").remove();
     (GROUPS_BY_ROLE[auth.role] || []).forEach(function (group) {
       document.querySelector('[data-group="' + group + '"]').style.display = "block";
     });
   })();
+
+  // site_settings "suit_store_link": { url, label } shown on Team Store.
+  async function setUpSuitStore() {
+    const msg = document.getElementById("suit-msg");
+    const { data } = await supabaseClient.from("site_settings").select("value").eq("key", "suit_store_link").maybeSingle();
+    if (data && data.value) {
+      document.getElementById("suit-url").value = data.value.url || "";
+      document.getElementById("suit-label").value = data.value.label || "";
+    }
+    async function save(value, okText) {
+      const { error } = await supabaseClient.from("site_settings").upsert(
+        { key: "suit_store_link", value: value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      msg.className = error ? "form-msg error" : "form-msg success";
+      msg.textContent = error ? "Could not save: " + error.message : okText;
+    }
+    document.getElementById("suit-save").addEventListener("click", function () {
+      const url = document.getElementById("suit-url").value.trim();
+      if (!/^https:\/\//.test(url)) { msg.className = "form-msg error"; msg.textContent = "Paste the full https:// link."; return; }
+      save({ url: url, label: document.getElementById("suit-label").value.trim() }, "Saved \u2014 the Team Store page now links to it.");
+    });
+    document.getElementById("suit-clear").addEventListener("click", function () {
+      document.getElementById("suit-url").value = ""; document.getElementById("suit-label").value = "";
+      save({ url: "", label: "" }, "Cleared \u2014 the Suit Store link is hidden until you add the next one.");
+    });
+  }
 
   // site_settings "age_calculator_year": the tournament year the public
   // Age Division Calculator uses. Default is the current season's

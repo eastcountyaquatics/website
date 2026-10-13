@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Groups &amp; Messages | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" type="image/png" href="images/eca-logo.png">
+<link rel="apple-touch-icon" href="images/eca-logo.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo.png" alt="ECA Waterpolo logo" class="logo-mark">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="about-us.html">About Us</a></li>
+        <li><a href="teams.html">Teams</a></li>
+        <li><a href="masters.html">Masters</a></li>
+        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Team Groups &amp; Messages</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .grp-row{border:1px solid #e3edf3;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;}
+  .grp-row.sel{border-color:var(--blue);box-shadow:0 0 0 2px rgba(10,31,107,.12);}
+  .grp-top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;}
+  .grp-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 14px;margin-top:10px;}
+  .grp-members label{display:flex;gap:6px;align-items:center;font-weight:400;font-size:14px;}
+  .grp-members input{width:auto;}
+  .sent-item{border-bottom:1px solid #eef3f6;padding:10px 0;font-size:14px;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:820px;">
+    <div class="field">
+      <label for="team-pick">Team</label>
+      <select id="team-pick"><option value="">Choose a team&hellip;</option></select>
+    </div>
+    <div id="page-msg" class="form-msg"></div>
+
+    <div id="team-area" style="display:none;">
+      <div class="admin-form" style="margin-bottom:24px;">
+        <h3>Groups in this team</h3>
+        <p class="muted" style="font-size:13px;margin-top:0;">Split a team into smaller groups (Goalies, A squad&hellip;) so you can message just them. An athlete can be in more than one group.</p>
+        <form id="grp-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <input type="text" id="grp-name" maxlength="60" placeholder="New group name" required style="flex:1;min-width:200px;">
+          <button type="submit" class="btn btn-primary">Add Group</button>
+        </form>
+        <div id="grp-list"><p class="muted">Loading&hellip;</p></div>
+      </div>
+
+      <div class="admin-form" style="margin-bottom:24px;">
+        <h3>Send a Message</h3>
+        <p class="muted" style="font-size:13px;margin-top:0;">Shows up on each family&rsquo;s My Account, and is emailed too.</p>
+        <div id="send-msg" class="form-msg"></div>
+        <form id="send-form">
+          <div class="field">
+            <label for="send-to">To</label>
+            <select id="send-to"></select>
+          </div>
+          <div class="field">
+            <label for="send-subject">Subject</label>
+            <input type="text" id="send-subject" maxlength="200" required>
+          </div>
+          <div class="field">
+            <label for="send-body">Message</label>
+            <textarea id="send-body" rows="5" maxlength="2000" required></textarea>
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-bottom:12px;"><input type="checkbox" id="send-email" checked style="width:auto;"> Also send by email</label>
+          <button type="submit" class="btn btn-primary" id="send-btn">Send Message</button>
+        </form>
+      </div>
+
+      <h3>Sent</h3>
+      <div id="sent-list"><p class="muted">Nothing sent yet.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+<script src="js/team-age.js"></script>
+<script src="js/tournament-teams.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/active-athletes.js"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function pageMsg(text, ok) {
+    const el = document.getElementById("page-msg");
+    el.className = "form-msg " + (ok ? "success" : "error");
+    el.textContent = text;
+  }
+
+  var teams = [];
+  var teamAthletes = [];   // registered athletes on the chosen team
+  var groups = [];         // [{id, name}]
+  var membersByGroup = {}; // group id -> Set(athlete id)
+  var openGroupId = null;
+
+  async function loadTeamList(isOwner, userId) {
+    const { data: rows } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
+    teams = (rows || []).filter(function (t) { return t.team_slug !== "splashball"; });
+    if (!isOwner) {
+      const { data: mine } = await supabaseClient.from("head_coach_teams").select("team_slug").eq("profile_id", userId);
+      const slugs = (mine || []).map(function (r) { return r.team_slug; });
+      teams = teams.filter(function (t) { return slugs.indexOf(t.team_slug) !== -1; });
+    }
+    document.getElementById("team-pick").innerHTML = '<option value="">' + (teams.length ? "Choose a team&hellip;" : "No teams assigned to you yet") + "</option>" +
+      teams.map(function (t) { return '<option value="' + escapeHtml(t.team_slug) + '">' + escapeHtml(t.team_label) + "</option>"; }).join("");
+  }
+
+  async function loadTeam() {
+    const slug = document.getElementById("team-pick").value;
+    document.getElementById("team-area").style.display = slug ? "block" : "none";
+    if (!slug) return;
+    const [{ data: athleteRows }, activeIds, { data: groupRows }] = await Promise.all([
+      supabaseClient.from("athletes").select("id, full_name, team_slug, birthdate, sex"),
+      loadActiveAthleteIds(),
+      supabaseClient.from("team_subgroups").select("id, name").eq("team_slug", slug).order("name", { ascending: true }),
+    ]);
+    teamAthletes = (athleteRows || [])
+      .filter(function (a) { return activeIds.has(a.id) && athleteTournamentTeam(a) === slug; })
+      .sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
+    groups = groupRows || [];
+    membersByGroup = {};
+    if (groups.length) {
+      const { data: mem } = await supabaseClient.from("team_subgroup_members").select("subgroup_id, athlete_id").in("subgroup_id", groups.map(function (g) { return g.id; }));
+      (mem || []).forEach(function (m) { (membersByGroup[m.subgroup_id] = membersByGroup[m.subgroup_id] || new Set()).add(m.athlete_id); });
+    }
+    renderGroups();
+    renderSendTo();
+    loadSent();
+  }
+
+  function renderGroups() {
+    const el = document.getElementById("grp-list");
+    if (!groups.length) { el.innerHTML = '<p class="muted">No groups yet &mdash; add one above.</p>'; return; }
+    el.innerHTML = groups.map(function (g) {
+      const set = membersByGroup[g.id] || new Set();
+      const open = openGroupId === g.id;
+      return '<div class="grp-row' + (open ? " sel" : "") + '">' +
+        '<div class="grp-top"><strong>' + escapeHtml(g.name) + ' <span class="muted" style="font-weight:400;">&middot; ' + set.size + (set.size === 1 ? " athlete" : " athletes") + "</span></strong>" +
+        '<span><button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-toggle="' + g.id + '">' + (open ? "Done" : "Choose athletes") + "</button> " +
+        '<button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-remove="' + g.id + '">Remove</button></span></div>' +
+        (open
+          ? '<div class="grp-members">' + (teamAthletes.length ? teamAthletes.map(function (a) {
+              return '<label><input type="checkbox" data-member="' + g.id + '" value="' + a.id + '"' + (set.has(a.id) ? " checked" : "") + "> " + escapeHtml(a.full_name) + "</label>";
+            }).join("") : '<span class="muted">No registered athletes on this team yet.</span>') + "</div>"
+          : "") +
+        "</div>";
+    }).join("");
+    el.querySelectorAll("[data-toggle]").forEach(function (b) {
+      b.addEventListener("click", function () { openGroupId = openGroupId === b.dataset.toggle ? null : b.dataset.toggle; renderGroups(); });
+    });
+    el.querySelectorAll("[data-remove]").forEach(function (b) {
+      b.addEventListener("click", async function () {
+        const g = groups.find(function (x) { return x.id === b.dataset.remove; });
+        if (!confirm('Remove the group "' + g.name + '"? The athletes stay on the team.')) return;
+        const { error } = await supabaseClient.from("team_subgroups").delete().eq("id", g.id);
+        if (error) return pageMsg("Could not remove: " + error.message, false);
+        if (openGroupId === g.id) openGroupId = null;
+        loadTeam();
+      });
+    });
+    el.querySelectorAll("[data-member]").forEach(function (cb) {
+      cb.addEventListener("change", async function () {
+        const gid = cb.dataset.member;
+        cb.disabled = true;
+        const res = cb.checked
+          ? await supabaseClient.from("team_subgroup_members").insert({ subgroup_id: gid, athlete_id: cb.value })
+          : await supabaseClient.from("team_subgroup_members").delete().eq("subgroup_id", gid).eq("athlete_id", cb.value);
+        cb.disabled = false;
+        if (res.error) { cb.checked = !cb.checked; return pageMsg("Could not save: " + res.error.message, false); }
+        const set = membersByGroup[gid] = membersByGroup[gid] || new Set();
+        if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+        pageMsg("", true);
+        // Refresh just the count in the header without collapsing the list.
+        const row = cb.closest(".grp-row");
+        const count = row.querySelector(".grp-top .muted");
+        if (count) count.innerHTML = "&middot; " + set.size + (set.size === 1 ? " athlete" : " athletes");
+        renderSendTo(true);
+      });
+    });
+  }
+
+  function renderSendTo(keep) {
+    const sel = document.getElementById("send-to");
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Whole team (' + teamAthletes.length + " athletes)</option>" +
+      groups.map(function (g) {
+        const n = (membersByGroup[g.id] || new Set()).size;
+        return '<option value="' + g.id + '">' + escapeHtml(g.name) + " (" + n + ")</option>";
+      }).join("");
+    if (keep) sel.value = prev;
+  }
+
+  document.getElementById("grp-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const slug = document.getElementById("team-pick").value;
+    const name = document.getElementById("grp-name").value.trim();
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { error } = await supabaseClient.from("team_subgroups").insert({ team_slug: slug, name: name, created_by: session.user.id });
+    if (error) return pageMsg(error.code === "23505" ? "You already have a group with that name." : "Could not add: " + error.message, false);
+    document.getElementById("grp-name").value = "";
+    pageMsg("", true);
+    loadTeam();
+  });
+
+  document.getElementById("send-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("send-msg");
+    const btn = document.getElementById("send-btn");
+    const slug = document.getElementById("team-pick").value;
+    const gid = document.getElementById("send-to").value;
+    const label = gid ? groups.find(function (g) { return g.id === gid; }).name : "the whole team";
+    if (!confirm("Send this to " + label + "?")) return;
+    btn.disabled = true;
+    msg.className = "form-msg";
+    msg.textContent = "Sending\u2026";
+    const { data, error } = await supabaseClient.functions.invoke("send-team-message", {
+      body: {
+        team_slug: slug, subgroup_id: gid || null,
+        subject: document.getElementById("send-subject").value.trim(),
+        body: document.getElementById("send-body").value.trim(),
+        send_email: document.getElementById("send-email").checked,
+      },
+    });
+    btn.disabled = false;
+    if (error || (data && data.error)) {
+      msg.className = "form-msg error";
+      msg.textContent = (data && data.error) || (typeof functionErrorMessage === "function" ? await functionErrorMessage(error, data, "Could not send.") : "Could not send.");
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = data.message || ("Sent to " + data.family_count + " " + (data.family_count === 1 ? "family" : "families") + " on My Account" +
+      (data.email_configured ? ", " + data.emailed + " emailed." : " (email isn\u2019t set up, so no emails went out)."));
+    if (!data.message) { document.getElementById("send-subject").value = ""; document.getElementById("send-body").value = ""; }
+    loadSent();
+  });
+
+  async function loadSent() {
+    const slug = document.getElementById("team-pick").value;
+    const { data } = await supabaseClient.from("team_messages").select("audience_label, subject, families_notified, families_emailed, created_at")
+      .eq("team_slug", slug).order("created_at", { ascending: false }).limit(15);
+    document.getElementById("sent-list").innerHTML = (data && data.length) ? data.map(function (m) {
+      return '<div class="sent-item"><strong>' + escapeHtml(m.subject) + '</strong> <span class="muted">&middot; to ' + escapeHtml(m.audience_label) +
+        " &middot; " + m.families_notified + " families, " + m.families_emailed + " emailed &middot; " +
+        new Date(m.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span></div>";
+    }).join("") : '<p class="muted">Nothing sent yet.</p>';
+  }
+
+  document.getElementById("team-pick").addEventListener("change", function () { openGroupId = null; loadTeam(); });
+
+  (async function () {
+    const auth = await requireRole(["owner", "head_coach"]);
+    if (!auth) return;
+    await loadTeamList(auth.role === "owner", auth.session.user.id);
+  })();
+</script>
+</body>
+</html>

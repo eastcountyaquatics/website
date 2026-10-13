@@ -28,6 +28,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
@@ -87,6 +88,20 @@
         </div>
         <button type="submit" class="btn btn-primary" id="log-submit">Add Hours</button>
       </form>
+    </div>
+
+    <div class="admin-form" id="reimb-wrap" style="display:none;margin-bottom:24px;">
+      <h3>Add Other Reimbursement</h3>
+      <p class="muted" style="font-size:13px;margin-top:0;">Equipment, supplies, hotel, USWP Membership, etc. For you only &mdash; the club manager adds it to your pay for the month it&rsquo;s dated in. A receipt is required.</p>
+      <div id="reimb-msg" class="form-msg"></div>
+      <form id="reimb-form" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="field" style="margin:0;"><label for="reimb-date">Date</label><input type="date" id="reimb-date" required></div>
+        <div class="field" style="margin:0;"><label for="reimb-amount">Amount ($)</label><input type="number" id="reimb-amount" step="0.01" min="0.01" required style="max-width:120px;"></div>
+        <div class="field" style="margin:0;flex:1;min-width:180px;"><label for="reimb-desc">What for</label><input type="text" id="reimb-desc" maxlength="500" placeholder="e.g. USWP Renewal" required></div>
+        <div class="field" style="margin:0;min-width:200px;"><label for="reimb-receipt">Receipt</label><input type="file" id="reimb-receipt" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" required></div>
+        <button type="submit" class="btn btn-primary" id="reimb-submit">Add</button>
+      </form>
+      <div id="reimb-list" style="margin-top:14px;"></div>
     </div>
 
     <div class="hours-filters">
@@ -297,6 +312,65 @@
     load();
   });
 
+  // Coaches' own reimbursements (RLS: they can add and read only their own).
+  async function loadReimbursements() {
+    if (isOwner) return;
+    const listEl = document.getElementById("reimb-list");
+    const { data } = await supabaseClient.from("coach_reimbursements")
+      .select("reimb_date, amount_cents, description")
+      .eq("coach_id", currentUserId).order("reimb_date", { ascending: false }).limit(25);
+    listEl.innerHTML = (data && data.length)
+      ? '<div class="muted" style="font-size:13px;margin-bottom:4px;">Your recent reimbursements</div>' + data.map(function (r) {
+          return '<div class="hours-row"><span>' + fmtDate(r.reimb_date) + " &middot; " + escapeHtml(r.description) + "</span><span>" + money(r.amount_cents) + "</span></div>";
+        }).join("")
+      : "";
+  }
+
+  document.getElementById("reimb-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const msg = document.getElementById("reimb-msg");
+    const btn = document.getElementById("reimb-submit");
+    const dollars = parseFloat(document.getElementById("reimb-amount").value);
+    const fileInput = document.getElementById("reimb-receipt");
+    const file = fileInput.files && fileInput.files[0];
+    if (!(dollars > 0)) return;
+    if (!file) { msg.className = "form-msg error"; msg.textContent = "Attach the receipt (photo or PDF)."; return; }
+    if (file.size > 10 * 1024 * 1024) { msg.className = "form-msg error"; msg.textContent = "That file is over 10 MB \u2014 take a smaller photo or PDF."; return; }
+    btn.disabled = true;
+    msg.className = "form-msg";
+    msg.textContent = "Uploading receipt\u2026";
+    const ext = (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "pdf";
+    const path = "receipts/" + currentUserId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+    const upload = await supabaseClient.storage.from("coach-documents").upload(path, file, { contentType: file.type || undefined });
+    if (upload.error) {
+      btn.disabled = false;
+      msg.className = "form-msg error";
+      msg.textContent = "Could not upload the receipt: " + upload.error.message;
+      return;
+    }
+    const { error } = await supabaseClient.from("coach_reimbursements").insert({
+      coach_id: currentUserId,
+      reimb_date: document.getElementById("reimb-date").value,
+      amount_cents: Math.round(dollars * 100),
+      description: document.getElementById("reimb-desc").value.trim(),
+      receipt_path: path,
+      created_by: currentUserId,
+    });
+    btn.disabled = false;
+    if (error) {
+      await supabaseClient.storage.from("coach-documents").remove([path]);
+      msg.className = "form-msg error";
+      msg.textContent = "Could not save: " + error.message;
+      return;
+    }
+    msg.className = "form-msg success";
+    msg.textContent = "Reimbursement added \u2014 the club manager will include it in your pay.";
+    document.getElementById("reimb-amount").value = "";
+    document.getElementById("reimb-desc").value = "";
+    fileInput.value = "";
+    loadReimbursements();
+  });
+
   document.getElementById("export-btn").addEventListener("click", function () {
     if (!loadedRows.length) return;
     const lines = [["Coach", "Date", "End Date", "Type", "Tournament", "Team", "Hours"].join(",")];
@@ -333,8 +407,8 @@
     currentUserId = auth.session.user.id;
 
     document.getElementById("scope-note").innerHTML = isOwner
-      ? "Summary of coach's logged hours. Coaches log hours on the <a href=\"admin-attendance.html\">Attendance</a> page when taking roll and tournament hours on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>. Paid meetings (and any practice missed at roll) are logged below."
-      : "Your own logged hours &mdash; only you and the club manager can see them. Log practice or paid meeting hours below; tournament hours go on <a href=\"admin-tournament-hours.html\">Tournament Coach Hours</a>.";
+      ? "Summary of coach's logged hours. Coaches log hours on the <a href=\"admin-attendance.html\">Attendance</a> page when taking roll and tournament hours on <a href=\"admin-tournament-hours.html\">Tournament Hours</a>. Paid meetings (and any practice missed at roll) are logged below."
+      : "Your own logged hours &mdash; only you and the club manager can see them. Log practice or paid meeting hours below; tournament hours go on <a href=\"admin-tournament-hours.html\">Tournament Hours</a>.";
 
     document.getElementById("from-date").value = monthStart();
 
@@ -365,6 +439,10 @@
         teamOptions = teamOptions.filter(function (t) { return mySlugs.indexOf(t.team_slug) !== -1; });
       }
     }
+    if (!isOwner) {
+      document.getElementById("reimb-wrap").style.display = "block";
+      document.getElementById("reimb-date").value = new Date().toLocaleDateString("en-CA");
+    }
     renderTeamOptions();
     document.getElementById("log-type").addEventListener("change", renderTeamOptions);
     document.getElementById("log-date").value = new Date().toLocaleDateString("en-CA");
@@ -373,6 +451,7 @@
     rateHistory = await loadCoachRateHistory();
 
     load();
+    loadReimbursements();
   })();
 </script>
 </body>

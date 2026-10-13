@@ -56,6 +56,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
@@ -109,7 +110,9 @@
           <label for="role_title">Role / Title</label>
           <select id="role_title">
             <option value="">Choose a role / title&hellip;</option>
+            <option value="Club Founder">Club Founder</option>
             <option value="Manager">Manager</option>
+            <option value="Finance Director">Finance Director</option>
             <option value="Head Coach">Head Coach</option>
             <option value="Coach">Coach</option>
             <option value="Assistant Coach">Assistant Coach</option>
@@ -118,7 +121,7 @@
         <div class="field" id="team-group-field">
           <label>Team Group</label>
           <div id="team_group_options" style="display:flex;flex-wrap:wrap;gap:8px 18px;padding:8px 0;"></div>
-          <p class="field-hint">Check every team this person coaches &mdash; you can pick more than one.</p>
+          <p class="field-hint">Check every team this person coaches &mdash; you can pick more than one. <strong>Club Founders</strong>, <strong>Manager</strong> and <strong>Finance</strong> show this person in that leadership section of the About Us page.</p>
         </div>
         <div class="field" id="contact-email-field" style="display:none;">
           <label for="contact_email">Public Contact Email</label>
@@ -296,7 +299,7 @@
   // a fixed list to build that same kind of combined value from -- joined
   // with " & " to match the format already on the page.
   var TEAM_GROUP_OPTIONS = ["Splashball", "8U Coed", "10U Coed", "12U Boys", "12U Girls",
-    "14U Boys", "14U Girls", "16U Boys", "16U Girls", "18U Boys", "18U Girls", "Masters", "Club Founders"];
+    "14U Boys", "14U Girls", "16U Boys", "16U Girls", "18U Boys", "18U Girls", "Masters", "Club Founders", "Manager", "Finance"];
 
   function renderTeamGroupOptions() {
     document.getElementById("team_group_options").innerHTML = TEAM_GROUP_OPTIONS.map(function (label) {

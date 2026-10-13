@@ -36,6 +36,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
@@ -113,7 +114,7 @@
         <div class="field" id="t-travel-days-wrap" style="display:none;">
           <label for="t-travel-days">Travel Days</label>
           <input type="number" id="t-travel-days" min="1" step="1">
-          <p class="muted" style="font-size:12px;margin-top:4px;">Pre-fills on the Tournament Coach Hours page so every coach logging this tournament gets the same number automatically -- still editable per entry afterward.</p>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Pre-fills on the Tournament Hours page so every coach logging this tournament gets the same number automatically -- still editable per entry afterward.</p>
         </div>
         <div class="field">
           <label for="t-cost-note">Cost of Tournament</label>
@@ -335,7 +336,7 @@
   document.getElementById("t-age-as-of").addEventListener("input", function () { this.dataset.touched = "1"; });
 
   // Inclusive day count, so a Sat-Sun tournament defaults to 2 travel days --
-  // same logic as Tournament Coach Hours, just not re-derived there since
+  // same logic as Tournament Hours, just not re-derived there since
   // this field is now the source of truth coaches pick up automatically.
   function daysInRange(start, end) {
     if (!start) return 1;

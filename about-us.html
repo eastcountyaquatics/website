@@ -38,6 +38,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
@@ -55,6 +56,23 @@
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
+  </div>
+</section>
+
+<section id="coaches">
+  <div class="container">
+    <div id="founders-wrap"><p class="muted" style="text-align:center;" data-cms="about-us-0016">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="container">
+    <div class="section-head" style="margin-bottom:24px;">
+      <span class="kicker" data-cms="about-us-0028">Coaching Staff</span>
+      <h2 data-cms="about-us-0017">This Season's Coaches</h2>
+      <p class="muted" data-cms="about-us-0018">Coaches by team assignment for the current season.</p>
+    </div>
+    <div id="coaches-wrap"><p class="muted" style="text-align:center;" data-cms="about-us-0019">Loading coaches&hellip;</p></div>
   </div>
 </section>
 
@@ -100,23 +118,6 @@
         <p class="muted" data-cms="about-us-0015">A family-run, volunteer-powered club that keeps water polo accessible for East County kids and teens.</p>
       </div>
     </div>
-  </div>
-</section>
-
-<section id="coaches">
-  <div class="container">
-    <div id="founders-wrap"><p class="muted" style="text-align:center;" data-cms="about-us-0016">Loading&hellip;</p></div>
-  </div>
-</section>
-
-<section class="alt">
-  <div class="container">
-    <div class="section-head" style="margin-bottom:24px;">
-      <span class="kicker" data-cms="about-us-0028">Coaching Staff</span>
-      <h2 data-cms="about-us-0017">This Season's Coaches</h2>
-      <p class="muted" data-cms="about-us-0018">Coaches by team assignment for the current season.</p>
-    </div>
-    <div id="coaches-wrap"><p class="muted" style="text-align:center;" data-cms="about-us-0019">Loading coaches&hellip;</p></div>
   </div>
 </section>
 
@@ -252,35 +253,64 @@
       return (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" });
     });
 
-    var founders = data.filter(function (c) { return c.team_group === "Club Founders"; });
-    var others = data.filter(function (c) { return c.team_group !== "Club Founders"; });
+    // Leadership sections come from tokens in a person's Team Group
+    // (checkboxes in Admin > Coaches). Anyone who also coaches teams still
+    // shows under Coaching Staff, with the leadership tokens removed.
+    var LEADERSHIP = [
+      { token: "Club Founders", kicker: "Club Founders", single: "Club Founder" },
+      { token: "Manager", kicker: "Manager", single: "Manager" },
+      { token: "Finance", kicker: "Finance", single: "Finance" }
+    ];
 
-    if (founders.length) {
-      var photoCoach = founders.filter(function (c) { return c.photo_url; })[0];
-      var names = founders.map(function (c) { return escapeHtml(c.full_name); }).join(" &amp; ");
-      var html =
-        '<div class="section-head" style="margin-bottom:32px;">' +
-        '<span class="kicker">Club Founders</span><h2>' + names + '</h2></div>' +
-        '<div class="founder-card">';
-      if (photoCoach) {
-        html += '<img src="' + escapeHtml(photoCoach.photo_url) + '" alt="' + escapeHtml(founders.map(function (c) { return c.full_name; }).join(" and ")) + '">';
-      }
-      html += '<div>';
-      founders.forEach(function (c, i) {
-        html += '<h3 style="margin-bottom:2px;' + (i > 0 ? 'margin-top:18px;' : '') + '">' + escapeHtml(c.full_name) + '</h3>';
-        html += '<span class="coach-role">' + escapeHtml(c.role_title || "") + '</span>';
-        if (c.bio) html += '<p class="muted">' + escapeHtml(c.bio) + '</p>';
-      });
-      html += '</div></div>';
-      foundersWrap.innerHTML = html;
-    } else {
-      foundersWrap.innerHTML = "";
+    function groupTokens(g) {
+      return String(g || "").split(/\s*&\s*/).map(function (t) { return t.trim(); }).filter(Boolean);
     }
+    function coachGroup(c) {
+      var rest = groupTokens(c.team_group).filter(function (t) {
+        return !LEADERSHIP.some(function (l) { return l.token === t; });
+      });
+      return rest.join(" & ");
+    }
+
+    var leadershipHtml = "";
+    LEADERSHIP.forEach(function (l) {
+      var people = data.filter(function (c) { return groupTokens(c.team_group).indexOf(l.token) !== -1; });
+      if (!people.length) return;
+      var photoCoach = people.filter(function (c) { return c.photo_url; })[0];
+      var names = people.map(function (c) { return escapeHtml(c.full_name); }).join(" &amp; ");
+      leadershipHtml +=
+        '<div class="section-head" style="margin-bottom:32px;">' +
+        '<span class="kicker">' + escapeHtml(l.kicker) + '</span><h2>' + names + '</h2></div>' +
+        '<div class="founder-card" style="margin-bottom:48px;">';
+      if (photoCoach) {
+        leadershipHtml += '<img src="' + escapeHtml(photoCoach.photo_url) + '" alt="' + escapeHtml(people.map(function (c) { return c.full_name; }).join(" and ")) + '">';
+      }
+      leadershipHtml += '<div>';
+      people.forEach(function (c, i) {
+        leadershipHtml += '<h3 style="margin-bottom:2px;' + (i > 0 ? 'margin-top:18px;' : '') + '">' + escapeHtml(c.full_name) + '</h3>';
+        leadershipHtml += '<span class="coach-role">' + escapeHtml(c.role_title || l.single) + '</span>';
+        if (c.bio) leadershipHtml += '<p class="muted">' + escapeHtml(c.bio) + '</p>';
+      });
+      leadershipHtml += '</div></div>';
+    });
+    foundersWrap.innerHTML = leadershipHtml;
+
+    var others = data.filter(function (c) { return coachGroup(c) !== ""; }).map(function (c) {
+      return Object.assign({}, c, { team_group: coachGroup(c) });
+    });
 
     if (!others.length) {
       coachesWrap.innerHTML = '<p class="muted" style="text-align:center;">Coach list coming soon.</p>';
       return;
     }
+
+    others.sort(function (a, b) {
+      var ga = groupRank(a.team_group), gb = groupRank(b.team_group);
+      if (ga !== gb) return ga - gb;
+      var gc = (a.team_group || "").localeCompare(b.team_group || "");
+      if (gc !== 0) return gc;
+      return (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" });
+    });
 
     var currentGroup = null;
     var coachesHtml = "";
@@ -296,7 +326,7 @@
         : escapeHtml((c.full_name || "?").charAt(0));
       coachesHtml +=
         '<div class="coach-card"><div class="coach-photo">' + photoHtml + '</div>' +
-        '<div><h3>' + escapeHtml(c.full_name) + '</h3><span class="coach-role">' + escapeHtml(c.role_title || "Coach") + '</span></div></div>';
+        '<div><h3>' + escapeHtml(c.full_name) + '</h3><span class="coach-role">' + escapeHtml(/^(Club Founder|Manager|Finance Director)$/.test(c.role_title || "") ? "Coach" : (c.role_title || "Coach")) + '</span></div></div>';
     });
     coachesHtml += "</div>";
     coachesWrap.innerHTML = coachesHtml;

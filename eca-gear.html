@@ -38,6 +38,7 @@
         <li><a href="teams.html">Teams</a></li>
         <li><a href="masters.html">Masters</a></li>
         <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li><a href="eca-gear.html" class="active">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
         <li id="nav-auth-slot"></li>
@@ -49,8 +50,8 @@
 
 <section class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Gear</span>
-    <h1 data-cms="eca-gear-0001">ECA Gear</h1>
+    <span class="breadcrumb">Team Store</span>
+    <h1 data-cms="eca-gear-0001">Team Store</h1>
     <p data-cms="eca-gear-0002">ECA SWAG &mdash; Kap7 online stores. Competition team athletes buy their team suit and 3 shirts (white, blue &amp; black) for tournaments.</p>
   </div>
 </section>
@@ -59,17 +60,19 @@
   <div class="container">
     <div class="grid grid-2">
       <div class="card" style="border-top-color:var(--gold);">
-        <h3 data-cms="eca-gear-0003">Order Apparel &amp; More</h3>
-        <p class="muted" data-cms="eca-gear-0004">Team shirts, hats, sweatshirts, and more. Open 24/7.</p>
-        <p class="muted" style="font-style:italic;" data-cms="eca-gear-0005">Got a new gear idea? Send it to <a href="mailto:eastcountyaquatics@gmail.com" style="color:var(--blue);font-weight:700;">eastcountyaquatics@gmail.com</a>.</p>
+        <h3 data-cms="eca-gear-0003">Apparel Store</h3>
+        <p class="muted" data-cms="eca-gear-0004">Team shirts, hats, sweatshirts, and more. Open 24/7 and shipped directly to your home.</p>
+        <a href="https://ecafanstore.itemorder.com/shop/sale/" target="_blank" rel="noopener" class="btn btn-primary">Shop the Apparel Store</a>
+        <p class="muted" style="font-style:italic;margin-top:14px;" data-cms="eca-gear-0005">Got a new gear idea? Send it to <a href="mailto:eastcountyaquatics@gmail.com" style="color:var(--blue);font-weight:700;">eastcountyaquatics@gmail.com</a>.</p>
       </div>
       <div class="card">
-        <h3 data-cms="eca-gear-0006">Order Team Suit</h3>
+        <h3 data-cms="eca-gear-0006">Suit Store</h3>
         <p class="muted" data-cms="eca-gear-0007">Use your sizing kit measurements &mdash; these are professional suits, sized differently than what you'd find in stores.</p>
         <p class="muted" style="font-style:italic;" data-cms="eca-gear-0008">The store is open the first 2 weeks of each session.</p>
+        <div id="suit-store-slot"><p class="muted" style="margin-top:10px;">The Suit Store link goes live at the start of each session.</p></div>
       </div>
     </div>
-    <p class="muted" style="text-align:center;margin-top:24px;" data-cms="eca-gear-0009">Store links go live at the start of each session &mdash; ECA notifies families by email and posts the current link here.</p>
+    <p class="muted" style="text-align:center;margin-top:24px;" data-cms="eca-gear-0009">Each session&rsquo;s Suit Store link is posted here when that store opens &mdash; ECA also notifies families by email.</p>
   </div>
 </section>
 
@@ -146,5 +149,22 @@
 <script src="js/content-blocks.js"></script>
 <script src="js/image-blocks.js"></script>
 <script src="js/page-extras.js"></script>
+<script>
+  // site_settings "suit_store_link": { url, label } -- set per session in
+  // Admin. Shown only while an https link is set.
+  (async function () {
+    try {
+      var res = await supabaseClient.from("site_settings").select("value").eq("key", "suit_store_link").maybeSingle();
+      var v = res && res.data && res.data.value;
+      if (!v || !/^https:\/\//.test(v.url || "")) return;
+      var slot = document.getElementById("suit-store-slot");
+      var a = document.createElement("a");
+      a.href = v.url; a.target = "_blank"; a.rel = "noopener"; a.className = "btn btn-primary";
+      a.textContent = "Shop the Suit Store" + (v.label ? " \u2014 " + v.label : "");
+      slot.innerHTML = "";
+      slot.appendChild(a);
+    } catch (e) { /* the static note stays */ }
+  })();
+</script>
 </body>
 </html>

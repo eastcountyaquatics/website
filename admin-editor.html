@@ -6,8 +6,8 @@
 <title>Edit Website | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
-<link rel="icon" type="image/png" href="images/eca-logo.png">
-<link rel="apple-touch-icon" href="images/eca-logo.png">
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
 <meta name="theme-color" content="#0a1f6b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,6 +106,18 @@
   .ed-undo-toast button {
     background: var(--gold, #ffd400); color: #1a1a4d; border: none; border-radius: 5px; padding: 6px 14px; font-weight: 700; cursor: pointer; font-size: 13px;
   }
+  .ed-link-dialog{position:fixed;inset:0;background:rgba(10,20,50,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .ed-link-dialog[hidden]{display:none;}
+  .ed-link-card{background:#fff;border-radius:12px;padding:22px 24px;width:100%;max-width:440px;box-shadow:0 20px 50px rgba(0,0,0,.3);font-size:14px;}
+  .ed-link-card h3{margin:0 0 14px;color:#1a1a4d;}
+  .ed-link-card label{display:block;font-weight:700;font-size:12.5px;color:#4b5563;margin:10px 0 4px;}
+  .ed-link-card input{width:100%;padding:9px 11px;border:1px solid #d7e6ee;border-radius:7px;font-size:15px;font-family:inherit;}
+  .ed-link-hint{font-size:12px;color:#6b7280;margin:6px 0 0;line-height:1.5;}
+  .ed-link-msg{color:#b42318;font-size:13px;min-height:18px;margin-top:8px;}
+  .ed-link-actions{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .ed-link-actions button{padding:8px 14px;border-radius:7px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;}
+  .ed-link-primary{background:var(--blue,#0000ff);color:#fff;border:none;}
+  .ed-link-secondary{background:#fff;border:1px solid #d7e6ee;color:#1a1a4d;}
 </style>
 </head>
 <body>
@@ -226,6 +238,23 @@
 </div>
 
 <input type="file" id="image-file-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+<div id="link-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="link-dialog-title" hidden>
+  <form id="link-form" class="ed-link-card">
+    <h3 id="link-dialog-title">Edit button</h3>
+    <label for="link-label">Button text</label>
+    <input type="text" id="link-label" maxlength="120" required>
+    <label for="link-href">Goes to</label>
+    <input type="text" id="link-href" maxlength="600" placeholder="dashboard.html, https://..., mailto:..." required>
+    <p class="ed-link-hint">A page on this site (like <code>teams.html</code>), a full web address starting with <code>https://</code>, an email as <code>mailto:you@example.com</code>, or a phone as <code>tel:6195551234</code>.</p>
+    <div id="link-msg" class="ed-link-msg"></div>
+    <div class="ed-link-actions">
+      <button type="button" id="link-reset" class="ed-link-secondary">Back to original</button>
+      <span style="flex:1"></span>
+      <button type="button" id="link-cancel" class="ed-link-secondary">Cancel</button>
+      <button type="submit" class="ed-link-primary">Save</button>
+    </div>
+  </form>
+</div>
 
 <div class="ed-undo-toast" id="undo-toast">
   <span id="undo-toast-text"></span>
@@ -236,7 +265,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/auth.js?v=20261014i"></script>
-<script src="js/main.js?v=20261014k"></script>
+<script src="js/main.js?v=20261014p"></script>
 <script>
 (function () {
   function escapeHtml(str) {
@@ -437,7 +466,10 @@
       // Hover-to-reveal doesn't exist on a touchscreen -- on a device with
       // no hover at all (tablet, phone), show these plainly instead of
       // leaving them permanently invisible and undiscoverable.
-      '@media (hover: none){.cms-replace-btn,.cms-figure-remove,.cms-insert-gap-btn{opacity:.85;}}';
+      '[data-cms-link]{outline:2px dashed rgba(255,212,0,.9) !important;outline-offset:3px;position:relative;cursor:pointer !important;}' +
+      '[data-cms-link]::before{content:"✎ Edit button";position:absolute;left:0;top:-24px;background:#ffd400;color:#1a1a4d;font:700 11px/1 Roboto,sans-serif;padding:4px 7px;border-radius:5px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:6;}' +
+      '[data-cms-link]:hover::before{opacity:1;}' +
+      '@media (hover: none){.cms-replace-btn,.cms-figure-remove,.cms-insert-gap-btn{opacity:.85;}[data-cms-link]::before{opacity:1;}}';
     doc.head.appendChild(style);
   }
 
@@ -616,7 +648,7 @@
     const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
     const url = data.publicUrl;
     if (target.isBg) target.el.style.backgroundImage = "url('" + url.replace(/'/g, "%27") + "')";
-    else target.el.src = url;
+    else { target.el.removeAttribute("srcset"); target.el.removeAttribute("sizes"); target.el.src = url; }
     const { error: dbError } = await supabaseClient
       .from("image_blocks")
       .upsert({ page_path: currentPath, block_key: target.key, image_url: url, alt_text: target.el.getAttribute("alt") || null }, { onConflict: "page_path,block_key" });
@@ -892,10 +924,15 @@
       staticDefaults[el.getAttribute("data-cms")] = { tag: el.tagName.toLowerCase(), original: el.innerHTML.trim() };
     });
 
-    const [{ data: contentRows }, { data: imageRows }, { data: extrasRow }] = await Promise.all([
+    const linkDefaults = {};
+    Array.prototype.forEach.call(parsed.querySelectorAll("[data-cms-link]"), function (el) {
+      linkDefaults[el.getAttribute("data-cms-link")] = { label: el.textContent.trim(), href: el.getAttribute("href") || "" };
+    });
+    const [{ data: contentRows }, { data: imageRows }, { data: extrasRow }, { data: linkRows }] = await Promise.all([
       supabaseClient.from("content_blocks").select("block_key, content, tag").eq("page_path", path),
       supabaseClient.from("image_blocks").select("block_key, image_url, alt_text").eq("page_path", path),
       supabaseClient.from("page_extras").select("body_html").eq("page_path", path).maybeSingle(),
+      supabaseClient.from("link_blocks").select("block_key, label, href").eq("page_path", path),
     ]);
 
     canvas.onload = function () {
@@ -930,11 +967,27 @@
         const override = imageByKey[key];
         if (override && override.image_url) {
           if (isBg) el.style.backgroundImage = "url('" + override.image_url.replace(/'/g, "%27") + "')";
-          else el.src = override.image_url;
+          else { el.removeAttribute("srcset"); el.removeAttribute("sizes"); el.src = override.image_url; }
           if (override.alt_text) el.setAttribute("alt", override.alt_text);
         }
         wireImageReplace(doc, el, key, isBg);
       });
+
+      // Buttons: click to change their text and where they go.
+      const linkByKey = {};
+      (linkRows || []).forEach(function (r) { linkByKey[r.block_key] = r; });
+      doc.querySelectorAll("[data-cms-link]").forEach(function (el) {
+        const o = linkByKey[el.getAttribute("data-cms-link")];
+        if (o && o.label) el.textContent = o.label;
+        if (o && o.href) el.setAttribute("href", o.href);
+      });
+      doc.addEventListener("click", function (e) {
+        const a = e.target.closest && e.target.closest("[data-cms-link]");
+        if (!a) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openLinkDialog(a, linkDefaults[a.getAttribute("data-cms-link")] || null);
+      }, true);
 
       let extrasSection = doc.getElementById("cms-extra-content");
       if (!extrasSection) {
@@ -1097,14 +1150,67 @@
     settingsPanel.classList.toggle("open");
   });
 
+  // ---- Button / link editing -------------------------------------------
+  const linkDialog = document.getElementById("link-dialog");
+  const linkForm = document.getElementById("link-form");
+  const linkLabel = document.getElementById("link-label");
+  const linkHref = document.getElementById("link-href");
+  const linkMsg = document.getElementById("link-msg");
+  let linkTarget = null, linkOriginal = null;
+  function safeLinkHref(value) {
+    const url = String(value || "").trim();
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(url)) return url;
+    if (/^#[\w-]*$/.test(url)) return url;
+    if (/^[a-z0-9._~\-\/?=&#%]+$/i.test(url) && url.indexOf(":") === -1) return url;
+    return null;
+  }
+  function openLinkDialog(el, original) {
+    linkTarget = el; linkOriginal = original;
+    linkLabel.value = el.textContent.trim();
+    linkHref.value = el.getAttribute("href") || "";
+    linkMsg.textContent = "";
+    linkDialog.hidden = false;
+    linkLabel.focus();
+  }
+  function closeLinkDialog() { linkDialog.hidden = true; linkTarget = null; }
+  document.getElementById("link-cancel").addEventListener("click", closeLinkDialog);
+  linkDialog.addEventListener("click", function (e) { if (e.target === linkDialog) closeLinkDialog(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !linkDialog.hidden) closeLinkDialog(); });
+  linkForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (!linkTarget) return;
+    const label = linkLabel.value.trim();
+    const href = safeLinkHref(linkHref.value);
+    if (!label) { linkMsg.textContent = "Add the button text."; return; }
+    if (!href) { linkMsg.textContent = "That link isn't one we can use — see the examples above."; return; }
+    const key = linkTarget.getAttribute("data-cms-link");
+    const { error } = await supabaseClient.from("link_blocks")
+      .upsert({ page_path: currentPath, block_key: key, label: label, href: href, updated_at: new Date().toISOString() }, { onConflict: "page_path,block_key" });
+    if (error) { linkMsg.textContent = "Could not save: " + friendlyError(error); return; }
+    linkTarget.textContent = label;
+    linkTarget.setAttribute("href", href);
+    closeLinkDialog();
+    setStatus("Button saved.");
+  });
+  document.getElementById("link-reset").addEventListener("click", async function () {
+    if (!linkTarget) return;
+    const key = linkTarget.getAttribute("data-cms-link");
+    const { error } = await supabaseClient.from("link_blocks").delete().eq("page_path", currentPath).eq("block_key", key);
+    if (error) { linkMsg.textContent = "Could not reset: " + friendlyError(error); return; }
+    if (linkOriginal) { linkTarget.textContent = linkOriginal.label; linkTarget.setAttribute("href", linkOriginal.href); }
+    closeLinkDialog();
+    setStatus("Button back to the original.");
+  });
+
   resetPageBtn.addEventListener("click", async function () {
     if (currentKind !== "static") return;
-    if (!confirm("Reset all edited text, images, and added sections on this page back to the original? This can't be undone.")) return;
+    if (!confirm("Reset all edited text, images, buttons, and added sections on this page back to the original? This can't be undone.")) return;
     setStatus("Resetting…");
     await Promise.all([
       supabaseClient.from("content_blocks").delete().eq("page_path", currentPath),
       supabaseClient.from("image_blocks").delete().eq("page_path", currentPath),
       supabaseClient.from("page_extras").delete().eq("page_path", currentPath),
+      supabaseClient.from("link_blocks").delete().eq("page_path", currentPath),
     ]);
     loadStaticPage(currentPath);
   });

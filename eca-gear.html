@@ -6,7 +6,7 @@
 <title>ECA Gear | San Diego East County Aquatics</title>
 <meta name="description" content="Order ECA team suits, gear, and apparel.">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
-<link rel="stylesheet" href="css/refresh.css?v=20261014j">
+<link rel="stylesheet" href="css/refresh.css?v=20261014l">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -94,23 +94,48 @@
   </div>
 </section>
 
-<section>
+<section class="store-section">
   <div class="container">
-    <div class="grid grid-2">
-      <div class="card" style="border-top-color:var(--gold);">
-        <h3 data-cms="eca-gear-0003">Apparel Store</h3>
-        <p class="muted" data-cms="eca-gear-0004">Team shirts, hats, sweatshirts, and more. Open 24/7 and shipped directly to your home.</p>
-        <a href="https://ecafanstore.itemorder.com/shop/sale/" target="_blank" rel="noopener" class="btn btn-primary">Shop the Apparel Store</a>
-        <p class="muted" style="font-style:italic;margin-top:14px;" data-cms="eca-gear-0005">Got a new gear idea? Send it to <a href="mailto:eastcountyaquatics@gmail.com" style="color:var(--blue);font-weight:700;">eastcountyaquatics@gmail.com</a>.</p>
-      </div>
-      <div class="card">
-        <h3 data-cms="eca-gear-0006">Suit Store</h3>
-        <p class="muted" data-cms="eca-gear-0007">Use your sizing kit measurements &mdash; these are professional suits, sized differently than what you'd find in stores.</p>
-        <p class="muted" style="font-style:italic;" data-cms="eca-gear-0008">The store is open the first 2 weeks of each session.</p>
-        <div id="suit-store-slot"><p class="muted" style="margin-top:10px;">The Suit Store link goes live at the start of each session.</p></div>
+    <div class="stores">
+      <a class="store" href="https://ecafanstore.itemorder.com/shop/sale/" target="_blank" rel="noopener">
+        <div class="store-photo"><img data-cms-img="eca-gear-img0001" src="images/jo/jo-03.jpg" alt="ECA athletes in team shirts" loading="lazy"></div>
+        <div class="store-body">
+          <span class="store-status open">Open 24/7 &middot; ships to your home</span>
+          <h2 data-cms="eca-gear-0003">Apparel Store</h2>
+          <p data-cms="eca-gear-0004">Team shirts, hats, sweatshirts, and more. Open 24/7 and shipped directly to your home.</p>
+          <span class="btn btn-primary">Shop the Apparel Store</span>
+          <span class="store-note">Opens the ECA store in a new tab</span>
+        </div>
+      </a>
+
+      <div class="store" id="suit-store">
+        <div class="store-photo"><img data-cms-img="eca-gear-img0002" src="images/accomplishments/acc-23.jpg" alt="ECA athletes in the pool in team suits and caps" loading="lazy"></div>
+        <div class="store-body">
+          <span class="store-status" id="suit-status">Opens the first 2 weeks of each session</span>
+          <h2 data-cms="eca-gear-0006">Suit Store</h2>
+          <p data-cms="eca-gear-0007">Use your sizing kit measurements &mdash; these are professional suits, sized differently than what you'd find in stores.</p>
+          <p class="store-fine" data-cms="eca-gear-0008">The store is open the first 2 weeks of each session.</p>
+          <div id="suit-store-slot"><span class="btn btn-disabled" aria-disabled="true">Link coming at the start of the session</span></div>
+        </div>
       </div>
     </div>
-    <p class="muted" style="text-align:center;margin-top:24px;" data-cms="eca-gear-0009">Each session&rsquo;s Suit Store link is posted here when that store opens &mdash; ECA also notifies families by email.</p>
+  </div>
+</section>
+
+<section class="section-tight" style="padding-top:0;">
+  <div class="container">
+    <div class="need">
+      <div>
+        <h2 class="need-title">What competition athletes need</h2>
+        <p class="store-fine" data-cms="eca-gear-0009">Each session&rsquo;s Suit Store link is posted here when that store opens &mdash; ECA also notifies families by email.</p>
+      </div>
+      <ul class="need-list">
+        <li><strong>Team suit</strong><span>From the Suit Store, using your sizing kit</span></li>
+        <li><strong>3 tournament shirts</strong><span>White, blue &amp; black</span></li>
+        <li><strong>Everything else</strong><span>Hats, sweatshirts &amp; more in the Apparel Store</span></li>
+      </ul>
+    </div>
+    <p class="store-fine" style="text-align:center;margin-top:26px;" data-cms="eca-gear-0005">Got a new gear idea? Send it to <a href="mailto:eastcountyaquatics@gmail.com" style="color:var(--blue);font-weight:700;">eastcountyaquatics@gmail.com</a>.</p>
   </div>
 </section>
 
@@ -198,9 +223,12 @@
       var slot = document.getElementById("suit-store-slot");
       var a = document.createElement("a");
       a.href = v.url; a.target = "_blank"; a.rel = "noopener"; a.className = "btn btn-primary";
-      a.textContent = "Shop the Suit Store" + (v.label ? " \u2014 " + v.label : "");
+      a.textContent = "Shop the Suit Store";
       slot.innerHTML = "";
       slot.appendChild(a);
+      var status = document.getElementById("suit-status");
+      status.textContent = "Open now" + (v.label ? " \u00b7 " + v.label : "");
+      status.classList.add("open");
     } catch (e) { /* the static note stays */ }
   })();
 </script>

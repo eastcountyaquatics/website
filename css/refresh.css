@@ -1,0 +1,356 @@
+/* ECA visual refresh -- calm, warm, photo-led. Same brand colors.
+   Loaded AFTER styles.css on public pages only (admin and My Account keep
+   the plain look). Remove the <link> from a page to roll it back.
+   Palette unchanged: navy #0a1f6b, blue #0000ff, gold #ffd400. */
+
+:root{
+  --radius:12px;
+  --shadow:0 2px 14px rgba(10,31,107,.08);
+  --tint:#f3f6ff;
+  --line:#e3e8f7;
+}
+
+body{background:#fff;font-size:17px;line-height:1.7;color:#1f2433;}
+section{padding:80px 0;}
+.section-tight{padding:56px 0;}
+.container{max-width:1120px;}
+
+/* Headings: the site's existing serif, normal sentence case, quieter. */
+h1,h2,h3,h4{font-family:"Bitter",Georgia,serif;color:var(--navy);letter-spacing:0;text-transform:none;}
+h1{font-size:clamp(36px,5vw,58px);line-height:1.08;font-weight:800;}
+h2{font-size:clamp(28px,3.4vw,38px);line-height:1.15;font-weight:700;}
+h3{font-size:21px;font-weight:700;}
+.eyebrow{display:inline-block;font-size:14px;font-weight:700;color:var(--blue);margin-bottom:14px;padding-bottom:6px;border-bottom:3px solid var(--gold);}
+.lead{font-size:19px;color:#4a5068;max-width:34em;}
+
+/* Nav: the existing one, just a little calmer */
+.site-header{box-shadow:none;border-bottom:1px solid rgba(255,255,255,.08);}
+
+/* Buttons: simple, solid, rounded -- no shouting */
+.btn{border-radius:10px;padding:13px 26px;font-size:16px;font-weight:700;letter-spacing:0;text-transform:none;}
+.btn-primary:hover,.btn-outline-dark:hover{transform:none;box-shadow:none;filter:brightness(1.08);}
+.btn-ghost{background:#fff;color:var(--navy);border:2px solid var(--line);}
+.btn-ghost:hover{border-color:var(--navy);}
+.btn-gold{background:var(--gold);color:#1a1a00;border-color:var(--gold);}
+.btn-gold:hover{filter:brightness(.96);}
+.btn-sm{padding:9px 18px;font-size:15px;}
+
+/* Hero: words left, a real photo right */
+.home-hero{padding:56px 0 72px;}
+.home-hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center;}
+.home-hero h1{margin:0 0 20px;}
+.home-hero .lead{margin:0 0 28px;}
+.home-hero .actions{display:flex;gap:12px;flex-wrap:wrap;}
+.home-hero .photo{border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3.2;background:var(--tint);}
+.home-hero .photo img{width:100%;height:100%;object-fit:cover;object-position:center 60%;}
+
+/* Registration: facts on the left, live sessions on the right */
+.reg{background:var(--tint);}
+.reg .wrap{display:grid;grid-template-columns:1fr 1.15fr;gap:56px;align-items:start;}
+.reg h2{margin-bottom:14px;}
+.reg .dates{display:inline-block;background:var(--gold);color:#1a1a00;font-weight:700;padding:4px 12px;border-radius:6px;margin-bottom:14px;}
+.reg p{color:#4a5068;}
+.sessions{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+.session-row{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);}
+.session-row:last-child{border-bottom:none;}
+.session-row .s-name{font-weight:700;color:var(--navy);font-size:17px;}
+.session-row .s-desc{color:#6b7189;font-size:14px;}
+.session-row .s-price{font-weight:700;color:#1f2433;white-space:nowrap;margin-left:auto;}
+.sessions-empty{padding:26px 22px;color:#6b7189;}
+
+/* Scrolling photo gallery: a slow, endless strip of real team photos.
+   Pauses on hover; still (and swipeable) if the visitor prefers less motion. */
+.gallery{padding:8px 0 56px;overflow:hidden;}
+.gallery-track{display:flex;gap:14px;width:max-content;animation:eca-scroll 70s linear infinite;}
+.gallery-track img{height:260px;width:auto;border-radius:var(--radius);flex:none;}
+.gallery:hover .gallery-track{animation-play-state:paused;}
+@keyframes eca-scroll{from{transform:translateX(0);}to{transform:translateX(calc(-50% - 7px));}}
+@media(prefers-reduced-motion:reduce){
+  .gallery{overflow-x:auto;}
+  .gallery-track{animation:none;}
+  .gallery-track img[aria-hidden="true"]{display:none;}
+}
+
+/* About + why: two plain columns */
+.about .wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start;}
+.about h2{margin-bottom:16px;}
+.checks{list-style:none;margin:0;padding:0;}
+.checks li{position:relative;padding:0 0 18px 34px;}
+.checks li::before{content:"";position:absolute;left:0;top:5px;width:20px;height:20px;border-radius:50%;background:var(--blue);}
+.checks li::after{content:"";position:absolute;left:7px;top:10px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}
+.checks strong{color:var(--navy);}
+.checks span{display:block;color:#5a6075;font-size:15.5px;}
+
+/* Trial: one friendly box */
+.trial-box{background:#fffbe6;border:1px solid #f1e3a0;border-radius:var(--radius);padding:40px 44px;display:grid;grid-template-columns:1.4fr 1fr;gap:40px;align-items:center;}
+.trial-box h2{margin-bottom:12px;font-size:clamp(26px,3vw,34px);}
+.trial-box p{color:#4a4a3a;margin-bottom:10px;}
+.trial-box .fine{font-size:14px;color:#6b6a52;}
+
+/* Support strip */
+.support{background:var(--navy);color:#fff;}
+.support .wrap{display:grid;grid-template-columns:1.5fr 1fr;gap:40px;align-items:center;}
+.support h2{color:#fff;margin-bottom:12px;}
+.support p{color:#cfd6f7;margin:0;}
+.support .actions{justify-self:end;display:flex;gap:12px;flex-wrap:wrap;}
+.sponsors{display:flex;justify-content:center;align-items:center;gap:44px;flex-wrap:wrap;}
+.sponsors img{height:56px;width:auto;filter:none;}
+
+@media(max-width:860px){
+  section{padding:56px 0;}
+  .home-hero{padding:32px 0 48px;}
+  .home-hero .wrap,.reg .wrap,.about .wrap,.trial-box,.support .wrap{grid-template-columns:1fr;gap:30px;}
+  .home-hero .photo{order:-1;aspect-ratio:16/10;}
+  .gallery-track img{height:190px;}
+  .trial-box{padding:28px 22px;}
+  .support .actions{justify-self:start;}
+}
+
+/* ---------- Inner pages (everything except the home layout above) ---------- */
+
+/* Page header: light and left-aligned, like the home page -- not a heavy bar */
+.page-hero{background:var(--tint);border-bottom:1px solid var(--line);padding:56px 0 48px;color:var(--navy);}
+.page-hero h1{color:var(--navy);margin:0 0 12px;}
+.page-hero p{color:#4a5068;font-size:19px;max-width:40em;}
+.breadcrumb{display:inline-block;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue);margin-bottom:14px;padding-bottom:6px;border-bottom:3px solid var(--gold);}
+
+/* Labels above headings: plain, not tiny uppercase */
+.kicker,.section-head .kicker,.head-coach-card .kicker{
+  display:inline-block;font-size:14px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--blue);
+  margin-bottom:12px;padding-bottom:5px;border-bottom:3px solid var(--gold);
+}
+.section-head{margin:0 0 40px;max-width:720px;text-align:left;}
+.section-head h2{margin-bottom:12px;}
+
+/* Cards: flat and quiet -- no colored stripe, no emoji badges */
+.card,.team-panel,.founder-card,.head-coach-card,.coach-card{
+  border:1px solid var(--line);border-top:1px solid var(--line);border-radius:var(--radius);box-shadow:none;
+}
+.card{padding:28px;}
+.card:hover{transform:none;box-shadow:var(--shadow);}
+.icon-badge{display:none;}
+.info-list .info-icon{display:none;}
+.info-list li{gap:0;}
+.notice{border-radius:var(--radius);}
+.founder-card{border-top:1px solid var(--line);}
+
+/* Dark bands that stay: calmer corners, same navy */
+.navy-block{border-radius:0;}
+.navy-block h2{font-size:clamp(28px,3.4vw,38px);}
+.navy-block .btn-primary{background:var(--gold);border-color:var(--gold);color:#1a1a00;}
+
+/* Tables and small buttons */
+.btn-outline-dark{border-width:2px;}
+.team-panel-buttons .btn{padding:9px 18px;}
+/* Outline buttons placed on navy need light text */
+.cta-band .btn-outline-dark,.navy-block .btn-outline-dark,.band .btn-outline-dark,.support .btn-outline-dark,[style*="background:var(--navy)"] .btn-outline-dark{color:#fff;border-color:#fff;}
+.cta-band .btn-outline-dark:hover,.navy-block .btn-outline-dark:hover,.band .btn-outline-dark:hover{background:#fff;color:var(--navy);}
+.cta-band{border-top:none;border-radius:var(--radius);}
+
+
+/* ---------- v3: more life ---------- */
+.home-hero{padding:64px 0 96px;position:relative;overflow:hidden;}
+.home-hero h1{font-size:clamp(40px,5.6vw,68px);}
+.home-hero .wrap{grid-template-columns:1fr 1.05fr;}
+.collage{position:relative;aspect-ratio:1/0.92;}
+.collage .c-block{position:absolute;right:-6%;top:-6%;width:66%;height:70%;background:var(--navy);border-radius:22px;}
+.collage .c-main{position:absolute;left:0;top:0;width:84%;height:80%;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px rgba(10,31,107,.25);}
+.collage .c-second{position:absolute;right:0;bottom:0;width:50%;aspect-ratio:4/3;border-radius:18px;overflow:hidden;border:6px solid #fff;box-shadow:0 14px 30px rgba(10,31,107,.28);}
+.collage img{width:100%;height:100%;object-fit:cover;}
+.home-hero::after{content:"";position:absolute;left:-60px;bottom:-60px;width:180px;height:180px;border-radius:50%;background:var(--gold);opacity:.9;}
+
+/* Sessions on navy */
+.reg-navy{background:var(--navy);}
+.reg-navy h2,.reg-navy p,.reg-navy strong{color:#fff;}
+.reg-navy p{color:#d6dcf7;}
+.reg-navy a{color:var(--gold);}
+.reg-navy .sessions{border:none;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+.reg-navy .sessions + p{color:#b9c2ee;}
+
+/* Big photo statement */
+.statement{position:relative;color:#fff;text-align:center;padding:130px 0;overflow:hidden;}
+.statement-photo{position:absolute;inset:0;background-size:cover;background-position:center 30%;}
+.statement::before{content:"";position:absolute;inset:0;background:rgba(10,31,107,.62);z-index:1;}
+.statement .container{position:relative;z-index:2;}
+.statement-text{font-family:"Bitter",Georgia,serif;font-weight:800;font-size:clamp(28px,4.4vw,52px);line-height:1.15;max-width:18em;margin:0 auto 32px;text-shadow:0 2px 18px rgba(0,0,0,.35);}
+
+/* Photo tiles that link to the teams */
+.tiles-section{padding:72px 0 24px;}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.tile{position:relative;display:block;border-radius:16px;overflow:hidden;aspect-ratio:3/4;color:#fff;}
+.tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s ease;}
+.tile:hover img{transform:scale(1.05);}
+.tile::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,31,107,0) 45%,rgba(10,31,107,.85) 100%);}
+.tile-label{position:absolute;left:18px;right:18px;bottom:16px;z-index:2;display:flex;flex-direction:column;}
+.tile-label strong{font-family:"Bitter",Georgia,serif;font-size:26px;line-height:1.1;}
+.tile-label em{font-style:normal;font-size:14.5px;opacity:.92;}
+.tile-label::after{content:"";width:34px;height:4px;background:var(--gold);border-radius:2px;margin-top:10px;}
+
+@media(max-width:860px){
+  .home-hero{padding:28px 0 56px;}
+  .home-hero .wrap{grid-template-columns:1fr;gap:34px;}
+  .collage{order:-1;margin:0 0 10px;aspect-ratio:1/0.82;}
+  .home-hero::after{width:110px;height:110px;left:auto;right:-30px;bottom:-30px;}
+  .statement{padding:90px 0;}
+  .tiles{grid-template-columns:1fr 1fr;}
+}
+.reg-navy a[style]{color:var(--gold) !important;}
+
+/* ---------- v5: designed, not plain (no photos needed) ---------- */
+:root{
+  --wave:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath d='M0,30 C240,62 480,0 720,28 C960,56 1200,4 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E");
+  --lanes:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 2px,transparent 2px 58px);
+}
+
+/* Highlighter-yellow accent, like the club's old site */
+.hl{background:linear-gradient(transparent 60%,var(--gold) 60% 92%,transparent 92%);padding:0 .1em;margin:0 -.1em;}
+
+/* Wavy edges between sections */
+.reg-navy,.support,.page-hero,.site-footer{position:relative;}
+.reg-navy::before,.support::before{
+  content:"";position:absolute;left:0;right:0;top:-1px;height:56px;background:#fff;transform:scaleY(-1);
+  -webkit-mask:var(--wave) center/100% 100% no-repeat;mask:var(--wave) center/100% 100% no-repeat;z-index:1;
+}
+.reg-navy{padding-top:130px;}
+.support{padding-top:120px;}
+.site-footer{margin-top:70px;}
+.site-footer::before{
+  content:"";position:absolute;left:0;right:0;top:-55px;height:56px;background:var(--navy);
+  -webkit-mask:var(--wave) center/100% 100% no-repeat;mask:var(--wave) center/100% 100% no-repeat;
+}
+
+/* Pool lane lines on every dark band */
+.reg-navy,.support,.site-footer,.page-hero,.cta-band,.navy-block{background-image:var(--lanes);background-color:var(--navy);}
+
+/* Inner-page headers: navy, with a wavy bottom edge */
+.page-hero{background-color:var(--navy);border-bottom:none;padding:64px 0 96px;overflow:hidden;}
+.page-hero h1{color:#fff;}
+.page-hero p{color:#d6dcf7;}
+.page-hero .breadcrumb{color:var(--gold);}
+.page-hero::before{ /* ripple rings in the corner */
+  content:"";position:absolute;right:-120px;top:-140px;width:520px;height:520px;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(255,255,255,.07) 0 2px,transparent 2px 36px);
+}
+.page-hero .container{position:relative;z-index:1;}
+.page-hero::after{
+  content:"";position:absolute;left:0;right:0;bottom:-1px;height:48px;background:#fff;
+  -webkit-mask:var(--wave) center/100% 100% no-repeat;mask:var(--wave) center/100% 100% no-repeat;
+}
+
+/* Home hero: ripple rings behind the words */
+.home-hero::before{
+  content:"";position:absolute;left:-180px;top:-200px;width:560px;height:560px;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(0,0,255,.07) 0 2px,transparent 2px 38px);
+}
+.home-hero .container{position:relative;z-index:1;}
+
+/* Trial: a bold blue block instead of a pale box */
+.trial-box{background:var(--blue);border:none;color:#fff;position:relative;overflow:hidden;}
+.trial-box::before{
+  content:"";position:absolute;right:-110px;bottom:-150px;width:440px;height:440px;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(255,255,255,.1) 0 2px,transparent 2px 36px);
+}
+.trial-box > *{position:relative;}
+.trial-box h2{color:#fff;}
+.trial-box p{color:#e3e7ff;}
+.trial-box .fine{color:#c3cbff;}
+.trial-box a[style]{color:var(--gold) !important;}
+.trial-box .btn-gold{box-shadow:0 8px 20px rgba(0,0,0,.25);}
+
+/* Cards: a touch of lift and a gold tick so they don't feel like blank boxes */
+.card{position:relative;transition:transform .2s ease,box-shadow .2s ease;}
+.card::before{content:"";position:absolute;left:28px;top:0;width:40px;height:4px;background:var(--gold);border-radius:0 0 4px 4px;}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
+
+/* Buttons: arrow on the main calls to action */
+.home-hero .btn-primary::after,.statement .btn-gold::after,.trial-box .btn-gold::after{content:"\2192";margin-left:10px;display:inline-block;transition:transform .15s ease;}
+.home-hero .btn-primary:hover::after,.statement .btn-gold:hover::after,.trial-box .btn-gold:hover::after{transform:translateX(4px);}
+
+@media(max-width:860px){
+  .reg-navy{padding-top:100px;}
+  .page-hero{padding:44px 0 80px;}
+}
+
+
+/* ---------- v6: polish ---------- */
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+h1,h2,h3{text-wrap:balance;}
+p,li{text-wrap:pretty;}
+h1{letter-spacing:-.015em;}
+h2{letter-spacing:-.01em;}
+:root{--r:18px;}
+
+/* Header lines up with the page content */
+.nav-wrap{max-width:1240px;}
+
+/* Hero: the pool, large and clean */
+.collage{aspect-ratio:1/0.86;}
+.collage .c-block{right:-5%;top:-5%;width:70%;height:76%;border-radius:var(--r);}
+.collage .c-main{width:90%;height:88%;border-radius:var(--r);}
+.home-hero::after{left:auto;right:-70px;bottom:-70px;width:200px;height:200px;}
+
+/* One corner radius everywhere */
+.tile,.sessions,.trial-box,.card,.gallery-track img,.photo-row img{border-radius:var(--r);}
+.btn{border-radius:12px;}
+
+/* Footer: tidy two-column link list, readable sizes */
+.site-footer ul{columns:2;column-gap:28px;}
+.site-footer li{break-inside:avoid;}
+.footer-grid{grid-template-columns:1.6fr 1.4fr 1fr;gap:48px;}
+.footer-grid > div:last-child ul{columns:1;}
+.site-footer a{transition:color .15s ease;}
+
+/* Keyboard users see where they are */
+a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{
+  outline:3px solid var(--gold);outline-offset:3px;border-radius:8px;
+}
+.nav-menu a:focus-visible{outline-color:var(--blue);}
+
+/* Quiet motion for people who ask for it */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}
+  .gallery-track{animation:none !important;}
+}
+
+/* Section rhythm */
+.section-head,.about h2,.tiles-section h2{margin-bottom:28px;}
+.eyebrow{letter-spacing:.01em;}
+.lead{line-height:1.6;}
+@media(max-width:1150px){.nav-wrap{max-width:none;}}
+@media(max-width:860px){.footer-grid{grid-template-columns:1fr;}.site-footer ul{columns:1;}}
+
+/* v6.1 */
+.nav-wrap{max-width:1120px;padding:0 24px;}
+.hl{white-space:nowrap;}
+/* Gold dot tucked behind the photo's corner instead of cut off at the edge */
+.home-hero::after{display:none;}
+.collage::after{content:"";position:absolute;left:-34px;bottom:2%;width:128px;height:128px;border-radius:50%;background:var(--gold);z-index:-1;}
+.collage{z-index:0;}
+/* Quieter lane lines so they never fight the text */
+:root{--lanes:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 84px);}
+@media(max-width:860px){.collage::after{width:84px;height:84px;left:-16px;}}
+
+
+/* ---------- Splashball page: bright, playful, uses the program's own art ---------- */
+.splash-hero{background-color:#eaf6fd;background-image:linear-gradient(135deg,#d3eefb 0%,#eaf6fd 55%,#fff7d1 100%);color:var(--navy);padding:56px 0 100px;}
+.splash-hero::before{background:repeating-radial-gradient(circle,rgba(41,168,224,.16) 0 2px,transparent 2px 36px);}
+.splash-hero h1{color:var(--navy);}
+.splash-hero p{color:#33466f;}
+.splash-hero .breadcrumb{color:var(--navy);}
+.splash-wrap{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center;}
+.splash-logo{width:100%;max-width:560px;height:auto;justify-self:center;filter:drop-shadow(0 10px 18px rgba(10,31,107,.18));}
+@media(max-width:860px){.splash-wrap{grid-template-columns:1fr;gap:28px;}.splash-logo{max-width:420px;}.splash-hero{padding:40px 0 84px;}}
+
+/* Splashball mascots in a row */
+.mascot-row{background:#eaf6fd;padding:44px 0 36px;position:relative;}
+.mascot-row .container{display:flex;justify-content:center;align-items:flex-end;gap:clamp(14px,5vw,80px);}
+.mascot-row img{width:30%;max-width:230px;height:auto;min-width:0;animation:eca-bob 4.5s ease-in-out infinite;}
+.mascot-row img:nth-child(2){animation-delay:-1.5s;}
+.mascot-row img:nth-child(3){animation-delay:-3s;}
+@keyframes eca-bob{0%,100%{transform:translateY(0) rotate(-1.5deg);}50%{transform:translateY(-9px) rotate(1.5deg);}}
+@media(prefers-reduced-motion:reduce){.mascot-row img{animation:none;}}
+
+/* Team page headers with their own banner */
+.team-wrap{display:grid;grid-template-columns:1fr 1.1fr;gap:40px;align-items:center;}
+.team-banner{width:100%;max-width:600px;height:auto;justify-self:center;filter:drop-shadow(0 12px 22px rgba(0,0,0,.28));}
+@media(max-width:860px){.team-wrap{grid-template-columns:1fr;gap:24px;}.team-banner{max-width:440px;justify-self:start;}}

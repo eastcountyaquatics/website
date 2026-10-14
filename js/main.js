@@ -12,6 +12,31 @@ document.addEventListener("DOMContentLoaded", function () {
         nav.classList.remove("open");
       });
     });
+
+    // Dropdown menus: click/tap a heading to open it (desktop also opens on
+    // hover and keyboard focus through CSS). One open at a time; Escape or a
+    // click elsewhere closes them.
+    var parents = nav.querySelectorAll(".nav-parent");
+    function closeMenus(except) {
+      nav.querySelectorAll(".has-menu.open").forEach(function (li) {
+        if (li !== except) {
+          li.classList.remove("open");
+          li.querySelector(".nav-parent").setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+    parents.forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var li = btn.parentElement;
+        var willOpen = !li.classList.contains("open");
+        closeMenus(li);
+        li.classList.toggle("open", willOpen);
+        btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      });
+    });
+    document.addEventListener("click", function () { closeMenus(null); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenus(null); });
   }
 
   // Links like dashboard.html#free-trial: most pages fill in their content

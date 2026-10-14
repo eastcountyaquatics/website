@@ -6,6 +6,7 @@
 <title>Splashball | San Diego East County Aquatics</title>
 <meta name="description" content="Splashball is ECA's entry point into water polo for ages 5-8, at Grossmont High School Pool.">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/refresh.css">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -34,10 +35,46 @@
     <nav class="main-nav">
       <ul>
         <li><a href="index.html">Home</a></li>
-        <li><a href="about-us.html">About Us</a></li>
-        <li><a href="teams.html" class="active">Teams</a></li>
-        <li><a href="masters.html">Masters</a></li>
-        <li><a href="junior-olympics.html">Junior Olympics</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent active" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
         <li><a href="eca-gear.html">Team Store</a></li>
         <li><a href="support.html">Donate/Sponsor</a></li>
         <li><a href="contact.html">Contact</a></li>
@@ -48,11 +85,15 @@
   </div>
 </header>
 
-<section class="page-hero">
-  <div class="container">
-    <span class="breadcrumb">Teams &middot; Splashball</span>
-    <h1 data-cms="team-splashball-0001">Splashball &mdash; Ages 5&ndash;8</h1>
-    <p data-cms="team-splashball-0002">ECA's entry point into water polo &mdash; water safety skills and the basics of the game, at Grossmont High School Pool.</p>
+<section class="page-hero splash-hero">
+  <div class="container splash-wrap">
+    <div>
+      <span class="breadcrumb">Teams &middot; Splashball</span>
+      <h1 data-cms="team-splashball-0001">Splashball &mdash; Ages 5&ndash;8</h1>
+      <p data-cms="team-splashball-0002">ECA's entry point into water polo &mdash; water safety skills and the basics of the game, at Grossmont High School Pool.</p>
+      <p style="margin-top:22px;"><a href="#sessions" class="btn btn-primary">See the sessions</a></p>
+    </div>
+    <img class="splash-logo" data-cms-img="team-splashball-img0001" src="images/splashball/logo.webp" alt="Splashball, an East County Aquatics program" width="1600" height="667">
   </div>
 </section>
 
@@ -66,13 +107,22 @@
         <h2 data-cms="team-splashball-0003">A Fun Introduction to the Game</h2>
         <p class="muted" data-cms="team-splashball-0004">Splashball is an entry point into the sport of water polo. This program is a way for kids (ages 5&ndash;8) to enhance their water safety skills while being introduced to the basics of water polo. Participants learn the basic rules of the game, along with introductory movements and skills that help them become more confident in the water.</p>
         <p class="muted" data-cms="team-splashball-0005">No experience necessary &mdash; it's first come, first served, with limited space in each session.</p>
+        <p class="muted" data-cms="team-splashball-0045">After Splashball, athletes move up to our 8U or 10U team.</p>
       </div>
-      <div class="notice">Splashball runs in seasonal sessions at Grossmont High School Pool. Athletes 7 and up can join our age-group teams this session &mdash; see the <a href="teams.html" style="color:#7a5b00;font-weight:700;">Teams page</a>.</div>
+      <div class="notice">Athletes 7 and up can join our age-group teams &mdash; see the <a href="teams.html" style="color:#7a5b00;font-weight:700;">Teams page</a>.</div>
     </div>
   </div>
 </section>
 
-<section class="alt">
+<section class="mascot-row" aria-label="The Splashball mascots">
+  <div class="container">
+    <img data-cms-img="team-splashball-img0004" src="images/splashball/goldfish.webp" alt="Goldfish mascot holding a water polo ball" loading="lazy">
+    <img data-cms-img="team-splashball-img0003" src="images/splashball/turtle.webp" alt="Sea turtle mascot with a water polo ball" loading="lazy">
+    <img data-cms-img="team-splashball-img0002" src="images/splashball/shark.webp" alt="Shark mascot balancing a water polo ball" loading="lazy">
+  </div>
+</section>
+
+<section class="alt" id="sessions">
   <div class="container">
     <div class="section-head">
       <span class="kicker" data-cms="team-splashball-0041">Splashball 2027 &mdash; Coming Next Year!</span>
@@ -92,35 +142,11 @@
       <div class="card">
         <h3 data-cms="team-splashball-0013">Session 3</h3>
         <p class="muted" data-cms="team-splashball-0014">June 29th &ndash; July 22nd<br>Tuesdays &amp; Thursdays<br>4:50&ndash;5:35 pm <em>or</em> 5:45&ndash;6:30 pm</p>
-        <p class="muted" style="font-style:italic;" data-cms="team-splashball-0015">(Possible &mdash; confirm with coaches)</p>
       </div>
       <div class="card">
         <h3 data-cms="team-splashball-0016">Session 4</h3>
         <p class="muted" data-cms="team-splashball-0017">August 14th &ndash; October 31<br>Saturdays or Sundays only<br>10:45&ndash;11:30 am <em>or</em> 11:40&ndash;12:25 pm</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="container">
-    <div class="section-head">
-      <span class="kicker" data-cms="team-splashball-0042">Levels</span>
-      <h2 data-cms="team-splashball-0018">Splashball Levels</h2>
-      <p class="muted" data-cms="team-splashball-0019">Every athlete takes a swim &amp; skill test on their first day to find their level.</p>
-    </div>
-    <div class="grid grid-3">
-      <div class="card">
-        <h3 data-cms="team-splashball-0020">Guppy</h3>
-        <p class="muted" data-cms="team-splashball-0021">Beginner level.</p>
-      </div>
-      <div class="card">
-        <h3 data-cms="team-splashball-0022">Sea Turtle</h3>
-        <p class="muted" data-cms="team-splashball-0023">Intermediate level.</p>
-      </div>
-      <div class="card">
-        <h3 data-cms="team-splashball-0024">Shark</h3>
-        <p class="muted" data-cms="team-splashball-0025">Advanced level &mdash; graduates move up to our 8U or 10U team!</p>
+        <p class="muted" style="font-style:italic;" data-cms="team-splashball-0015">(Possible &mdash; confirm with coaches)</p>
       </div>
     </div>
   </div>
@@ -133,17 +159,17 @@
       <h2 data-cms="team-splashball-0026">Splashball Coaching Staff</h2>
     </div>
     <ul class="donor-columns" style="column-count:3;max-width:700px;margin:0 auto;text-align:center;list-style:none;">
-      <li data-cms="team-splashball-0027">Suzy Nelson</li>
+      <li data-cms="team-splashball-0027">Suzy</li>
       <li data-cms="team-splashball-0028">Will</li>
-      <li data-cms="team-splashball-0029">Melina Raymond</li>
+      <li data-cms="team-splashball-0029">Melina</li>
       <li data-cms="team-splashball-0030">Chad</li>
-      <li data-cms="team-splashball-0031">Evy McColluch</li>
+      <li data-cms="team-splashball-0031">Evy</li>
       <li data-cms="team-splashball-0032">Isabella</li>
       <li data-cms="team-splashball-0033">Peter</li>
       <li data-cms="team-splashball-0034">Jack</li>
       <li data-cms="team-splashball-0035">Reilly</li>
-      <li data-cms="team-splashball-0036">Clint McLaughlin</li>
-      <li data-cms="team-splashball-0037">Marcy McLaughlin</li>
+      <li data-cms="team-splashball-0036">Clint</li>
+      <li data-cms="team-splashball-0037">Marcy</li>
     </ul>
   </div>
 </section>

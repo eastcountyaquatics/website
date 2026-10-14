@@ -408,3 +408,44 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
 @media(prefers-reduced-motion:reduce){.bubbles{display:none;}.fx .reveal{opacity:1;transform:none;}.fx .team-banner,.fx .splash-logo{animation:none;}}
 .page-hero::after{z-index:3;}
 .hero-full .bubbles span{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.6);}
+
+/* ---------- Coach cards (js/coach-cards.js) ---------- */
+.cc-group{font-size:18px;margin:8px 0 16px;color:var(--navy);}
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:22px;margin-bottom:40px;}
+.cc{position:relative;outline:none;}
+.cc.has-bio{cursor:pointer;}
+.cc-photo{position:relative;aspect-ratio:4/5;border-radius:var(--r);overflow:hidden;background:var(--tint);box-shadow:0 6px 18px rgba(10,31,107,.10);transition:box-shadow .25s ease,transform .25s ease;}
+.cc-photo img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease;}
+.cc:hover .cc-photo,.cc:focus-visible .cc-photo{box-shadow:0 14px 32px rgba(10,31,107,.22);transform:translateY(-3px);}
+.cc:hover .cc-photo img{transform:scale(1.04);}
+.cc:focus-visible .cc-photo{outline:3px solid var(--gold);outline-offset:3px;}
+/* Placeholder: a navy tile with a head-and-shoulders silhouette and initials */
+.cc-placeholder{background:
+  radial-gradient(circle at 50% 38%,rgba(255,255,255,.16) 0 17%,transparent 17.5%),
+  radial-gradient(ellipse 46% 30% at 50% 92%,rgba(255,255,255,.16) 0 99%,transparent 100%),
+  repeating-radial-gradient(circle at 85% 12%,rgba(255,255,255,.05) 0 2px,transparent 2px 22px),
+  linear-gradient(160deg,#16308a 0%,var(--navy) 100%);}
+.cc-initials{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-family:"Bitter",Georgia,serif;font-weight:800;font-size:30px;color:#fff;letter-spacing:.02em;}
+/* Bio: slides up over the photo */
+.cc-bio{position:absolute;inset:0;display:flex;align-items:flex-end;padding:18px;color:#fff;
+  background:linear-gradient(180deg,rgba(10,31,107,.25) 0%,rgba(10,31,107,.94) 45%,rgba(10,31,107,.97) 100%);
+  opacity:0;transform:translateY(16px);transition:opacity .3s ease,transform .3s ease;}
+.cc-bio p{margin:0;font-size:14px;line-height:1.55;max-height:100%;overflow:auto;white-space:pre-line;}
+.cc:hover .cc-bio,.cc:focus-within .cc-bio,.cc.open .cc-bio{opacity:1;transform:none;}
+.cc-hint{position:absolute;right:10px;bottom:10px;background:var(--gold);color:#1a1a00;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;transition:opacity .2s ease;}
+.cc:hover .cc-hint,.cc.open .cc-hint,.cc:focus-within .cc-hint{opacity:0;}
+.cc-meta{padding:12px 2px 0;}
+.cc-meta h3{font-size:18px;margin:0 0 2px;}
+.cc-role{font-size:13.5px;font-weight:700;color:var(--blue);}
+@media(max-width:600px){.cc-grid{grid-template-columns:1fr 1fr;gap:14px;}.cc-meta h3{font-size:16px;}.cc-bio{padding:12px;}.cc-bio p{font-size:13px;}}
+@media(hover:none){.cc:hover .cc-bio{opacity:0;transform:translateY(16px);}.cc.open .cc-bio{opacity:1;transform:none;}.cc:hover .cc-hint{opacity:1;}.cc.open .cc-hint{opacity:0;}}
+
+/* Bubbles: one whoosh, not a constant stream */
+.bubbles span.burst{bottom:40px;animation:eca-whoosh var(--dur) cubic-bezier(.2,.6,.3,1) var(--delay) 1 forwards;}
+@keyframes eca-whoosh{
+  0%{transform:translate3d(0,0,0) scale(.6);opacity:0;}
+  10%{opacity:var(--alpha);}
+  45%{transform:translate3d(var(--sway),calc(var(--rise) * .5),0) scale(1);}
+  85%{opacity:var(--alpha);}
+  100%{transform:translate3d(calc(var(--sway) * -.6),var(--rise),0) scale(1.05);opacity:0;}
+}

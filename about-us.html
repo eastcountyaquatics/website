@@ -6,7 +6,7 @@
 <title>About Us | San Diego East County Aquatics</title>
 <meta name="description" content="Learn about San Diego East County Aquatics (ECA), a non-profit water polo club committed to building athletes, character, and community.">
 <link rel="stylesheet" href="css/styles.css?v=20261014">
-<link rel="stylesheet" href="css/refresh.css?v=20261014b">
+<link rel="stylesheet" href="css/refresh.css?v=20261014d">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -239,6 +239,7 @@
 <script src="js/content-blocks.js?v=20261014"></script>
 <script src="js/image-blocks.js?v=20261014"></script>
 <script src="js/page-extras.js"></script>
+<script src="js/coach-cards.js?v=20261014c"></script>
 <script src="js/gallery.js?v=20261014"></script>
 <script>
   (async function loadCoaches() {
@@ -352,26 +353,25 @@
       return (a.full_name || "").localeCompare(b.full_name || "", undefined, { sensitivity: "base" });
     });
 
-    var currentGroup = null;
-    var coachesHtml = "";
+    // Grouped by team, each group a grid of coach cards (js/coach-cards.js).
+    coachesWrap.innerHTML = "";
+    var groups = [];
     others.forEach(function (c) {
-      if (c.team_group !== currentGroup) {
-        if (currentGroup !== null) coachesHtml += "</div>";
-        currentGroup = c.team_group;
-        coachesHtml += '<h3 style="font-size:16px;margin-bottom:14px;">' + escapeHtml(currentGroup || "Coaches") + '</h3>';
-        coachesHtml += '<div class="grid grid-3" style="margin-bottom:36px;">';
-      }
-      var photoHtml = c.photo_url
-        ? '<img src="' + escapeHtml(c.photo_url) + '" alt="' + escapeHtml(c.full_name) + '">'
-        : escapeHtml((c.full_name || "?").charAt(0));
-      coachesHtml +=
-        '<div class="coach-card"><div class="coach-photo">' + photoHtml + '</div>' +
-        '<div><h3>' + escapeHtml(c.full_name) + '</h3><span class="coach-role">' + escapeHtml(/^(Club Founder|Manager|Finance Director)$/.test(c.role_title || "") ? "Coach" : (c.role_title || "Coach")) + '</span></div></div>';
+      var g = groups[groups.length - 1];
+      if (!g || g.name !== c.team_group) { g = { name: c.team_group, list: [] }; groups.push(g); }
+      g.list.push(c);
     });
-    coachesHtml += "</div>";
-    coachesWrap.innerHTML = coachesHtml;
+    groups.forEach(function (g) {
+      var h = document.createElement("h3");
+      h.className = "cc-group";
+      h.textContent = g.name || "Coaches";
+      coachesWrap.appendChild(h);
+      coachesWrap.appendChild(window.ecaCoachGrid(g.list, function (c) {
+        return /^(Club Founder|Manager|Finance Director)$/.test(c.role_title || "") ? "Coach" : (c.role_title || "Coach");
+      }));
+    });
   })();
 </script>
-<script src="js/fx.js?v=20261014b"></script>
+<script src="js/fx.js?v=20261014c"></script>
 </body>
 </html>

@@ -7,29 +7,44 @@
   var root = document.documentElement;
   root.classList.add("fx");
 
-  // ---- Bubbles ----
-  function addBubbles(host, count) {
+  // ---- Bubbles: a single whoosh up through the header when the page
+  // loads (and through the trial box when it scrolls into view). ----
+  function whoosh(host, count) {
     if (!host || host.querySelector(".bubbles")) return;
     var layer = document.createElement("div");
     layer.className = "bubbles";
     layer.setAttribute("aria-hidden", "true");
+    var h = host.getBoundingClientRect().height || 500;
+    var longest = 0;
     for (var i = 0; i < count; i++) {
       var b = document.createElement("span");
-      var size = 6 + Math.random() * 22;                 // 6-28px
+      b.className = "burst";
+      var size = 5 + Math.random() * 24;                       // 5-29px
+      var dur = 1.6 + Math.random() * 1.6;                     // 1.6-3.2s
+      var delay = Math.random() * 0.9;                         // all within the first second
+      longest = Math.max(longest, dur + delay);
       b.style.width = b.style.height = size.toFixed(1) + "px";
       b.style.left = (Math.random() * 100).toFixed(1) + "%";
-      b.style.setProperty("--dur", (9 + Math.random() * 10).toFixed(1) + "s");   // 9-19s to rise
-      b.style.setProperty("--delay", (-Math.random() * 18).toFixed(1) + "s");  // start mid-way
-      b.style.setProperty("--sway", (10 + Math.random() * 26).toFixed(0) + "px");
-      b.style.setProperty("--alpha", (0.35 + Math.random() * 0.45).toFixed(2));
+      b.style.setProperty("--dur", dur.toFixed(2) + "s");
+      b.style.setProperty("--delay", delay.toFixed(2) + "s");
+      b.style.setProperty("--sway", ((Math.random() - 0.5) * 70).toFixed(0) + "px");
+      b.style.setProperty("--rise", "-" + Math.round(h * (0.75 + Math.random() * 0.45)) + "px");
+      b.style.setProperty("--alpha", (0.45 + Math.random() * 0.45).toFixed(2));
       layer.appendChild(b);
     }
     host.appendChild(layer);
+    setTimeout(function () { layer.remove(); }, (longest + 0.3) * 1000);
   }
   var small = window.innerWidth < 700;
-  addBubbles(document.querySelector(".hero-full"), small ? 10 : 18);
-  document.querySelectorAll(".page-hero").forEach(function (h) { addBubbles(h, small ? 6 : 12); });
-  addBubbles(document.querySelector(".trial-box"), small ? 5 : 9);
+  whoosh(document.querySelector(".hero-full"), small ? 26 : 46);
+  document.querySelectorAll(".page-hero").forEach(function (h) { whoosh(h, small ? 18 : 32); });
+  var trial = document.querySelector(".trial-box");
+  if (trial && "IntersectionObserver" in window) {
+    var tio = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { whoosh(trial, small ? 14 : 22); tio.disconnect(); }
+    }, { threshold: 0.4 });
+    tio.observe(trial);
+  }
 
   // ---- Reveal on scroll ----
   if (!("IntersectionObserver" in window)) return;

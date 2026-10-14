@@ -454,7 +454,13 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
 @media(min-width:1151px){
   .site-header{overflow:visible;}
   .nav-wrap{max-width:1240px;height:84px;justify-content:center;position:relative;}
-  .nav-wrap > .brand{display:none;}
+  /* Hidden while the big crest shows; slides into the left corner once
+     the header shrinks (see .scrolled below). Positioned on its own so the
+     menu never shifts. */
+  .nav-wrap > .brand{position:absolute;left:24px;top:50%;transform:translate(-14px,-50%);opacity:0;pointer-events:none;
+    transition:opacity .35s ease .08s,transform .4s cubic-bezier(.2,.7,.2,1) .08s;}
+  .site-header.scrolled .nav-wrap > .brand{opacity:1;transform:translate(0,-50%);pointer-events:auto;}
+  .site-header.scrolled .nav-wrap > .brand .logo-mark{width:36px;height:36px;}
   .main-nav{flex:1;}
   .main-nav > ul{justify-content:center;gap:2px;}
   .main-nav .nav-logo{display:block;margin:0 24px;align-self:center;height:84px;position:relative;width:112px;}

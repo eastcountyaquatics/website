@@ -58,7 +58,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!crest.offsetParent || window.innerWidth <= 1150) return;
         var items = Array.prototype.slice.call(list.children);
         var idx = items.indexOf(crest);
-        var w = function (arr) { return arr.reduce(function (s, li) { return s + li.getBoundingClientRect().width; }, 0); };
+        var w = function (arr) {
+          return arr.reduce(function (s, li) {
+            var cs = getComputedStyle(li);
+            return s + li.getBoundingClientRect().width + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0);
+          }, 0);
+        };
         var diff = w(items.slice(idx + 1)) - w(items.slice(0, idx));
         if (diff > 0) list.style.paddingLeft = diff + "px"; else list.style.paddingRight = -diff + "px";
       };

@@ -105,6 +105,10 @@
 
       var placeholderNotice = document.getElementById("no-schedule-yet-notice");
       if (placeholderNotice) placeholderNotice.style.display = "none";
+      // A schedule published in Admin > Schedules replaces the page's built-in
+      // one, so families never see two different schedules.
+      var builtIn = document.querySelector(".schedule-sec");
+      if (builtIn) builtIn.style.display = "none";
     } catch (e) {
       // Static page content is the fallback -- fail silently.
     }

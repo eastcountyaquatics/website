@@ -6,8 +6,8 @@
 <title>Edit Website | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
-<link rel="icon" type="image/png" href="images/eca-logo.png">
-<link rel="apple-touch-icon" href="images/eca-logo.png">
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
 <meta name="theme-color" content="#0a1f6b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -616,7 +616,7 @@
     const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
     const url = data.publicUrl;
     if (target.isBg) target.el.style.backgroundImage = "url('" + url.replace(/'/g, "%27") + "')";
-    else target.el.src = url;
+    else { target.el.removeAttribute("srcset"); target.el.removeAttribute("sizes"); target.el.src = url; }
     const { error: dbError } = await supabaseClient
       .from("image_blocks")
       .upsert({ page_path: currentPath, block_key: target.key, image_url: url, alt_text: target.el.getAttribute("alt") || null }, { onConflict: "page_path,block_key" });
@@ -930,7 +930,7 @@
         const override = imageByKey[key];
         if (override && override.image_url) {
           if (isBg) el.style.backgroundImage = "url('" + override.image_url.replace(/'/g, "%27") + "')";
-          else el.src = override.image_url;
+          else { el.removeAttribute("srcset"); el.removeAttribute("sizes"); el.src = override.image_url; }
           if (override.alt_text) el.setAttribute("alt", override.alt_text);
         }
         wireImageReplace(doc, el, key, isBg);

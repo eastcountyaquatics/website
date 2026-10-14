@@ -58,6 +58,9 @@
         if (el.hasAttribute("data-cms-bg")) {
           el.style.backgroundImage = "url('" + url.replace(/'/g, "%27") + "')";
         } else {
+          // A replaced photo has no small copy; drop the built-in one's.
+          el.removeAttribute("srcset");
+          el.removeAttribute("sizes");
           el.src = url;
         }
         if (override.alt_text) el.setAttribute("alt", override.alt_text);

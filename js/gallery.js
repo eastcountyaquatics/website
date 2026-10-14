@@ -24,7 +24,8 @@
     // from screen readers.
     track.innerHTML = [0, 1].map(function (copy) {
       return PHOTOS.map(function (p) {
-        return '<img src="images/' + p[0] + '" alt="' + (copy ? "" : esc(p[1])) + '" loading="lazy"' + (copy ? ' aria-hidden="true"' : "") + ">";
+        var thumb = "images/thumbs/" + p[0].replace(/\.jpg$/, ".webp");
+        return '<img src="' + thumb + '" alt="' + (copy ? "" : esc(p[1])) + '" loading="lazy"' + (copy ? ' aria-hidden="true"' : "") + ">";
       }).join("");
     }).join("");
     el.appendChild(track);

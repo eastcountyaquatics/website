@@ -58,7 +58,7 @@ def render(current):
     out = []
     for i, (label, target) in enumerate(MENU):
         if label == "__logo__":
-            out.append('        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo.png" alt="" width="524" height="517"></a></li>')
+            out.append('        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>')
             continue
         if isinstance(target, str):
             cls = ' class="active"' if page_of(target) == current else ""

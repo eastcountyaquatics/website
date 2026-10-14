@@ -63,10 +63,9 @@
     var list = document.querySelector("#head-coach-contact ~ ul.donor-columns") ||
       document.querySelector("section.alt ul.donor-columns");
     if (!list) return false;
-    var grid = document.createElement("div");
-    grid.className = "grid grid-3";
+    var grid = window.ecaCoachGrid ? window.ecaCoachGrid(sortCoaches(coaches)) : document.createElement("div");
+    if (!window.ecaCoachGrid) { grid.className = "grid grid-3"; sortCoaches(coaches).forEach(function (c) { grid.appendChild(coachCard(c)); }); }
     grid.style.marginTop = "8px";
-    sortCoaches(coaches).forEach(function (c) { grid.appendChild(coachCard(c)); });
     list.parentNode.replaceChild(grid, list);
     // The bios are right here now, so drop the "Full bios on the Coaches
     // page" pointer under the old name list.
@@ -146,39 +145,14 @@
     head.innerHTML = '<span class="kicker">Meet the Coaches</span><h2></h2>';
     head.querySelector("h2").textContent = teamLabel + " Coaching Staff";
     container.appendChild(head);
-    var grid = document.createElement("div");
-    grid.className = "grid grid-3";
-    sorted.forEach(function (c) {
-      var card = document.createElement("div");
-      card.className = "card";
-      card.style.textAlign = "center";
-      if (safePhoto(c.photo_url)) {
-        var img = document.createElement("img");
-        img.src = c.photo_url;
-        img.alt = c.full_name;
-        img.loading = "lazy";
-        img.style.cssText = "width:140px;height:140px;object-fit:cover;border-radius:50%;margin:0 auto 12px;display:block;";
-        card.appendChild(img);
-      }
-      var name = document.createElement("h3");
-      name.textContent = c.full_name;
-      card.appendChild(name);
-      if (c.role_title) {
-        var role = document.createElement("p");
-        role.className = "muted";
-        role.style.fontWeight = "700";
-        role.textContent = c.role_title;
-        card.appendChild(role);
-      }
-      if (c.bio) {
-        var bio = document.createElement("p");
-        bio.className = "muted";
-        bio.style.whiteSpace = "pre-line";
-        bio.textContent = c.bio;
-        card.appendChild(bio);
-      }
-      grid.appendChild(card);
-    });
+    var grid;
+    if (window.ecaCoachGrid) {
+      grid = window.ecaCoachGrid(sorted);
+    } else {
+      grid = document.createElement("div");
+      grid.className = "grid grid-3";
+      sorted.forEach(function (c) { grid.appendChild(coachCard(c)); });
+    }
     container.appendChild(grid);
     section.appendChild(container);
     footer.parentNode.insertBefore(section, footer);

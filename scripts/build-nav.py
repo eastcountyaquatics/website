@@ -42,6 +42,7 @@ MENU = [
         ("FAQ", "faq.html"),
         ("Guidelines & etiquette", "guidelines-etiquette.html"),
     ]),
+    ("__logo__", None),  # the crest, centered between the two halves (public pages)
     ("Team Store", "eca-gear.html"),
     ("Donate/Sponsor", "support.html"),
     ("Contact", "contact.html"),
@@ -56,6 +57,9 @@ def page_of(href):
 def render(current):
     out = []
     for i, (label, target) in enumerate(MENU):
+        if label == "__logo__":
+            out.append('        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo.png" alt="" width="524" height="517"></a></li>')
+            continue
         if isinstance(target, str):
             cls = ' class="active"' if page_of(target) == current else ""
             out.append(f'        <li><a href="{target}"{cls}>{esc(label)}</a></li>')

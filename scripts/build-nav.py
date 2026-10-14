@@ -42,7 +42,7 @@ MENU = [
         ("FAQ", "faq.html"),
         ("Guidelines & etiquette", "guidelines-etiquette.html"),
     ]),
-    ("__logo__", None),  # the crest, centered between the two halves (public pages)
+    ("__logo__", None),  # the crest; js/main.js keeps it on the page's center line
     ("Team Store", "eca-gear.html"),
     ("Donate/Sponsor", "support.html"),
     ("Contact", "contact.html"),

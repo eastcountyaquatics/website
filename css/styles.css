@@ -529,3 +529,10 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 /* Centered crest in the menu: only the refreshed public pages show it
    (css/refresh.css); everywhere else the logo stays on the left. */
 .nav-logo{display:none;}
+
+/* Signed-in Account menu */
+#nav-auth-slot.nav-account{position:relative;}
+#nav-auth-slot .nav-parent.nav-btn{border:1.5px solid rgba(255,255,255,.5);border-radius:20px;padding:6px 14px 6px 16px !important;}
+#nav-auth-slot .nav-parent.nav-btn:hover,#nav-auth-slot.open .nav-parent.nav-btn{border-color:var(--gold);color:var(--gold);}
+.main-nav .nav-menu.nav-menu-right{left:auto;right:0;min-width:190px;}
+@media (max-width:1150px){#nav-auth-slot.nav-account{display:block;}#nav-auth-slot .nav-parent.nav-btn{border:none;padding:14px 10px !important;border-radius:0;}}

@@ -512,3 +512,4 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
   .site-header.scrolled ~ * .main-nav,.site-header.scrolled .main-nav{top:62px;}
 }
 @media(prefers-reduced-motion:reduce){.site-header,.nav-wrap,.nav-logo a,.main-nav .nav-logo{transition:none;}}
+

@@ -16,12 +16,18 @@ async function renderNavAuthSlot(session) {
 
   if (session) {
     const role = await getUserRole(session.user.id);
-    // Staff get the admin panel AND My Account -- coaches and managers are
-    // often parents too, and My Account is where they add their own kids.
-    const middleLink = role
-      ? '<a href="admin.html" class="nav-btn nav-btn-admin">Admin</a><a href="dashboard.html" class="nav-btn">My Account</a>'
-      : '<a href="dashboard.html" class="nav-btn">My Account</a>';
-    slot.innerHTML = middleLink + '<a href="#" id="nav-sign-out">Sign Out</a>';
+    // One "Account" menu instead of three links, so the bar stays balanced
+    // around the centered crest. Staff also get the admin panel -- coaches
+    // and managers are often parents too, and My Account is where they add
+    // their own kids.
+    slot.classList.add("has-menu", "nav-account");
+    slot.innerHTML =
+      '<button type="button" class="nav-parent nav-btn" aria-expanded="false" aria-haspopup="true">Account</button>' +
+      '<ul class="nav-menu nav-menu-right">' +
+      '<li><a href="dashboard.html">My Account</a></li>' +
+      (role ? '<li><a href="admin.html">Admin</a></li>' : "") +
+      '<li><a href="#" id="nav-sign-out">Sign Out</a></li>' +
+      "</ul>";
     const signOutLink = document.getElementById("nav-sign-out");
     signOutLink.addEventListener("click", async function (e) {
       e.preventDefault();
@@ -29,6 +35,7 @@ async function renderNavAuthSlot(session) {
       window.location.href = "index.html";
     });
   } else {
+    slot.classList.remove("has-menu", "nav-account", "open");
     slot.innerHTML = '<a href="login.html" class="nav-btn">Sign In</a>';
   }
 }

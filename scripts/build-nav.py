@@ -42,8 +42,8 @@ MENU = [
         ("FAQ", "faq.html"),
         ("Guidelines & etiquette", "guidelines-etiquette.html"),
     ]),
-    ("__logo__", None),  # the crest, centered between the two halves (public pages)
     ("Team Store", "eca-gear.html"),
+    ("__logo__", None),  # the crest, centered between the two halves (public pages)
     ("Donate/Sponsor", "support.html"),
     ("Contact", "contact.html"),
 ]

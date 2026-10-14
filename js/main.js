@@ -21,34 +21,55 @@ document.addEventListener("DOMContentLoaded", function () {
       var expanded = nav.classList.contains("open");
       toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
     });
-    nav.querySelectorAll("a").forEach(function (link) {
-      link.addEventListener("click", function () {
-        nav.classList.remove("open");
-      });
+    nav.addEventListener("click", function (e) {
+      if (e.target.closest("a")) nav.classList.remove("open");
     });
 
     // Dropdown menus: click/tap a heading to open it (desktop also opens on
     // hover and keyboard focus through CSS). One open at a time; Escape or a
     // click elsewhere closes them.
-    var parents = nav.querySelectorAll(".nav-parent");
     function closeMenus(except) {
       nav.querySelectorAll(".has-menu.open").forEach(function (li) {
         if (li !== except) {
           li.classList.remove("open");
-          li.querySelector(".nav-parent").setAttribute("aria-expanded", "false");
+          var b = li.querySelector(".nav-parent");
+          if (b) b.setAttribute("aria-expanded", "false");
         }
       });
     }
-    parents.forEach(function (btn) {
-      btn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        var li = btn.parentElement;
-        var willOpen = !li.classList.contains("open");
-        closeMenus(li);
-        li.classList.toggle("open", willOpen);
-        btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
-      });
+    // Delegated, so menus added after load (the Account menu) work too.
+    nav.addEventListener("click", function (e) {
+      var btn = e.target.closest(".nav-parent");
+      if (!btn || !nav.contains(btn)) return;
+      e.stopPropagation();
+      var li = btn.parentElement;
+      var willOpen = !li.classList.contains("open");
+      closeMenus(li);
+      li.classList.toggle("open", willOpen);
+      btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
     });
+    // Keep the centered crest on the page's center line: pad whichever side
+    // of the menu is shorter (it changes when someone signs in).
+    var crest = nav.querySelector(".nav-logo");
+    var list = nav.querySelector(":scope > ul");
+    if (crest && list) {
+      var balance = function () {
+        list.style.paddingLeft = list.style.paddingRight = "";
+        if (!crest.offsetParent || window.innerWidth <= 1150) return;
+        var items = Array.prototype.slice.call(list.children);
+        var idx = items.indexOf(crest);
+        var w = function (arr) { return arr.reduce(function (s, li) { return s + li.getBoundingClientRect().width; }, 0); };
+        var diff = w(items.slice(idx + 1)) - w(items.slice(0, idx));
+        if (diff > 0) list.style.paddingLeft = diff + "px"; else list.style.paddingRight = -diff + "px";
+      };
+      balance();
+      window.addEventListener("resize", balance);
+      window.addEventListener("load", balance);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(balance);
+      var slot = document.getElementById("nav-auth-slot");
+      if (slot && "MutationObserver" in window) new MutationObserver(balance).observe(slot, { childList: true });
+    }
+
     document.addEventListener("click", function () { closeMenus(null); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenus(null); });
   }

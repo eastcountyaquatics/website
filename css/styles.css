@@ -525,3 +525,7 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 .rate-modal-date:disabled{opacity:.5;}
 .rate-modal-hint{font-size:13px;margin:4px 0 16px;}
 .rate-modal-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* Centered crest in the menu: only the refreshed public pages show it
+   (css/refresh.css); everywhere else the logo stays on the left. */
+.nav-logo{display:none;}

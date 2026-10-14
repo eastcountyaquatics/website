@@ -32,8 +32,26 @@
       b.style.setProperty("--alpha", (0.45 + Math.random() * 0.45).toFixed(2));
       layer.appendChild(b);
     }
+    // Then a light, steady drift that carries on from the whoosh -- no hard
+    // stop. Each one starts as the burst thins out.
+    var drift = Math.max(6, Math.round(count / 3));
+    for (var j = 0; j < drift; j++) {
+      var d = document.createElement("span");
+      d.className = "drift";
+      var ds = 4 + Math.random() * 14;
+      var ddur = 7 + Math.random() * 7;                        // 7-14s per rise
+      d.style.width = d.style.height = ds.toFixed(1) + "px";
+      d.style.left = (Math.random() * 100).toFixed(1) + "%";
+      d.style.setProperty("--dur", ddur.toFixed(1) + "s");
+      d.style.setProperty("--delay", (0.6 - (j / drift) * ddur).toFixed(2) + "s");  // evenly spread, already mid-rise
+      d.style.setProperty("--sway", (8 + Math.random() * 18).toFixed(0) + "px");
+      d.style.setProperty("--rise", "-" + Math.round(h * 1.05) + "px");
+      d.style.setProperty("--alpha", (0.3 + Math.random() * 0.35).toFixed(2));
+      layer.appendChild(d);
+    }
     host.appendChild(layer);
-    setTimeout(function () { layer.remove(); }, (longest + 0.3) * 1000);
+    // Burst bubbles are done after their one rise; tidy them away.
+    setTimeout(function () { layer.querySelectorAll(".burst").forEach(function (b) { b.remove(); }); }, (longest + 0.3) * 1000);
   }
   var small = window.innerWidth < 700;
   whoosh(document.querySelector(".hero-full"), small ? 26 : 46);

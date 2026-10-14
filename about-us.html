@@ -319,6 +319,8 @@
     var leadershipHtml = "";
     LEADERSHIP.forEach(function (l) {
       var people = data.filter(function (c) { return groupTokens(c.team_group).indexOf(l.token) !== -1; });
+      // Leadership order follows Admin > Coaches "Sort order" (Clint, then Marcy...).
+      people.sort(function (x, y) { return (x.sort_order || 0) - (y.sort_order || 0) || (x.full_name || "").localeCompare(y.full_name || ""); });
       if (!people.length) return;
       var photoCoach = people.filter(function (c) { return c.photo_url; })[0];
       var names = people.map(function (c) { return escapeHtml(c.full_name); }).join(" &amp; ");

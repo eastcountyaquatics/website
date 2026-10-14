@@ -89,6 +89,9 @@
   .grp-members{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 14px;margin-top:10px;}
   .grp-members label{display:flex;gap:6px;align-items:center;font-weight:400;font-size:14px;}
   .grp-members input{width:auto;}
+  .grp-up{font-size:12px;font-weight:700;color:#145c2c;background:#e2f6e8;border-radius:999px;padding:2px 8px;margin-left:4px;}
+  .grp-add-up{margin-top:12px;padding-top:12px;border-top:1px dashed #e3edf3;}
+  .grp-add-up label{display:block;font-weight:700;font-size:13px;margin-bottom:6px;}
   .sent-item{border-bottom:1px solid #eef3f6;padding:10px 0;font-size:14px;}
 </style>
 
@@ -103,7 +106,7 @@
     <div id="team-area" style="display:none;">
       <div class="admin-form" style="margin-bottom:24px;">
         <h3>Groups in this team</h3>
-        <p class="muted" style="font-size:13px;margin-top:0;">Split a team into smaller groups (Goalies, A squad&hellip;) so you can message just them. An athlete can be in more than one group.</p>
+        <p class="muted" style="font-size:13px;margin-top:0;">Split a team into smaller groups (Goalies, A squad&hellip;) so you can message just them. An athlete can be in more than one group, and you can add athletes who play up from a younger team.</p>
         <form id="grp-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
           <input type="text" id="grp-name" maxlength="60" placeholder="New group name" required style="flex:1;min-width:200px;">
           <button type="submit" class="btn btn-primary">Add Group</button>
@@ -171,12 +174,14 @@
 
   var teams = [];
   var teamAthletes = [];   // registered athletes on the chosen team
+  var allActive = [];      // every registered athlete (for play-ups)
   var groups = [];         // [{id, name}]
   var membersByGroup = {}; // group id -> Set(athlete id)
   var openGroupId = null;
 
   async function loadTeamList(isOwner, userId) {
     const { data: rows } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
+    (rows || []).forEach(function (t) { TEAM_LABELS[t.team_slug] = t.team_label; });
     teams = (rows || []).filter(function (t) { return t.team_slug !== "splashball"; });
     if (!isOwner) {
       const { data: mine } = await supabaseClient.from("head_coach_teams").select("team_slug").eq("profile_id", userId);
@@ -196,8 +201,10 @@
       loadActiveAthleteIds(),
       supabaseClient.from("team_subgroups").select("id, name").eq("team_slug", slug).order("name", { ascending: true }),
     ]);
-    teamAthletes = (athleteRows || [])
-      .filter(function (a) { return activeIds.has(a.id) && athleteTournamentTeam(a) === slug; })
+    allActive = (athleteRows || []).filter(function (a) { return activeIds.has(a.id); })
+      .sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
+    teamAthletes = allActive
+      .filter(function (a) { return athleteTournamentTeam(a) === slug; })
       .sort(function (a, b) { return a.full_name.localeCompare(b.full_name); });
     groups = groupRows || [];
     membersByGroup = {};
@@ -208,6 +215,13 @@
     renderGroups();
     renderSendTo();
     loadSent();
+  }
+
+  var TEAM_LABELS = {};
+  function teamName(a) { var t = athleteTournamentTeam(a); return t ? (TEAM_LABELS[t] || t) : ""; }
+  // Group members who aren't on this team (they play up from a younger team).
+  function playUps(gid, set) {
+    return allActive.filter(function (a) { return set.has(a.id) && teamAthletes.indexOf(a) === -1; });
   }
 
   function renderGroups() {
@@ -223,7 +237,17 @@
         (open
           ? '<div class="grp-members">' + (teamAthletes.length ? teamAthletes.map(function (a) {
               return '<label><input type="checkbox" data-member="' + g.id + '" value="' + a.id + '"' + (set.has(a.id) ? " checked" : "") + "> " + escapeHtml(a.full_name) + "</label>";
-            }).join("") : '<span class="muted">No registered athletes on this team yet.</span>') + "</div>"
+            }).join("") : '<span class="muted">No registered athletes on this team yet.</span>') +
+            playUps(g.id, set).map(function (a) {
+              return '<label><input type="checkbox" data-member="' + g.id + '" value="' + a.id + '" checked> ' + escapeHtml(a.full_name) +
+                ' <span class="grp-up">playing up' + (teamName(a) ? " from " + escapeHtml(teamName(a)) : "") + "</span></label>";
+            }).join("") + "</div>" +
+            '<div class="grp-add-up"><label for="up-' + g.id + '">Add a player who&rsquo;s playing up</label>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;"><input list="up-list-' + g.id + '" id="up-' + g.id + '" placeholder="Start typing a name&hellip;" style="flex:1;min-width:200px;">' +
+            '<datalist id="up-list-' + g.id + '">' + allActive.filter(function (a) { return teamAthletes.indexOf(a) === -1 && !set.has(a.id); }).map(function (a) {
+              return '<option value="' + escapeHtml(a.full_name + (teamName(a) ? " \u2014 " + teamName(a) : "")) + '"></option>';
+            }).join("") + "</datalist>" +
+            '<button type="button" class="btn btn-outline-dark" style="padding:6px 14px;font-size:13px;" data-add-up="' + g.id + '">Add</button></div></div>'
           : "") +
         "</div>";
     }).join("");
@@ -238,6 +262,18 @@
         if (error) return pageMsg("Could not remove: " + error.message, false);
         if (openGroupId === g.id) openGroupId = null;
         loadTeam();
+      });
+    });
+    el.querySelectorAll("[data-add-up]").forEach(function (b) {
+      b.addEventListener("click", async function () {
+        var gid = b.dataset.addUp, typed = document.getElementById("up-" + gid).value.trim();
+        var a = allActive.find(function (x) { return typed === x.full_name || typed.indexOf(x.full_name + " \u2014 ") === 0; });
+        if (!a) return pageMsg("Pick a name from the list as you type.", false);
+        var res = await supabaseClient.from("team_subgroup_members").insert({ subgroup_id: gid, athlete_id: a.id });
+        if (res.error) return pageMsg("Could not add: " + res.error.message, false);
+        (membersByGroup[gid] = membersByGroup[gid] || new Set()).add(a.id);
+        pageMsg(a.full_name + " added to the group.", true);
+        renderGroups(); renderSendTo(true);
       });
     });
     el.querySelectorAll("[data-member]").forEach(function (cb) {

@@ -67,6 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var diff = w(items.slice(idx + 1)) - w(items.slice(0, idx));
         if (diff > 0) list.style.paddingLeft = diff + "px"; else list.style.paddingRight = -diff + "px";
       };
+      window.ecaNavBalance = balance;
       balance();
       window.addEventListener("resize", balance);
       window.addEventListener("load", balance);

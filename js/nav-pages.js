@@ -26,6 +26,7 @@
 
       pages.forEach(function (p) {
         const li = document.createElement("li");
+        li.setAttribute("data-nav-page", "");
         const a = document.createElement("a");
         a.href = "page.html?slug=" + encodeURIComponent(p.slug);
         a.textContent = p.nav_label || p.title;

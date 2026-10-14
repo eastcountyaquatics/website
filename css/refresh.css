@@ -491,3 +491,24 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
   100%{transform:translate3d(0,var(--rise),0) scale(1.05);opacity:0;}
 }
 @media(prefers-reduced-motion:reduce){.bubbles{display:none;}}
+
+/* ---------- Header shrinks on scroll; the crest tucks away ---------- */
+.site-header,.nav-wrap{transition:height .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease,background-color .35s ease;}
+.site-header.scrolled{box-shadow:0 6px 20px rgba(0,0,0,.22);}
+@media(min-width:1151px){
+  .nav-logo a{transition:transform .4s cubic-bezier(.2,.7,.2,1),opacity .3s ease,top .4s cubic-bezier(.2,.7,.2,1);transform-origin:50% 0;}
+  .main-nav .nav-logo{transition:width .4s cubic-bezier(.2,.7,.2,1),margin .4s cubic-bezier(.2,.7,.2,1),height .35s ease;}
+  .site-header.scrolled .nav-wrap{height:58px;}
+  .site-header.scrolled .main-nav .nav-logo{height:58px;width:0;margin:0 6px;}
+  .site-header.scrolled .nav-logo a{opacity:0;transform:translateY(-14px) scale(.35);pointer-events:none;}
+  .site-header.scrolled .nav-logo a:hover{transform:translateY(-14px) scale(.35);}
+  .main-nav a,.nav-parent{transition:color .15s ease,padding .35s ease,font-size .35s ease;}
+  .site-header.scrolled .main-nav a,.site-header.scrolled .nav-parent{font-size:14px;}
+}
+@media(max-width:1150px){
+  .site-header.scrolled .nav-wrap{height:62px;}
+  .site-header.scrolled .brand .logo-mark{width:34px;height:34px;}
+  .brand .logo-mark{transition:width .35s ease,height .35s ease;}
+  .site-header.scrolled ~ * .main-nav,.site-header.scrolled .main-nav{top:62px;}
+}
+@media(prefers-reduced-motion:reduce){.site-header,.nav-wrap,.nav-logo a,.main-nav .nav-logo{transition:none;}}

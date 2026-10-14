@@ -1,4 +1,18 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // Header shrinks once the page is scrolled (css: .site-header.scrolled).
+  var header = document.querySelector(".site-header");
+  if (header) {
+    var ticking = false;
+    var setScrolled = function () {
+      header.classList.toggle("scrolled", window.scrollY > 40);
+      ticking = false;
+    };
+    window.addEventListener("scroll", function () {
+      if (!ticking) { ticking = true; window.requestAnimationFrame(setScrolled); }
+    }, { passive: true });
+    setScrolled();
+  }
+
   var toggle = document.querySelector(".nav-toggle");
   var nav = document.querySelector(".main-nav");
   if (toggle && nav) {

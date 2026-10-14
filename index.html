@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>San Diego East County Aquatics (ECA) | Water Polo Club</title>
 <meta name="description" content="San Diego East County Aquatics (ECA) is a year-round, non-profit water polo club serving El Cajon and San Diego's East County, ages 7-18+, from beginner to advanced competitive teams.">
-<link rel="stylesheet" href="css/styles.css">
-<link rel="stylesheet" href="css/refresh.css">
+<link rel="stylesheet" href="css/styles.css?v=20261014">
+<link rel="stylesheet" href="css/refresh.css?v=20261014">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -85,22 +85,18 @@
   </div>
 </header>
 
-<section class="home-hero">
-  <div class="container wrap">
-    <div>
-      <span class="eyebrow">El Cajon &amp; San Diego East County</span>
-      <h1 data-cms="index-0001">Water polo for East County athletes, <span class="hl">all year long</span></h1>
-      <p class="lead" data-cms="index-0002">At East County Aquatics we build athletes, character, and community. Whether your athlete has never touched a water polo ball or is chasing a Junior Olympics roster spot, there&rsquo;s a team for them.</p>
-      <div class="actions">
-        <a href="#sessions" class="btn btn-primary">See open sessions</a>
-        <a href="signup.html?trial=1" class="btn btn-ghost">Try 2 weeks first</a>
-      </div>
-    </div>
-    <div class="collage">
-      <span class="c-block" aria-hidden="true"></span>
-      <div class="c-main"><img data-cms-img="index-hero" src="images/hero-pool.jpg" alt="The pool at sunset, ready for practice"></div>
+<section class="home-hero hero-full">
+  <div class="hero-bg" data-cms-img="index-hero" data-cms-bg="1" style="background-image:url('images/hero-pool.jpg');" role="img" aria-label="The pool at sunset, ready for practice"></div>
+  <div class="container hero-copy">
+    <span class="eyebrow">El Cajon &amp; San Diego East County</span>
+    <h1 data-cms="index-0001">Water polo for East County athletes, <span class="hl">all year long</span></h1>
+    <p class="lead" data-cms="index-0002">At East County Aquatics we build athletes, character, and community. Whether your athlete has never touched a water polo ball or is chasing a Junior Olympics roster spot, there&rsquo;s a team for them.</p>
+    <div class="actions">
+      <a href="#sessions" class="btn btn-gold">See open sessions</a>
+      <a href="signup.html?trial=1" class="btn btn-navy">Try 2 weeks first</a>
     </div>
   </div>
+  <span class="hero-wave" aria-hidden="true"></span>
 </section>
 
 <section class="reg reg-navy" id="sessions">
@@ -119,19 +115,11 @@
   </div>
 </section>
 
-<section class="statement">
-  <div class="statement-photo" data-cms-img="index-statement" data-cms-bg="1" style="background-image:url('images/jo/jo-16.jpg');"></div>
-  <div class="container">
-    <p class="statement-text" data-cms="index-0060">A place to learn the game, get stronger, and compete &mdash; while making lifelong friends along the way.</p>
-    <a href="teams.html" class="btn btn-gold">Meet the teams</a>
-  </div>
-</section>
-
 <section class="tiles-section">
   <div class="container">
     <h2 data-cms="index-0061" style="margin-bottom:28px;">Find your team</h2>
     <div class="tiles">
-      <a class="tile" href="teams.html"><img src="images/accomplishments/acc-23.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Coed</strong><em>Boys and girls together</em></span></a>
+      <a class="tile" href="teams.html"><img src="images/accomplishments/acc-23.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Coed</strong><em>Splashball, 8U &amp; 10U</em></span></a>
       <a class="tile" href="teams.html"><img src="images/jo/jo-16.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Boys</strong><em>Age-group teams</em></span></a>
       <a class="tile" href="teams.html"><img src="images/jo/jo-03.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Girls</strong><em>Age-group teams</em></span></a>
       <a class="tile" href="masters.html"><img src="images/hero-pool.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Masters</strong><em>Adult water polo</em></span></a>
@@ -254,12 +242,12 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/main.js"></script>
-<script src="js/nav-pages.js"></script>
-<script src="js/content-blocks.js"></script>
-<script src="js/image-blocks.js"></script>
+<script src="js/main.js?v=20261014"></script>
+<script src="js/nav-pages.js?v=20261014"></script>
+<script src="js/content-blocks.js?v=20261014"></script>
+<script src="js/image-blocks.js?v=20261014"></script>
 <script src="js/page-extras.js"></script>
-<script src="js/gallery.js"></script>
+<script src="js/gallery.js?v=20261014"></script>
 <script>
   // Open registration sessions, live from the same table My Account uses.
   (async function () {

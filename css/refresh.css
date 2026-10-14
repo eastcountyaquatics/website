@@ -167,13 +167,6 @@ h3{font-size:21px;font-weight:700;}
 .reg-navy .sessions{border:none;box-shadow:0 20px 50px rgba(0,0,0,.3);}
 .reg-navy .sessions + p{color:#b9c2ee;}
 
-/* Big photo statement */
-.statement{position:relative;color:#fff;text-align:center;padding:0;overflow:hidden;min-height:clamp(420px,46vw,640px);display:flex;align-items:flex-end;}
-.statement-photo{position:absolute;inset:0;background-size:cover;background-position:center 6%;}
-.statement::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,31,107,0) 0%,rgba(10,31,107,.12) 38%,rgba(10,31,107,.86) 100%);z-index:1;}
-.statement .container{padding-top:40px;padding-bottom:48px;width:100%;}
-.statement .container{position:relative;z-index:2;}
-.statement-text{font-family:"Bitter",Georgia,serif;font-weight:800;font-size:clamp(24px,3.4vw,42px);line-height:1.18;max-width:22em;margin:0 auto 24px;text-shadow:0 2px 18px rgba(0,0,0,.35);}
 
 /* Photo tiles that link to the teams */
 .tiles-section{padding:72px 0 24px;}
@@ -192,8 +185,7 @@ h3{font-size:21px;font-weight:700;}
   .home-hero .wrap{grid-template-columns:1fr;gap:34px;}
   .collage{order:-1;margin:0 0 10px;aspect-ratio:1/0.82;}
   .home-hero::after{width:110px;height:110px;left:auto;right:-30px;bottom:-30px;}
-  .statement{min-height:460px;}
-  .tiles{grid-template-columns:1fr 1fr;}
+    .tiles{grid-template-columns:1fr 1fr;}
 }
 .reg-navy a[style]{color:var(--gold) !important;}
 
@@ -264,9 +256,7 @@ h3{font-size:21px;font-weight:700;}
 .card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
 
 /* Buttons: arrow on the main calls to action */
-.home-hero .btn-primary::after,.statement .btn-gold::after,.trial-box .btn-gold::after{content:"\2192";margin-left:10px;display:inline-block;transition:transform .15s ease;}
-.home-hero .btn-primary:hover::after,.statement .btn-gold:hover::after,.trial-box .btn-gold:hover::after{transform:translateX(4px);}
-
+.home-hero .btn-primary::after,.home-hero .btn-primary:hover::after,
 @media(max-width:860px){
   .reg-navy{padding-top:100px;}
   .page-hero{padding:44px 0 80px;}

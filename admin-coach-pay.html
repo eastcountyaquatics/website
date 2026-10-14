@@ -118,8 +118,8 @@
     </div>
 
     <div class="card" style="margin-bottom:20px;">
-      <h3 style="margin-top:0;">Add Other Reimbursement</h3>
-      <p class="muted" style="font-size:13px;">Equipment, supplies, hotel, USWP Membership, etc. &mdash; added to that coach's pay for the month it's dated in. A receipt is required.</p>
+      <h3 style="margin-top:0;">Add Other Reimbursement for a coach not listed below</h3>
+      <p class="muted" style="font-size:13px;">Equipment, supplies, hotel, USWP Membership, etc. &mdash; added to that coach's pay for the month it's dated in. A receipt is required. For a coach below, use <strong>+ Other Reimbursement</strong> on their card. Coaches add their own on <a href="admin-hours.html">Coaches&rsquo; Hours Logged</a>.</p>
       <form id="reimb-form" class="pay-filters" style="margin-bottom:0;">
         <div class="field" style="margin:0;min-width:170px;">
           <label for="reimb-coach">Coach</label>
@@ -215,10 +215,35 @@
   var currentUserId = null;
   var rateHistory = {}; // coach_id -> dated rates (js/coach-rates.js)
   var coachSummaries = []; // built fresh on every load()
+  var signoffsByCoach = {}; // coach_id -> month-end sign-offs, shared by load() and renderList()
 
   function monthStart() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  }
+
+  // One reimbursement for one coach: upload the receipt to that coach's
+  // private folder, then save. Used by each coach's card and by the form up top.
+  async function addReimbursement(coachId, r, msg, btn) {
+    if (!coachId) { msg.className = "form-msg error"; msg.textContent = "Choose a coach."; return false; }
+    if (!(r.dollars > 0)) { msg.className = "form-msg error"; msg.textContent = "Enter the amount."; return false; }
+    if (!r.desc) { msg.className = "form-msg error"; msg.textContent = "Say what it was for."; return false; }
+    if (!r.file) { msg.className = "form-msg error"; msg.textContent = "Attach the receipt (photo or PDF)."; return false; }
+    if (r.file.size > 10 * 1024 * 1024) { msg.className = "form-msg error"; msg.textContent = "That file is over 10 MB \u2014 take a smaller photo or PDF."; return false; }
+    if (btn) btn.disabled = true;
+    msg.className = "form-msg"; msg.textContent = "Uploading receipt\u2026";
+    const ext = (r.file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5) || "pdf";
+    const path = "receipts/" + coachId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+    const upload = await supabaseClient.storage.from("coach-documents").upload(path, r.file, { contentType: r.file.type || undefined });
+    if (upload.error) { if (btn) btn.disabled = false; msg.className = "form-msg error"; msg.textContent = "Could not upload the receipt: " + upload.error.message; return false; }
+    const { error } = await supabaseClient.from("coach_reimbursements").insert({
+      coach_id: coachId, reimb_date: r.date, amount_cents: Math.round(r.dollars * 100),
+      description: r.desc, receipt_path: path, created_by: currentUserId,
+    });
+    if (btn) btn.disabled = false;
+    if (error) { await supabaseClient.storage.from("coach-documents").remove([path]); msg.className = "form-msg error"; msg.textContent = "Could not save: " + error.message; return false; }
+    msg.className = "form-msg success"; msg.textContent = "Reimbursement added.";
+    return true;
   }
 
   document.getElementById("reimb-form").addEventListener("submit", async function (e) {
@@ -317,7 +342,7 @@
     if (from) signoffQuery = signoffQuery.gte("period_month", from.slice(0, 7) + "-01");
     if (to) signoffQuery = signoffQuery.lte("period_month", to.slice(0, 7) + "-01");
     const { data: signoffRows } = await signoffQuery;
-    const signoffsByCoach = {};
+    signoffsByCoach = {};
     (signoffRows || []).forEach(function (r) { (signoffsByCoach[r.coach_id] = signoffsByCoach[r.coach_id] || []).push(r); });
 
     if (hoursError || paymentsError) {
@@ -442,7 +467,16 @@
             }).join("") + "</div>"
           : "") +
         paymentsHtml +
-        '<button type="button" class="btn btn-outline-dark" data-toggle-payment="' + c.coachId + '" style="margin-top:10px;padding:6px 12px;font-size:13px;">Record Payment</button>' +
+        '<button type="button" class="btn btn-outline-dark" data-toggle-payment="' + c.coachId + '" style="margin-top:10px;padding:6px 12px;font-size:13px;">Record Payment</button> ' +
+        '<button type="button" class="btn btn-outline-dark" data-toggle-reimb="' + c.coachId + '" style="margin-top:10px;padding:6px 12px;font-size:13px;">+ Other Reimbursement</button>' +
+        '<form class="record-payment-form" data-reimb-form="' + c.coachId + '">' +
+          '<div class="field" style="margin:0;"><label style="font-size:12px;">Date</label><input type="date" data-r-date value="' + localToday() + '" required></div>' +
+          '<div class="field" style="margin:0;"><label style="font-size:12px;">Amount ($)</label><input type="number" step="0.01" min="0.01" data-r-amount required style="max-width:110px;"></div>' +
+          '<div class="field" style="margin:0;flex:1;min-width:150px;"><label style="font-size:12px;">What for</label><input type="text" maxlength="500" data-r-desc placeholder="e.g. USWP Renewal" required></div>' +
+          '<div class="field" style="margin:0;min-width:180px;"><label style="font-size:12px;">Receipt</label><input type="file" data-r-file accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" required></div>' +
+          '<button type="submit" class="btn btn-primary">Add</button>' +
+          '<div class="form-msg" data-r-msg style="width:100%;"></div>' +
+        "</form>" +
         '<form class="record-payment-form" data-payment-form="' + c.coachId + '">' +
           '<div class="field" style="margin:0;">' +
             '<label style="font-size:12px;">Amount ($)</label>' +
@@ -482,6 +516,26 @@
         if (error) { alert("Could not remove: " + error.message); return; }
         if (receiptBtn) await supabaseClient.storage.from("coach-documents").remove([receiptBtn.dataset.receipt]);
         load();
+      });
+    });
+
+    listEl.querySelectorAll("[data-toggle-reimb]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        listEl.querySelector('[data-reimb-form="' + btn.dataset.toggleReimb + '"]').classList.toggle("open");
+      });
+    });
+    listEl.querySelectorAll("[data-reimb-form]").forEach(function (form) {
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const coachId = form.dataset.reimbForm;
+        const msg = form.querySelector("[data-r-msg]");
+        const ok = await addReimbursement(coachId, {
+          date: form.querySelector("[data-r-date]").value,
+          dollars: parseFloat(form.querySelector("[data-r-amount]").value),
+          desc: form.querySelector("[data-r-desc]").value.trim(),
+          file: form.querySelector("[data-r-file]").files[0],
+        }, msg, form.querySelector('button[type="submit"]'));
+        if (ok) load();
       });
     });
 

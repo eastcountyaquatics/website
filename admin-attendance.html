@@ -123,6 +123,7 @@
     <div class="field" id="hours-field" style="display:none;">
       <label>Coach Hours for This Session</label>
       <p class="field-hint" style="margin-top:0;">Log hours for any coach who was here &mdash; not just yourself. Saved with attendance below.</p>
+      <p class="field-hint" id="hours-login-hint" style="margin-top:0;color:#8a5a00;"></p>
       <div id="coach-hours-list"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px;">
         <div class="field" style="margin:0;flex:1;min-width:180px;">
@@ -205,6 +206,7 @@
   let rollExists = false;
   let currentMembers = [];
 
+  let teamCoaches = [];   // everyone on Team Coaches, with or without a login
   let coachTeamLabels = {}; // profile_id -> lowercase team labels from Team Coaches
   let coachRoster = []; // { profile_id, full_name } -- only coaches with a linked account
   // Pending coach-hours entries for the session currently open. Keyed by
@@ -223,11 +225,12 @@
       supabaseClient.rpc("list_staff_profiles"),
       loadActiveAthleteIds(),
       // Who is assigned to which team (Admin > Team Coaches).
-      supabaseClient.from("coaches").select("profile_id, team_group").eq("is_active", true).not("profile_id", "is", null),
+      supabaseClient.from("coaches").select("full_name, profile_id, team_group").eq("is_active", true),
     ]);
-    (coachBioRows || []).forEach(function (c) {
-      coachTeamLabels[c.profile_id] = String(c.team_group || "").split("&").map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean);
+    teamCoaches = (coachBioRows || []).map(function (c) {
+      return { full_name: c.full_name, profile_id: c.profile_id, teams: String(c.team_group || "").split("&").map(function (t) { return t.trim().toLowerCase(); }).filter(Boolean) };
     });
+    teamCoaches.forEach(function (c) { if (c.profile_id) coachTeamLabels[c.profile_id] = c.teams; });
     teams = teamRows || [];
     // Only registered athletes (paid session, free trial or Masters) are
     // on a team's roll -- ones a family has merely added aren't.
@@ -266,17 +269,28 @@
     }
     const team = teams.find(function (t) { return t.team_slug === teamSlug; });
     const label = team ? String(team.team_label || "").trim().toLowerCase() : "";
-    const onTeam = coachRoster.filter(function (c) { return label && (coachTeamLabels[c.profile_id] || []).indexOf(label) !== -1; });
-    const others = coachRoster.filter(function (c) { return onTeam.indexOf(c) === -1; });
-    if (!coachRoster.length) {
+    // Coaches assigned to this team on Team Coaches. Hours are saved against
+    // a login, so a coach without one is listed but can't be picked yet.
+    const assigned = label ? teamCoaches.filter(function (c) { return c.teams.indexOf(label) !== -1; }) : [];
+    const assignedIds = assigned.map(function (c) { return c.profile_id; }).filter(Boolean);
+    const onTeam = assigned.map(function (c) {
+      return c.profile_id
+        ? '<option value="' + escapeHtml(c.profile_id) + '">' + escapeHtml(c.full_name) + "</option>"
+        : '<option value="" disabled>' + escapeHtml(c.full_name) + " (needs a login)</option>";
+    });
+    const others = coachRoster.filter(function (c) { return assignedIds.indexOf(c.profile_id) === -1; });
+    if (!coachRoster.length && !assigned.length) {
       coachSelect.innerHTML = '<option value="">No coaches yet</option>';
       coachSelect.disabled = true;
       return;
     }
     coachSelect.disabled = false;
     coachSelect.innerHTML = '<option value="">Choose a coach&hellip;</option>' +
-      (onTeam.length ? '<optgroup label="On this team">' + onTeam.map(opt).join("") + "</optgroup>" : "") +
-      (others.length ? '<optgroup label="' + (onTeam.length ? "Other coaches" : "All coaches") + '">' + others.map(opt).join("") + "</optgroup>" : "");
+      (onTeam.length ? '<optgroup label="' + escapeHtml(team ? team.team_label : "This team") + ' coaches">' + onTeam.join("") + "</optgroup>" : "") +
+      (others.length ? '<optgroup label="' + (onTeam.length ? "Other staff" : "All staff") + '">' + others.map(opt).join("") + "</optgroup>" : "");
+    const hint = document.getElementById("hours-login-hint");
+    const missing = assigned.filter(function (c) { return !c.profile_id; }).length;
+    if (hint) hint.innerHTML = missing ? missing + (missing === 1 ? " coach on this team doesn&rsquo;t" : " coaches on this team don&rsquo;t") + ' have a login yet, so hours can&rsquo;t be logged for them. Invite them from <a href="admin-coaches.html">Admin &rsaquo; Coaches</a>.' : "";
     if (keep && coachRoster.some(function (c) { return c.profile_id === keep; })) coachSelect.value = keep;
   }
 

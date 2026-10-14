@@ -349,3 +349,8 @@ a:focus-visible,button:focus-visible,.btn:focus-visible,input:focus-visible,sele
 .mascot-row img:nth-child(3){animation-delay:-3s;}
 @keyframes eca-bob{0%,100%{transform:translateY(0) rotate(-1.5deg);}50%{transform:translateY(-9px) rotate(1.5deg);}}
 @media(prefers-reduced-motion:reduce){.mascot-row img{animation:none;}}
+
+/* Team page headers with their own banner */
+.team-wrap{display:grid;grid-template-columns:1fr 1.1fr;gap:40px;align-items:center;}
+.team-banner{width:100%;max-width:600px;height:auto;justify-self:center;filter:drop-shadow(0 12px 22px rgba(0,0,0,.28));}
+@media(max-width:860px){.team-wrap{grid-template-columns:1fr;gap:24px;}.team-banner{max-width:440px;justify-self:start;}}

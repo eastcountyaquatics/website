@@ -6,7 +6,7 @@
 <title>San Diego East County Aquatics (ECA) | Water Polo Club</title>
 <meta name="description" content="San Diego East County Aquatics (ECA) is a year-round, non-profit water polo club serving El Cajon and San Diego's East County, ages 7-18+, from beginner to advanced competitive teams.">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
-<link rel="stylesheet" href="css/refresh.css?v=20261014m">
+<link rel="stylesheet" href="css/refresh.css?v=20261014n">
 <link rel="icon" type="image/png" href="images/eca-logo.png">
 <link rel="apple-touch-icon" href="images/eca-logo.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -118,7 +118,13 @@
 
 <section class="tiles-section">
   <div class="container">
-    <h2 data-cms="index-0061" style="margin-bottom:28px;">Find your team</h2>
+    <div class="finder-row">
+      <div>
+        <h2 data-cms="index-0061">Find your team</h2>
+        <p class="lead" data-cms="index-0062">Enter your athlete&rsquo;s birthdate to see their team, what&rsquo;s open right now, and the price.</p>
+      </div>
+      <div data-team-finder></div>
+    </div>
     <div class="tiles">
       <a class="tile" href="teams.html"><img src="images/accomplishments/acc-23.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Coed</strong><em>Splashball, 8U, 10U &amp; Masters</em></span></a>
       <a class="tile" href="teams.html"><img src="images/jo/jo-16.jpg" alt="" loading="lazy"><span class="tile-label"><strong>Boys</strong><em>Age-group teams</em></span></a>
@@ -248,6 +254,8 @@
 <script src="js/content-blocks.js?v=20261014"></script>
 <script src="js/image-blocks.js?v=20261014"></script>
 <script src="js/page-extras.js"></script>
+<script src="js/team-age.js"></script>
+<script src="js/team-finder.js?v=20261014n"></script>
 <script src="js/gallery.js?v=20261014"></script>
 <script>
   // Open registration sessions, live from the same table My Account uses.

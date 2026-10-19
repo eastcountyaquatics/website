@@ -477,7 +477,9 @@
   // Header → field, first match wins. Order matters: "issued date" before "date", "amount issued" before "amount".
   var COLS = [
     ["issued_on", /(issued|used|redeemed|applied).*date|date.*(issued|used|redeemed|applied)/],
-    ["method", /how|method|issued (via|as)|applied to/],
+    ["method", /how|method|issued (via|as)/],
+    ["code", /^code$|promo|coupon/],
+    ["used_for", /session|tournament|applied to|used for/],
     ["issued_amt", /(issued|used|redeemed|applied)(?!.*date)|amount.*(issued|used|redeemed)/],
     ["status", /status|paid out|complete/],
     ["balance", /balance|remaining|left/],
@@ -506,6 +508,13 @@
     var prev = document.getElementById("import-preview"), go = document.getElementById("import-go");
     pending = [];
     if (rows.length < 2) { prev.textContent = rows.length ? "Need a header row plus at least one credit." : ""; go.disabled = true; return; }
+    // Skip title rows above the real header (e.g. "OUTSTANDING CREDITS DUE").
+    var hdr = 0;
+    for (var h = 0; h < Math.min(rows.length - 1, 8); h++) {
+      var hm = mapHeader(rows[h]), hv = Object.keys(hm).map(function (i) { return hm[i]; });
+      if (hv.indexOf("amount") !== -1 && (hv.indexOf("family_name") !== -1 || hv.indexOf("athlete_name") !== -1)) { hdr = h; break; }
+    }
+    rows = rows.slice(hdr);
     var map = mapHeader(rows[0]);
     var fields = Object.keys(map).map(function (i) { return '"' + rows[0][i].trim() + '" → ' + map[i].replace(/_/g, " "); });
     var has = function (f) { return Object.keys(map).some(function (i) { return map[i] === f; }); };
@@ -516,6 +525,7 @@
       var o = {};
       Object.keys(map).forEach(function (i) { o[map[i]] = (r[i] || "").trim(); });
       var amt = toNum(o.amount);
+      if (has("balance") && toNum(o.balance) > amt) { o.notes = ((o.notes ? o.notes + " " : "") + "Spreadsheet showed amount $" + amt + " but balance $" + toNum(o.balance) + " - please verify.").trim(); amt = toNum(o.balance); }
       var fam = o.family_name || o.athlete_name;
       if (!fam || !(amt > 0)) { skipped++; return; }
       var iss = toNum(o.issued_amt);
@@ -527,7 +537,9 @@
           email: o.email || null, amount: amt, reason: o.reason || null, credit_date: toDate(o.credit_date) || today(),
           expires_on: toDate(o.expires_on), notes: o.notes || null, created_by: me,
         },
-        issued: Math.min(iss, amt), issued_on: toDate(o.issued_on), method: o.method || null,
+        issued: Math.min(iss, amt), issued_on: toDate(o.issued_on),
+        method: o.method || (o.code ? "Coupon code" : null),
+        note: [o.code ? "Code: " + o.code : "", o.used_for || ""].filter(Boolean).join(" - ") || null,
       });
     });
     var total = pending.reduce(function (s, p) { return s + p.credit.amount; }, 0);
@@ -557,7 +569,7 @@
     var r = await supabaseClient.from("family_credits").insert(pending.map(function (p) { return p.credit; }));
     if (!r.error) {
       var us = pending.filter(function (p) { return p.issued > 0; }).map(function (p) {
-        return { id: uid(), credit_id: p.credit.id, amount: p.issued, issued_on: p.issued_on || p.credit.credit_date, method: p.method ? p.method.slice(0, 100) : "Other", note: "Imported from spreadsheet", created_by: me };
+        return { id: uid(), credit_id: p.credit.id, amount: p.issued, issued_on: p.issued_on || p.credit.credit_date, method: p.method ? p.method.slice(0, 100) : "Other", note: p.note ? p.note.slice(0, 900) + " (imported)" : "Imported from spreadsheet", created_by: me };
       });
       if (us.length) r = await supabaseClient.from("family_credit_uses").insert(us);
     }

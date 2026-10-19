@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Credits | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261014i">
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Family Credits</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .cr-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px;}
+  .cr-stat{background:#fff;border:1px solid #e3e6f0;border-top:4px solid var(--blue);border-radius:10px;padding:16px 18px;}
+  .cr-stat b{display:block;font-size:26px;color:var(--navy);font-family:Bitter,serif;}
+  .cr-stat span{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;}
+  .cr-stat.owed{border-top-color:var(--gold);}
+  .cr-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;}
+  .cr-bar input[type=search]{flex:1;min-width:200px;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;}
+  .cr-bar select{padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;background:#fff;}
+  .cr-tools{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;}
+  .cr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 16px;}
+  .cr-item .cr-money{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;margin:6px 0 4px;}
+  .cr-item .cr-money strong{color:var(--navy);}
+  .cr-pill{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;vertical-align:2px;margin-left:6px;}
+  .cr-pill.open{background:#fff4c2;color:#7a5d00;}
+  .cr-pill.part{background:#e3ecff;color:#1a3fa8;}
+  .cr-pill.done{background:#dff3e4;color:#1f6b35;}
+  .cr-pill.void{background:#f1f1f1;color:#777;}
+  .cr-uses{margin:8px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted);}
+  .cr-uses li{padding:3px 0;border-top:1px dashed #e3e6f0;}
+  .cr-uses button{border:0;background:none;color:#c0392b;cursor:pointer;font-size:12px;padding:0 4px;}
+  .cr-issue{margin-top:10px;padding:14px;background:var(--foam);border-radius:8px;}
+  .cr-issue .cr-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+  .cr-item{flex-wrap:wrap;}
+  .cr-item > div:first-child{flex:1;min-width:240px;}
+  #import-preview{font-size:13.5px;margin:10px 0;}
+  @media (max-width:600px){ .admin-list-actions{flex-wrap:wrap;} }
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:900px;">
+    <div class="notice" style="margin-bottom:20px;">
+      Track money the club owes a family (missed sessions, overpayment, injury, etc.) and every time some of it is used. <strong>Issue</strong> a credit when it&rsquo;s applied to a registration, given as a coupon code or refunded &mdash; partial amounts are fine, the balance updates.
+    </div>
+
+    <div class="cr-stats" id="cr-stats">
+      <div class="cr-stat owed"><span>Still owed</span><b id="st-owed">$0.00</b></div>
+      <div class="cr-stat"><span>Issued so far</span><b id="st-issued">$0.00</b></div>
+      <div class="cr-stat"><span>Families owed</span><b id="st-fams">0</b></div>
+      <div class="cr-stat"><span>Total credited</span><b id="st-total">$0.00</b></div>
+    </div>
+
+    <div class="cr-tools">
+      <button type="button" class="btn btn-primary" id="btn-add">+ Add a credit</button>
+      <button type="button" class="btn btn-outline-dark" id="btn-import">Import from spreadsheet</button>
+      <button type="button" class="btn btn-outline-dark" id="btn-export">Download CSV</button>
+    </div>
+
+    <div class="admin-form" id="credit-form-wrap" style="display:none;">
+      <h3 id="credit-form-title">Add a Credit</h3>
+      <div id="form-msg" class="form-msg"></div>
+      <form id="credit-form">
+        <input type="hidden" id="cr-id">
+        <div class="cr-grid">
+          <div class="field"><label for="cr-family">Family / parent name</label><input type="text" id="cr-family" required maxlength="200"></div>
+          <div class="field"><label for="cr-athlete">Athlete (optional)</label><input type="text" id="cr-athlete" maxlength="200"></div>
+          <div class="field"><label for="cr-email">Email (optional)</label><input type="email" id="cr-email" maxlength="320"></div>
+          <div class="field"><label for="cr-amount">Amount owed ($)</label><input type="number" id="cr-amount" step="0.01" min="0.01" required></div>
+          <div class="field"><label for="cr-date">Date credited</label><input type="date" id="cr-date" required></div>
+          <div class="field"><label for="cr-expires">Expires (optional)</label><input type="date" id="cr-expires"></div>
+        </div>
+        <div class="field"><label for="cr-reason">Reason</label><input type="text" id="cr-reason" maxlength="2000" placeholder="e.g. Missed 3 weeks of Fall session (injury)"></div>
+        <div class="field"><label for="cr-notes">Notes (optional)</label><textarea id="cr-notes" rows="2" maxlength="2000"></textarea></div>
+        <button type="submit" class="btn btn-primary" id="cr-save">Save credit</button>
+        <button type="button" class="btn btn-outline-dark" id="cr-cancel">Cancel</button>
+      </form>
+    </div>
+
+    <div class="admin-form" id="import-wrap" style="display:none;">
+      <h3>Import from Spreadsheet</h3>
+      <p class="muted" style="font-size:14px;">In Google Sheets choose <strong>File &rarr; Download &rarr; Comma-separated values (.csv)</strong>, then pick the file here &mdash; or copy the cells (including the header row) and paste them below. Columns are matched by their header: family/parent/name, athlete/player, email, amount/credit, reason, date, and optionally issued/used amount, issued date and how issued.</p>
+      <div class="field"><input type="file" id="import-file" accept=".csv,text/csv,text/plain"></div>
+      <div class="field"><textarea id="import-text" rows="6" placeholder="&hellip;or paste rows here"></textarea></div>
+      <div id="import-preview" class="muted"></div>
+      <div id="import-msg" class="form-msg"></div>
+      <button type="button" class="btn btn-primary" id="import-go" disabled>Import</button>
+      <button type="button" class="btn btn-outline-dark" id="import-cancel">Cancel</button>
+    </div>
+
+    <div class="cr-bar">
+      <input type="search" id="cr-search" placeholder="Search family, athlete, reason&hellip;">
+      <select id="cr-filter">
+        <option value="open" selected>Still owed</option>
+        <option value="done">Fully issued</option>
+        <option value="void">Voided</option>
+        <option value="all">All credits</option>
+      </select>
+    </div>
+    <div id="credit-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261014p"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script>
+  var credits = [], uses = [], me = null;
+  var METHODS = ["Applied to registration", "Coupon code", "Refund", "Cash / check", "Other"];
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function money(n) { return "$" + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function cents(n) { return Math.round((Number(n) || 0) * 100); }
+  function fmtDate(d) {
+    if (!d) return "";
+    var p = String(d).slice(0, 10).split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function uid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
+  }
+  function usesFor(id) { return uses.filter(function (u) { return u.credit_id === id; }); }
+  function issuedFor(id) { return usesFor(id).reduce(function (s, u) { return s + cents(u.amount); }, 0) / 100; }
+  function balanceFor(c) { return Math.max(0, cents(c.amount) - cents(issuedFor(c.id))) / 100; }
+  function statusOf(c) {
+    if (c.voided) return "void";
+    var bal = balanceFor(c);
+    if (bal <= 0) return "done";
+    return issuedFor(c.id) > 0 ? "part" : "open";
+  }
+  var LABEL = { open: "Owed", part: "Partly issued", done: "Fully issued", void: "Voided" };
+
+  async function load() {
+    var r1 = await supabaseClient.from("family_credits").select("*").order("credit_date", { ascending: false });
+    var r2 = await supabaseClient.from("family_credit_uses").select("*").order("issued_on", { ascending: true });
+    if (r1.error || r2.error) {
+      document.getElementById("credit-list").innerHTML = '<p class="muted">Could not load credits: ' + esc((r1.error || r2.error).message) + "</p>";
+      return;
+    }
+    credits = r1.data || [];
+    uses = r2.data || [];
+    render();
+  }
+
+  function render() {
+    var owed = 0, issued = 0, total = 0, fams = {};
+    credits.forEach(function (c) {
+      if (c.voided) return;
+      total += cents(c.amount);
+      issued += cents(issuedFor(c.id));
+      var bal = cents(balanceFor(c));
+      owed += bal;
+      if (bal > 0) fams[(c.family_name || "").trim().toLowerCase()] = 1;
+    });
+    document.getElementById("st-owed").textContent = money(owed / 100);
+    document.getElementById("st-issued").textContent = money(issued / 100);
+    document.getElementById("st-total").textContent = money(total / 100);
+    document.getElementById("st-fams").textContent = Object.keys(fams).length;
+
+    var f = document.getElementById("cr-filter").value;
+    var q = document.getElementById("cr-search").value.trim().toLowerCase();
+    var rows = credits.filter(function (c) {
+      var s = statusOf(c);
+      if (f === "open" && !(s === "open" || s === "part")) return false;
+      if (f === "done" && s !== "done") return false;
+      if (f === "void" && s !== "void") return false;
+      if (q) {
+        var hay = [c.family_name, c.athlete_name, c.email, c.reason, c.notes].join(" ").toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+    rows.sort(function (a, b) {
+      var n = (a.family_name || "").localeCompare(b.family_name || "", undefined, { sensitivity: "base" });
+      return n || String(b.credit_date).localeCompare(String(a.credit_date));
+    });
+
+    var list = document.getElementById("credit-list");
+    if (!rows.length) {
+      list.innerHTML = '<p class="muted">' + (credits.length ? "No credits match." : "No credits yet. Add one, or import your spreadsheet.") + "</p>";
+      return;
+    }
+    list.innerHTML = rows.map(function (c) {
+      var s = statusOf(c), bal = balanceFor(c), iss = issuedFor(c.id), us = usesFor(c.id);
+      var expired = c.expires_on && c.expires_on < today() && bal > 0 && !c.voided;
+      return '<div class="admin-list-item cr-item" data-id="' + c.id + '">' +
+        "<div>" +
+          "<h4>" + esc(c.family_name) + (c.athlete_name ? ' <span class="muted" style="font-weight:400;">&middot; ' + esc(c.athlete_name) + "</span>" : "") +
+          '<span class="cr-pill ' + s + '">' + LABEL[s] + "</span>" + (expired ? '<span class="cr-pill void">Expired</span>' : "") + "</h4>" +
+          '<div class="cr-money"><span>Credited <strong>' + money(c.amount) + "</strong></span><span>Issued <strong>" + money(iss) + "</strong></span><span>Balance <strong>" + money(bal) + "</strong></span></div>" +
+          (c.reason ? '<div style="font-size:14px;">' + esc(c.reason) + "</div>" : "") +
+          '<div class="muted" style="font-size:12.5px;">' + fmtDate(c.credit_date) + (c.expires_on ? " &middot; expires " + fmtDate(c.expires_on) : "") + (c.email ? " &middot; " + esc(c.email) : "") + "</div>" +
+          (c.notes ? '<div class="muted" style="font-size:12.5px;">' + esc(c.notes) + "</div>" : "") +
+          (us.length ? '<ul class="cr-uses">' + us.map(function (u) {
+            return "<li>" + fmtDate(u.issued_on) + " &middot; " + money(u.amount) + " &middot; " + esc(u.method) + (u.note ? " &mdash; " + esc(u.note) : "") +
+              ' <button type="button" data-undo="' + u.id + '" title="Remove this entry">undo</button></li>';
+          }).join("") + "</ul>" : "") +
+          '<div class="cr-issue-slot"></div>' +
+        "</div>" +
+        '<div class="admin-list-actions">' +
+          (s === "open" || s === "part" ? '<button type="button" data-issue="' + c.id + '">Issue credit</button>' : "") +
+          '<button type="button" data-edit="' + c.id + '">Edit</button>' +
+          '<button type="button" data-void="' + c.id + '">' + (c.voided ? "Restore" : "Void") + "</button>" +
+          '<button type="button" class="danger" data-del="' + c.id + '">Delete</button>' +
+        "</div></div>";
+    }).join("");
+  }
+
+  // ---- add / edit ----
+  var formWrap = document.getElementById("credit-form-wrap");
+  function openForm(c) {
+    document.getElementById("import-wrap").style.display = "none";
+    formWrap.style.display = "";
+    document.getElementById("form-msg").className = "form-msg";
+    document.getElementById("credit-form-title").textContent = c ? "Edit Credit" : "Add a Credit";
+    document.getElementById("cr-id").value = c ? c.id : "";
+    document.getElementById("cr-family").value = c ? c.family_name || "" : "";
+    document.getElementById("cr-athlete").value = c ? c.athlete_name || "" : "";
+    document.getElementById("cr-email").value = c ? c.email || "" : "";
+    document.getElementById("cr-amount").value = c ? c.amount : "";
+    document.getElementById("cr-date").value = c ? String(c.credit_date).slice(0, 10) : today();
+    document.getElementById("cr-expires").value = c && c.expires_on ? String(c.expires_on).slice(0, 10) : "";
+    document.getElementById("cr-reason").value = c ? c.reason || "" : "";
+    document.getElementById("cr-notes").value = c ? c.notes || "" : "";
+    formWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("cr-family").focus({ preventScroll: true });
+  }
+  document.getElementById("btn-add").addEventListener("click", function () { openForm(null); });
+  document.getElementById("cr-cancel").addEventListener("click", function () { formWrap.style.display = "none"; });
+
+  document.getElementById("credit-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var msg = document.getElementById("form-msg");
+    var id = document.getElementById("cr-id").value;
+    var row = {
+      family_name: document.getElementById("cr-family").value.trim(),
+      athlete_name: document.getElementById("cr-athlete").value.trim() || null,
+      email: document.getElementById("cr-email").value.trim() || null,
+      amount: Math.round(parseFloat(document.getElementById("cr-amount").value) * 100) / 100,
+      credit_date: document.getElementById("cr-date").value || today(),
+      expires_on: document.getElementById("cr-expires").value || null,
+      reason: document.getElementById("cr-reason").value.trim() || null,
+      notes: document.getElementById("cr-notes").value.trim() || null,
+    };
+    if (!row.family_name || !(row.amount > 0)) {
+      msg.className = "form-msg error"; msg.textContent = "Family name and an amount above $0 are required."; return;
+    }
+    if (id && row.amount < issuedFor(id)) {
+      msg.className = "form-msg error"; msg.textContent = "Amount can't be less than what's already been issued (" + money(issuedFor(id)) + ")."; return;
+    }
+    var btn = document.getElementById("cr-save");
+    btn.disabled = true;
+    var res;
+    if (id) {
+      row.updated_at = new Date().toISOString();
+      res = await supabaseClient.from("family_credits").update(row).eq("id", id);
+    } else {
+      row.id = uid();
+      row.created_by = me;
+      res = await supabaseClient.from("family_credits").insert(row);
+    }
+    btn.disabled = false;
+    if (res.error) { msg.className = "form-msg error"; msg.textContent = "Could not save: " + res.error.message; return; }
+    formWrap.style.display = "none";
+    await load();
+  });
+
+  // ---- list actions ----
+  document.getElementById("credit-list").addEventListener("click", async function (e) {
+    var t = e.target.closest("button");
+    if (!t) return;
+    var c;
+    if (t.dataset.edit) { openForm(credits.find(function (x) { return x.id === t.dataset.edit; })); return; }
+    if (t.dataset.issue) { openIssue(t.dataset.issue); return; }
+    if (t.dataset.void) {
+      c = credits.find(function (x) { return x.id === t.dataset.void; });
+      if (!c.voided && !confirm("Void this credit? It stops counting as owed (you can restore it later).")) return;
+      var r = await supabaseClient.from("family_credits").update({ voided: !c.voided, updated_at: new Date().toISOString() }).eq("id", c.id);
+      if (r.error) { alert("Could not update: " + r.error.message); return; }
+      return load();
+    }
+    if (t.dataset.del) {
+      c = credits.find(function (x) { return x.id === t.dataset.del; });
+      if (!confirm("Permanently delete the " + money(c.amount) + " credit for " + c.family_name + " and its history? Use Void instead if you want a record.")) return;
+      var d = await supabaseClient.from("family_credits").delete().eq("id", c.id);
+      if (d.error) { alert("Could not delete: " + d.error.message); return; }
+      await supabaseClient.from("family_credit_uses").delete().eq("credit_id", c.id);
+      return load();
+    }
+    if (t.dataset.undo) {
+      if (!confirm("Remove this issued entry? The amount goes back to the balance.")) return;
+      var u = await supabaseClient.from("family_credit_uses").delete().eq("id", t.dataset.undo);
+      if (u.error) { alert("Could not remove: " + u.error.message); return; }
+      return load();
+    }
+    if (t.dataset.issueCancel) { t.closest(".cr-issue").remove(); return; }
+  });
+
+  function openIssue(id) {
+    var c = credits.find(function (x) { return x.id === id; });
+    var item = document.querySelector('.cr-item[data-id="' + id + '"]');
+    var slot = item.querySelector(".cr-issue-slot");
+    if (slot.firstChild) { slot.innerHTML = ""; return; }
+    var bal = balanceFor(c);
+    slot.innerHTML = '<form class="cr-issue">' +
+      '<div class="cr-grid">' +
+        '<div class="field"><label>Amount ($)</label><input type="number" name="amount" step="0.01" min="0.01" max="' + bal + '" value="' + bal.toFixed(2) + '" required></div>' +
+        '<div class="field"><label>Date issued</label><input type="date" name="issued_on" value="' + today() + '" required></div>' +
+        '<div class="field"><label>How</label><select name="method">' + METHODS.map(function (m) { return "<option>" + m + "</option>"; }).join("") + "</select></div>" +
+      "</div>" +
+      '<div class="field"><label>Note (optional)</label><input type="text" name="note" maxlength="1000" placeholder="e.g. Winter 2027 14U Boys, code ECACREDIT-SMITH"></div>' +
+      '<div class="form-msg"></div>' +
+      '<button type="submit" class="btn btn-primary">Record issued credit</button> ' +
+      '<button type="button" class="btn btn-outline-dark" data-issue-cancel="1">Cancel</button>' +
+      "</form>";
+    var form = slot.querySelector("form");
+    form.querySelector("[name=amount]").focus();
+    form.addEventListener("submit", async function (ev) {
+      ev.preventDefault();
+      var m = form.querySelector(".form-msg");
+      var amt = Math.round(parseFloat(form.amount.value) * 100) / 100;
+      if (!(amt > 0) || cents(amt) > cents(balanceFor(c))) {
+        m.className = "form-msg error"; m.textContent = "Enter an amount between $0.01 and " + money(balanceFor(c)) + "."; return;
+      }
+      var r = await supabaseClient.from("family_credit_uses").insert({
+        id: uid(), credit_id: c.id, amount: amt, issued_on: form.issued_on.value || today(),
+        method: form.method.value, note: form.note.value.trim() || null, created_by: me,
+      });
+      if (r.error) { m.className = "form-msg error"; m.textContent = "Could not save: " + r.error.message; return; }
+      load();
+    });
+  }
+
+  document.getElementById("cr-filter").addEventListener("change", render);
+  document.getElementById("cr-search").addEventListener("input", render);
+
+  // ---- CSV export ----
+  function csvCell(v) { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  document.getElementById("btn-export").addEventListener("click", function () {
+    var head = ["Family", "Athlete", "Email", "Amount", "Issued", "Balance", "Status", "Reason", "Date credited", "Expires", "Issued history", "Notes"];
+    var lines = [head.join(",")];
+    credits.forEach(function (c) {
+      var hist = usesFor(c.id).map(function (u) { return u.issued_on + " " + money(u.amount) + " " + u.method + (u.note ? " (" + u.note + ")" : ""); }).join("; ");
+      lines.push([c.family_name, c.athlete_name, c.email, Number(c.amount).toFixed(2), issuedFor(c.id).toFixed(2), balanceFor(c).toFixed(2),
+        LABEL[statusOf(c)], c.reason, c.credit_date, c.expires_on, hist, c.notes].map(csvCell).join(","));
+    });
+    var blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "eca-family-credits-" + today() + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  // ---- import ----
+  function parseCSV(text) {
+    var delim = text.split("\n")[0].indexOf("\t") !== -1 ? "\t" : ",";
+    var rows = [], row = [], cell = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) {
+        if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') q = false;
+        else cell += ch;
+      } else if (ch === '"' && cell === "") q = true;
+      else if (ch === delim) { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell); rows.push(row); row = []; cell = "";
+      } else cell += ch;
+    }
+    if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (c) { return c.trim() !== ""; }); });
+  }
+  function toNum(v) { var n = parseFloat(String(v || "").replace(/[$,\s]/g, "")); return isNaN(n) ? 0 : Math.round(n * 100) / 100; }
+  function toDate(v) {
+    v = String(v || "").trim();
+    if (!v) return null;
+    var m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+    m = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (m) { var y = m[3].length === 2 ? "20" + m[3] : m[3]; return y + "-" + m[1].padStart(2, "0") + "-" + m[2].padStart(2, "0"); }
+    var d = new Date(v);
+    return isNaN(d) ? null : d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  // Header → field, first match wins. Order matters: "issued date" before "date", "amount issued" before "amount".
+  var COLS = [
+    ["issued_on", /(issued|used|redeemed|applied).*date|date.*(issued|used|redeemed|applied)/],
+    ["method", /how|method|issued (via|as)/],
+    ["code", /^code$|promo|coupon/],
+    ["used_for", /session|tournament|applied to|used for/],
+    ["issued_amt", /(issued|used|redeemed|applied)(?!.*date)|amount.*(issued|used|redeemed)/],
+    ["status", /status|paid out|complete/],
+    ["balance", /balance|remaining|left/],
+    ["email", /e-?mail/],
+    ["athlete_name", /athlete|player|swimmer|child|kid/],
+    ["family_name", /family|parent|guardian|^name$|last name|customer/],
+    ["amount", /amount|credit|owed|\$|value|total/],
+    ["reason", /reason|why|description|for$|memo/],
+    ["expires_on", /expir/],
+    ["credit_date", /date|when|created/],
+    ["notes", /note|comment/],
+  ];
+  function mapHeader(head) {
+    var map = {}, used = {};
+    head.forEach(function (h, i) {
+      var k = h.trim().toLowerCase();
+      for (var j = 0; j < COLS.length; j++) {
+        if (!used[COLS[j][0]] && COLS[j][1].test(k)) { map[i] = COLS[j][0]; used[COLS[j][0]] = 1; return; }
+      }
+    });
+    return map;
+  }
+  var pending = [];
+  function buildImport(text) {
+    var rows = parseCSV(text || "");
+    var prev = document.getElementById("import-preview"), go = document.getElementById("import-go");
+    pending = [];
+    if (rows.length < 2) { prev.textContent = rows.length ? "Need a header row plus at least one credit." : ""; go.disabled = true; return; }
+    // Skip title rows above the real header (e.g. "OUTSTANDING CREDITS DUE").
+    var hdr = 0;
+    for (var h = 0; h < Math.min(rows.length - 1, 8); h++) {
+      var hm = mapHeader(rows[h]), hv = Object.keys(hm).map(function (i) { return hm[i]; });
+      if (hv.indexOf("amount") !== -1 && (hv.indexOf("family_name") !== -1 || hv.indexOf("athlete_name") !== -1)) { hdr = h; break; }
+    }
+    rows = rows.slice(hdr);
+    var map = mapHeader(rows[0]);
+    var fields = Object.keys(map).map(function (i) { return '"' + rows[0][i].trim() + '" → ' + map[i].replace(/_/g, " "); });
+    var has = function (f) { return Object.keys(map).some(function (i) { return map[i] === f; }); };
+    if (!has("family_name") && !has("athlete_name")) { prev.innerHTML = "Couldn't find a family/name column. Headers seen: " + esc(rows[0].join(", ")); go.disabled = true; return; }
+    if (!has("amount")) { prev.innerHTML = "Couldn't find an amount column. Headers seen: " + esc(rows[0].join(", ")); go.disabled = true; return; }
+    var skipped = 0;
+    rows.slice(1).forEach(function (r) {
+      var o = {};
+      Object.keys(map).forEach(function (i) { o[map[i]] = (r[i] || "").trim(); });
+      var amt = toNum(o.amount);
+      if (has("balance") && toNum(o.balance) > amt) { o.notes = ((o.notes ? o.notes + " " : "") + "Spreadsheet showed amount $" + amt + " but balance $" + toNum(o.balance) + " - please verify.").trim(); amt = toNum(o.balance); }
+      var fam = o.family_name || o.athlete_name;
+      if (!fam || !(amt > 0)) { skipped++; return; }
+      var iss = toNum(o.issued_amt);
+      if (!iss && has("balance") && o.balance !== "") iss = Math.max(0, Math.round((amt - toNum(o.balance)) * 100) / 100);
+      if (!iss && /^(yes|y|true|issued|used|redeemed|done|complete|paid)/i.test(o.status || "")) iss = amt;
+      pending.push({
+        credit: {
+          id: uid(), family_name: fam.slice(0, 200), athlete_name: o.family_name && o.athlete_name ? o.athlete_name.slice(0, 200) : null,
+          email: o.email || null, amount: amt, reason: o.reason || null, credit_date: toDate(o.credit_date) || today(),
+          expires_on: toDate(o.expires_on), notes: o.notes || null, created_by: me,
+        },
+        issued: Math.min(iss, amt), issued_on: toDate(o.issued_on),
+        method: o.method || (o.code ? "Coupon code" : null),
+        note: [o.code ? "Code: " + o.code : "", o.used_for || ""].filter(Boolean).join(" - ") || null,
+      });
+    });
+    var total = pending.reduce(function (s, p) { return s + p.credit.amount; }, 0);
+    var issued = pending.reduce(function (s, p) { return s + p.issued; }, 0);
+    prev.innerHTML = "<strong>" + pending.length + " credits</strong> totaling " + money(total) + (issued ? " (" + money(issued) + " already issued)" : "") +
+      (skipped ? " &middot; " + skipped + " rows skipped (no name or amount)" : "") + "<br>Columns: " + esc(fields.join(" · "));
+    go.disabled = !pending.length;
+  }
+  document.getElementById("btn-import").addEventListener("click", function () {
+    formWrap.style.display = "none";
+    var w = document.getElementById("import-wrap");
+    w.style.display = w.style.display === "none" ? "" : "none";
+  });
+  document.getElementById("import-cancel").addEventListener("click", function () { document.getElementById("import-wrap").style.display = "none"; });
+  document.getElementById("import-text").addEventListener("input", function (e) { buildImport(e.target.value); });
+  document.getElementById("import-file").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { document.getElementById("import-text").value = r.result; buildImport(r.result); };
+    r.readAsText(f);
+  });
+  document.getElementById("import-go").addEventListener("click", async function () {
+    var msg = document.getElementById("import-msg"), btn = this;
+    if (!pending.length) return;
+    btn.disabled = true; btn.textContent = "Importing…";
+    var r = await supabaseClient.from("family_credits").insert(pending.map(function (p) { return p.credit; }));
+    if (!r.error) {
+      var us = pending.filter(function (p) { return p.issued > 0; }).map(function (p) {
+        return { id: uid(), credit_id: p.credit.id, amount: p.issued, issued_on: p.issued_on || p.credit.credit_date, method: p.method ? p.method.slice(0, 100) : "Other", note: p.note ? p.note.slice(0, 900) + " (imported)" : "Imported from spreadsheet", created_by: me };
+      });
+      if (us.length) r = await supabaseClient.from("family_credit_uses").insert(us);
+    }
+    btn.textContent = "Import";
+    if (r.error) { btn.disabled = false; msg.className = "form-msg error"; msg.textContent = "Import failed: " + r.error.message; return; }
+    msg.className = "form-msg success"; msg.textContent = "Imported " + pending.length + " credits.";
+    pending = [];
+    document.getElementById("import-text").value = ""; document.getElementById("import-file").value = "";
+    document.getElementById("import-preview").textContent = "";
+    document.getElementById("cr-filter").value = "all";
+    load();
+  });
+
+  (async function () {
+    var auth = await requireRole(["owner"]);
+    if (!auth) return;
+    me = auth.user ? auth.user.id : (auth.session && auth.session.user ? auth.session.user.id : null);
+    load();
+  })();
+</script>
+</body>
+</html>

@@ -15,7 +15,7 @@ page is live, but saved wording only takes effect once these steps are done.
 |---|---|
 | `stripe-webhook` | **off** (`--no-verify-jwt`) |
 | `zeffy-webhook` | **off** (`--no-verify-jwt`) |
-| `send-monthly-hours-signoff` | as currently deployed (it's called by a cron job *and* by owners — check `list_edge_functions` before deploying) |
+| `send-monthly-hours-signoff` | **off** (`--no-verify-jwt`; it checks the caller itself and is also called by a cron job) |
 | `send-tournament-reminder` | on |
 | `send-team-announcement-email` | on |
 | `send-team-message` | on |

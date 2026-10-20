@@ -1,3 +1,14 @@
+> **Status (2026-10-20): both items below are DONE.** Nothing here is
+> waiting to be applied.
+>
+> - Family Credits: both migrations applied and verified (53 credits,
+>   $4,964.55 credited, 7 issued entries, RLS on). Outstanding is
+>   $4,404.55, not $4,464.55: the seed file itself adds up to that (likely
+>   a duplicate $60 issued entry for Eisley Schaaff, for the club to check).
+> - Zeffy club form: `20261020000000_zeffy_registration_club_form.sql`
+>   applied; `create-zeffy-registration` deployed (v2, verify_jwt on).
+>   The club form setting points at Zeffy's "test" form.
+
 # Apply: Family Credits database setup
 
 **For an agent/person with write access to the ECA Supabase project (`kdlkkucvdqmcaujhvrwq`).**

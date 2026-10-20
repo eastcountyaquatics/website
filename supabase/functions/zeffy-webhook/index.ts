@@ -307,19 +307,26 @@ async function recordPayLink(supabase: SupabaseClient, payment: Payment): Promis
   for (const { to, r } of emails.values()) {
     if (!to) continue;
     if (r.status === "paid") {
-      await sendEmail(to, `You're registered for ${r.tournament_name}!`,
-        `Thank you! ${r.athlete_name} is signed up for ${r.tournament_name}. ` +
-        `Your receipt was sent separately by Zeffy.`);
+      const m = await emailFor(supabase, "event_paid", { athlete_name: r.athlete_name, event_name: r.tournament_name, receipt_from: "Zeffy" }, {
+        subject: "You're registered for {{event_name}}!",
+        body: "Thank you! {{athlete_name}} is signed up for {{event_name}}. Your receipt was sent separately by {{receipt_from}}.",
+      });
+      await sendEmail(to, m.subject, m.text);
     } else if (r.status === "short") {
       const balance = r.due_cents - r.paid_cents;
       const reg = r.kind === "registration";
       const how = reg
         ? `Go to My Account and tap Register & Pay for the same session to pay the balance with the same payment code: ${r.code}`
         : `Open your invite link from the club to pay the balance with the same payment code: ${r.code}`;
-      await sendEmail(to, `Balance due for ${r.tournament_name}`,
-        `Thank you -- we received ${dollars(r.paid_cents)} toward ${r.athlete_name}'s spot in ${r.tournament_name}, ` +
-        `but the total is ${dollars(r.due_cents)}. ${r.athlete_name} isn't ${reg ? "registered" : "on the roster"} until the remaining ` +
-        `${dollars(balance)} is paid. ${how}`);
+      const m = await emailFor(supabase, "balance_due", {
+        athlete_name: r.athlete_name, event_name: r.tournament_name, paid: dollars(r.paid_cents), total: dollars(r.due_cents),
+        balance: dollars(balance), code: r.code, how_to_pay: how, registered_or_on_roster: reg ? "registered" : "on the roster",
+      }, {
+        subject: "Balance due for {{event_name}}",
+        body: "Thank you -- we received {{paid}} toward {{athlete_name}}'s spot in {{event_name}}, but the total is {{total}}. " +
+          "{{athlete_name}} isn't {{registered_or_on_roster}} until the remaining {{balance}} is paid. {{how_to_pay}}",
+      });
+      await sendEmail(to, m.subject, m.text);
     }
   }
   return "pay link: " + outcomes.join(", ");
@@ -406,9 +413,11 @@ async function recordPayment(supabase: SupabaseClient, payment: Payment): Promis
   }
 
   if (matched.length && buyerEmail) {
-    await sendEmail(buyerEmail, `You're all set with East County Aquatics`,
-      `Thank you! We've got your payment for ${campaign.title}: ${matched.join(", ")}. ` +
-      `Your receipt was sent separately by Zeffy.`);
+    const m = await emailFor(supabase, "zeffy_form_paid", { event_name: campaign.title, names: matched.join(", ") }, {
+      subject: "You're all set with East County Aquatics",
+      body: "Thank you! We've got your payment for {{event_name}}: {{names}}. Your receipt was sent separately by Zeffy.",
+    });
+    await sendEmail(buyerEmail, m.subject, m.text);
   }
   return matched.length === lines.length ? "recorded" : "recorded; some lines need a look";
 }
@@ -502,4 +511,20 @@ async function sendEmail(to: string, subject: string, text: string): Promise<voi
   } catch (err) {
     console.error("Resend email threw:", err);
   }
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

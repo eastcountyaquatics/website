@@ -89,8 +89,11 @@ Deno.serve(async (req) => {
     const deadlineNote = announcement.deadline
       ? ` Please respond by ${new Date(announcement.deadline + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric" })}.`
       : "";
-    const subject = `Team Interest: ${announcement.title}`;
-    const textBody = `${announcement.title}\n\n${announcement.body || ""}${deadlineNote}\n\nRespond on your dashboard: ${link}\n\nSan Diego East County Aquatics`;
+    const m = await emailFor(supabase, "team_interest",
+      { title: announcement.title, message: announcement.body || "", deadline_note: deadlineNote, link },
+      { subject: "Team Interest: {{title}}", body: "{{title}}\n\n{{message}}{{deadline_note}}\n\nRespond on your dashboard: {{link}}\n\nSan Diego East County Aquatics" });
+    const subject = m.subject;
+    const textBody = m.text;
 
     let notified = 0;
     let emailed = 0;
@@ -156,4 +159,20 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

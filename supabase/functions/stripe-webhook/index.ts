@@ -272,11 +272,11 @@ async function dispatchEvent(
 
   if (session.customer_email) {
     const names = registrations.map((r) => `${r.registration_label} — ${r.athlete_name}`).join("; ");
-    await sendReceiptEmail(
-      session.customer_email,
-      "Thank you for registering with East County Aquatics!",
-      `Thank you for registering: ${names}. A payment receipt for this transaction was sent separately by Stripe.`
-    );
+    const m = await emailFor(supabase, "registration_paid", { names, receipt_from: "Stripe" }, {
+      subject: "Thank you for registering with East County Aquatics!",
+      body: "Thank you for registering: {{names}}. A payment receipt for this transaction was sent separately by {{receipt_from}}.",
+    });
+    await sendReceiptEmail(session.customer_email, m.subject, m.text);
   }
 
   return new Response("ok", { status: 200 });
@@ -360,12 +360,13 @@ async function handleTournamentPayment(
   }
 
   if (payerEmail) {
-    await sendReceiptEmail(
-      payerEmail,
-      `You're registered for ${tournament?.name ?? "the tournament"}!`,
-      `Thank you! ${athlete?.full_name ?? "Your athlete"} is signed up for ${tournament?.name ?? "the tournament"}. ` +
-        `A payment receipt for this transaction was sent separately by Stripe.`
-    );
+    const m = await emailFor(supabase, "event_paid", {
+      athlete_name: athlete?.full_name ?? "Your athlete", event_name: tournament?.name ?? "the tournament", receipt_from: "Stripe",
+    }, {
+      subject: "You're registered for {{event_name}}!",
+      body: "Thank you! {{athlete_name}} is signed up for {{event_name}}. Your receipt was sent separately by {{receipt_from}}.",
+    });
+    await sendReceiptEmail(payerEmail, m.subject, m.text);
   }
 
   return new Response("ok", { status: 200 });
@@ -408,15 +409,13 @@ async function handleSponsorshipPayment(
       ? new Date(updated.paid_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
       : new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     const amount = `$${(updated.amount_cents / 100).toFixed(2)}`;
-    await sendReceiptEmail(
-      updated.contact_email,
-      "Thank you for your donation to East County Aquatics!",
-      `Thank you, ${updated.contact_name}, for your generous donation of ${amount} to San Diego East County Aquatics on ${paidDate}.\n\n` +
-        `San Diego East County Aquatics is a 501(c)(3) non-profit organization` +
-        ` (EIN: ${ein})` +
-        `. No goods or services were provided in exchange for this contribution, so it may be tax-deductible to the extent allowed by law. Please consult your tax advisor and retain this email for your records.` +
-        `\n\nWith gratitude,\nSan Diego East County Aquatics`
-    );
+    const m = await emailFor(supabase, "donation_thanks", { name: updated.contact_name, amount, date: paidDate, ein }, {
+      subject: "Thank you for your donation to East County Aquatics!",
+      body: "Thank you, {{name}}, for your generous donation of {{amount}} to San Diego East County Aquatics on {{date}}.\n\n" +
+        "San Diego East County Aquatics is a 501(c)(3) non-profit organization (EIN: {{ein}}). No goods or services were provided in exchange for this contribution, so it may be tax-deductible to the extent allowed by law. Please consult your tax advisor and retain this email for your records." +
+        "\n\nWith gratitude,\nSan Diego East County Aquatics",
+    });
+    await sendReceiptEmail(updated.contact_email, m.subject, m.text);
     await sendReceiptEmail(
       "eastcountyaquatics@gmail.com",
       "Donation received: " + updated.contact_name,
@@ -424,17 +423,16 @@ async function handleSponsorshipPayment(
         `Contact: ${updated.contact_email}.`
     );
   } else if (updated) {
-    await sendReceiptEmail(
-      updated.contact_email,
-      "Thank you for sponsoring East County Aquatics!",
-      `Thank you for sponsoring San Diego East County Aquatics on behalf of ${updated.company_name} ` +
-        `with a contribution of $${(updated.amount_cents / 100).toFixed(2)}. ` +
-        `We truly appreciate your support -- we'll be in touch about featuring your business.\n\n` +
-        `San Diego East County Aquatics is a 501(c)(3) non-profit organization` +
-        ` (EIN: ${orgEin()})` +
-        `. Your sponsorship is tax-deductible to the extent allowed by law; the deductible amount may be reduced ` +
-        `by the fair market value of any advertising or benefits received. Please consult your tax advisor and retain this email for your records.`
-    );
+    const m = await emailFor(supabase, "sponsor_thanks", {
+      company: updated.company_name, amount: `$${(updated.amount_cents / 100).toFixed(2)}`, ein: orgEin(),
+    }, {
+      subject: "Thank you for sponsoring East County Aquatics!",
+      body: "Thank you for sponsoring San Diego East County Aquatics on behalf of {{company}} with a contribution of {{amount}}. " +
+        "We truly appreciate your support -- we'll be in touch about featuring your business.\n\n" +
+        "San Diego East County Aquatics is a 501(c)(3) non-profit organization (EIN: {{ein}}). Your sponsorship is tax-deductible to the extent allowed by law; the deductible amount may be reduced " +
+        "by the fair market value of any advertising or benefits received. Please consult your tax advisor and retain this email for your records.",
+    });
+    await sendReceiptEmail(updated.contact_email, m.subject, m.text);
     await sendReceiptEmail(
       "eastcountyaquatics@gmail.com",
       "Sponsorship payment received: " + updated.company_name,
@@ -677,4 +675,20 @@ function mapSubscriptionStatus(sub: Stripe.Subscription): string {
   if (sub.status === "past_due" || sub.status === "unpaid") return "past_due";
   if (sub.status === "active" || sub.status === "trialing") return "active";
   return "pending";
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

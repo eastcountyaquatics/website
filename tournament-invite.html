@@ -71,6 +71,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/site-text.js?v=20261021"></script>
 <script src="js/fn-error.js"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
@@ -308,7 +309,7 @@
     if (payBoxEl) payBoxEl.remove();
 
     if (link.free) {
-      cardEl.innerHTML = "<h3>You're registered!</h3><p class=\"muted\">Your discount code covered the full amount &mdash; nothing to pay.</p>";
+      cardEl.innerHTML = "<h3>" + ecaT("ti.free_title") + "</h3><p class=\"muted\">" + ecaT("ti.free") + "</p>";
       return;
     }
 
@@ -318,29 +319,28 @@
     // pick the ticket, paste the code. Nothing to type for the amount.
     if (link.set_price) {
       box.innerHTML =
-        '<h3 style="margin-top:4px;">Pay on Zeffy</h3>' +
-        '<p class="muted">The club takes payments through Zeffy, which charges the club no fees.</p>' +
-        '<div class="pay-step"><span class="num">1</span><div style="flex:1;"><div class="muted" style="font-size:13px;">Your payment code &mdash; copy it</div><div class="val">' + escapeHtml(link.code) + "</div></div>" +
+        '<h3 style="margin-top:4px;">' + ecaT("ti.set_title") + '</h3>' +
+        '<p class="muted">' + ecaT("ti.intro_set") + '</p>' +
+        '<div class="pay-step"><span class="num">1</span><div style="flex:1;"><div class="muted" style="font-size:13px;">' + ecaT("ti.step_code") + '</div><div class="val">' + escapeHtml(link.code) + "</div></div>" +
         '<button type="button" class="btn btn-outline-dark" style="padding:6px 14px;" data-copy="' + escapeHtml(link.code) + '">Copy</button></div>' +
-        '<div class="pay-step"><span class="num">2</span><div style="flex:1;"><div class="muted" style="font-size:13px;">On Zeffy, pick this ticket</div><div class="val">' +
+        '<div class="pay-step"><span class="num">2</span><div style="flex:1;"><div class="muted" style="font-size:13px;">' + ecaT("ti.step_ticket") + '</div><div class="val">' +
           escapeHtml(link.tier_label || "") + " &mdash; " + amount + "</div></div></div>" +
-        '<div class="pay-step"><span class="num">3</span><div style="flex:1;font-size:14px;">Paste your code into <strong>&ldquo;Payment code&rdquo;</strong> on that ticket and pay.</div></div>' +
-        '<a class="btn btn-primary" style="width:100%;text-align:center;margin:8px 0 12px;" href="' + escapeHtml(link.form_url) + '" target="_blank" rel="noopener">Open Zeffy</a>' +
-        '<p class="muted" style="font-size:13px;">Paying for more than one swimmer? Add a ticket for each, with each swimmer&rsquo;s own code. Zeffy is free for the club because it runs on donations, so at checkout it suggests an optional tip to Zeffy (not the club). <strong>Feel free to set it to $0.</strong></p>' +
-        '<p class="muted" style="font-size:13px;">' + escapeHtml(data_athlete_name) + " is added to the roster as soon as the payment comes in, and you'll get a confirmation email.</p>" +
-        '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">I\'ve Paid &mdash; Check Status</button>';
+        '<div class="pay-step"><span class="num">3</span><div style="flex:1;font-size:14px;">' + ecaT("ti.step_paste") + '</div></div>' +
+        '<a class="btn btn-primary" style="width:100%;text-align:center;margin:8px 0 12px;" href="' + escapeHtml(link.form_url) + '" target="_blank" rel="noopener">' + ecaT("ti.open_set") + '</a>' +
+        '<p class="muted" style="font-size:13px;">' + ecaT("ti.multi") + " " + ecaT("zeffy.tip") + '</p>' +
+        '<p class="muted" style="font-size:13px;">' + ecaT("ti.roster_set", { athlete: escapeHtml(data_athlete_name) }) + "</p>" +
+        '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">' + ecaT("ti.check_btn") + '</button>';
     } else box.innerHTML =
-      '<h3 style="margin-top:4px;">Pay ' + amount + " on Zeffy</h3>" +
-      '<p class="muted">The club takes payments through Zeffy, which charges the club no fees. Copy these two things, then open the payment page:</p>' +
-      '<div class="pay-step"><span class="num">1</span><div style="flex:1;"><div class="muted" style="font-size:13px;">Amount to enter</div><div class="val">' + amount + "</div></div>" +
+      '<h3 style="margin-top:4px;">' + ecaT("ti.club_title", { amount: amount }) + "</h3>" +
+      '<p class="muted">' + ecaT("ti.intro_club") + '</p>' +
+      '<div class="pay-step"><span class="num">1</span><div style="flex:1;"><div class="muted" style="font-size:13px;">' + ecaT("ti.step_amount") + '</div><div class="val">' + amount + "</div></div>" +
       '<button type="button" class="btn btn-outline-dark" style="padding:6px 14px;" data-copy="' + escapeHtml((link.balance_cents / 100).toFixed(2)) + '">Copy</button></div>' +
-      '<div class="pay-step"><span class="num">2</span><div style="flex:1;"><div class="muted" style="font-size:13px;">Payment code (paste into the &ldquo;Payment code&rdquo; question)</div><div class="val">' + escapeHtml(link.code) + "</div></div>" +
+      '<div class="pay-step"><span class="num">2</span><div style="flex:1;"><div class="muted" style="font-size:13px;">' + ecaT("ti.step_code_club") + '</div><div class="val">' + escapeHtml(link.code) + "</div></div>" +
       '<button type="button" class="btn btn-outline-dark" style="padding:6px 14px;" data-copy="' + escapeHtml(link.code) + '">Copy</button></div>' +
-      '<a class="btn btn-primary" style="width:100%;text-align:center;margin:8px 0 12px;" href="' + escapeHtml(link.form_url) + '" target="_blank" rel="noopener">3. Open the Zeffy Payment Page</a>' +
-      '<p class="muted" style="font-size:13px;">Zeffy is free for the club because it runs on donations, so at checkout it suggests an optional tip to Zeffy (not the club). <strong>Feel free to set it to $0.</strong></p>' +
-      '<p class="muted" style="font-size:13px;">Enter exactly <strong>' + amount + "</strong> &mdash; " + escapeHtml(data_athlete_name) +
-      " is added to the roster once the full amount comes in, and you'll get a confirmation email. Paid? This page updates within a minute or two.</p>" +
-      '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">I\'ve Paid &mdash; Check Status</button>' +
+      '<a class="btn btn-primary" style="width:100%;text-align:center;margin:8px 0 12px;" href="' + escapeHtml(link.form_url) + '" target="_blank" rel="noopener">' + ecaT("ti.open_club") + '</a>' +
+      '<p class="muted" style="font-size:13px;">' + ecaT("zeffy.tip") + '</p>' +
+      '<p class="muted" style="font-size:13px;">' + ecaT("ti.roster_club", { amount: amount, athlete: escapeHtml(data_athlete_name) }) + "</p>" +
+      '<button type="button" class="btn btn-outline-dark" style="width:100%;" id="check-paid">' + ecaT("ti.check_btn") + '</button>' +
       (allowDiscount
         ? '<p style="margin-top:14px;font-size:13px;"><a href="#" id="discount-toggle">Have a discount code from the club?</a></p>' +
           '<div id="discount-wrap" style="display:none;"><div style="display:flex;gap:8px;flex-wrap:wrap;">' +

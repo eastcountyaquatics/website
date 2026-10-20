@@ -22,18 +22,21 @@
       .then(function (r) { openOptions = (r && r.data) || []; return openOptions; }, function () { return []; });
   }
 
+  // Wording comes from js/site-text.js (Admin > Site Wording) when loaded.
+  var T = typeof ecaT === "function" ? ecaT : function (k, v) { return k; };
+  (typeof ecaTextReady !== "undefined" ? ecaTextReady : Promise.resolve()).then(function () {
   document.querySelectorAll("[data-team-finder]").forEach(function (box) {
     var id = "tf" + Math.random().toString(36).slice(2, 7);
     box.className = "tf";
     box.innerHTML =
       '<form class="tf-form" novalidate>' +
-        '<div class="tf-field"><label for="' + id + '-dob">Athlete&rsquo;s birthdate</label>' +
+        '<div class="tf-field"><label for="' + id + '-dob">' + T("tf.birthdate") + '</label>' +
           '<input type="date" id="' + id + '-dob" required></div>' +
-        '<fieldset class="tf-field tf-sex"><legend>Team</legend>' +
-          '<label><input type="radio" name="' + id + '-sex" value="male"> Boys</label>' +
-          '<label><input type="radio" name="' + id + '-sex" value="female"> Girls</label>' +
+        '<fieldset class="tf-field tf-sex"><legend>' + T("tf.team_legend") + '</legend>' +
+          '<label><input type="radio" name="' + id + '-sex" value="male"> ' + T("tf.boys") + '</label>' +
+          '<label><input type="radio" name="' + id + '-sex" value="female"> ' + T("tf.girls") + '</label>' +
         '</fieldset>' +
-        '<button type="submit" class="btn btn-gold">Find my team</button>' +
+        '<button type="submit" class="btn btn-gold">' + T("tf.button") + '</button>' +
       '</form>' +
       '<div class="tf-result" aria-live="polite"></div>';
     var form = box.querySelector("form");
@@ -43,33 +46,33 @@
       var dob = form.querySelector('input[type="date"]').value;
       var sexInput = form.querySelector('input[type="radio"]:checked');
       var sex = sexInput ? sexInput.value : "";
-      if (!dob) { out.innerHTML = '<p class="tf-msg">Enter the athlete&rsquo;s birthdate.</p>'; return; }
+      if (!dob) { out.innerHTML = '<p class="tf-msg">' + T("tf.need_birthdate") + '</p>'; return; }
       var age = calcAge(dob);
-      if (age === null || age < 3) { out.innerHTML = '<p class="tf-msg">Check the birthdate.</p>'; return; }
+      if (age === null || age < 3) { out.innerHTML = '<p class="tf-msg">' + T("tf.bad_birthdate") + '</p>'; return; }
       // Under 7: Splashball (age-group teams start at 7 -- see the Splashball
       // and team pages). 19+: Masters.
-      if (age < 5) { out.innerHTML = '<p class="tf-msg">Splashball, our youngest program, starts at age 5. <a href="team-splashball.html" style="color:#fff;text-decoration:underline;">See Splashball</a>.</p>'; return; }
+      if (age < 5) { out.innerHTML = '<p class="tf-msg">' + T("tf.too_young") + '</p>'; return; }
       var slug = age > 18 ? "masters" : age < 7 ? "splashball" : deriveTeamSlug(age, sex);
-      if (!slug) { out.innerHTML = '<p class="tf-msg">From 12U up, teams are boys or girls &mdash; pick one.</p>'; return; }
+      if (!slug) { out.innerHTML = '<p class="tf-msg">' + T("tf.pick_sex") + '</p>'; return; }
       var also = age <= 8 && slug !== "splashball" ? "splashball" : null;
-      out.innerHTML = '<p class="tf-msg">Looking up open sessions&hellip;</p>';
+      out.innerHTML = '<p class="tf-msg">' + T("tf.looking") + '</p>';
       loadOptions().then(function (opts) {
         var open = opts.filter(function (o) { return (o.team_slugs || []).indexOf(slug) !== -1; });
         var html = '<div class="tf-card">' +
-          '<span class="tf-kicker">Your athlete&rsquo;s team this season</span>' +
+          '<span class="tf-kicker">' + T("tf.kicker") + '</span>' +
           '<strong class="tf-team">' + esc(LABELS[slug] || slug) + '</strong>' +
           (open.length
             ? '<ul class="tf-open">' + open.map(function (o) {
                 return '<li><span>' + esc(o.label) + '</span><b>' + money(o.amount_cents) + '</b></li>';
               }).join("") + '</ul>'
-            : '<p class="tf-note">No session is open for this team right now &mdash; the team page has the latest.</p>') +
+            : '<p class="tf-note">' + T("tf.none_open") + '</p>') +
           '<div class="tf-actions">' +
-            (open.length ? '<a class="btn btn-primary" href="dashboard.html">Register</a>' : "") +
-            '<a class="btn btn-ghost" href="' + pageFor(slug) + '">Practice times &amp; coaches</a>' +
+            (open.length ? '<a class="btn btn-primary" href="dashboard.html">' + T("tf.register_btn") + '</a>' : "") +
+            '<a class="btn btn-ghost" href="' + pageFor(slug) + '">' + T("tf.team_page_btn") + '</a>' +
           '</div>' +
-          (also ? '<p class="tf-note">New to the water? <a href="team-splashball.html">Splashball</a> is our learn-to-play program for the youngest athletes.</p>' : "") +
-          (slug !== "masters" && slug !== "splashball" ? '<p class="tf-note">New to ECA? <a href="signup.html?trial=1">Try 2 weeks first</a>.</p>' : "") +
-          '<p class="tf-fine">Based on age on Aug 1, ' + (seasonYear() + 1) + ', the USA Water Polo cutoff for this season.</p>' +
+          (also ? '<p class="tf-note">' + T("tf.splashball_note") + '</p>' : "") +
+          (slug !== "masters" && slug !== "splashball" ? '<p class="tf-note">' + T("tf.trial_note") + '</p>' : "") +
+          '<p class="tf-fine">' + T("tf.cutoff", { year: seasonYear() + 1 }) + '</p>' +
         '</div>';
         out.innerHTML = html;
       });
@@ -81,5 +84,6 @@
       box.querySelector(".tf-sex").classList.toggle("tf-hide", age !== null && (age <= 10 || age > 18));
       out.innerHTML = "";
     });
+  });
   });
 })();

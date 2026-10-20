@@ -134,18 +134,21 @@ Deno.serve(async (req) => {
       }
 
       const link = `${siteUrl}/hours-signoff.html?token=${encodeURIComponent(row!.token)}`;
-      const text =
-        `Hi ${p.full_name || "Coach"},\n\n` +
-        `Please confirm your coaching hours for ${monthLabel}:\n\n` +
-        `  Total hours: ${t.hours.toFixed(2)} (${t.sessions} session${t.sessions === 1 ? "" : "s"})\n` +
-        (t.travelDays ? `  Travel days: ${t.travelDays}\n` : "") +
-        `\nReview every session and either sign off or request edits here:\n${link}\n\n` +
-        `Thank you!\nSan Diego East County Aquatics`;
+      const m = await emailFor(supabase, "hours_signoff", {
+        coach_name: p.full_name || "Coach", month: monthLabel, hours: t.hours.toFixed(2),
+        sessions: `${t.sessions} session${t.sessions === 1 ? "" : "s"}`,
+        travel_line: t.travelDays ? `  Travel days: ${t.travelDays}\n` : "", link,
+      }, {
+        subject: "Please confirm your {{month}} coaching hours",
+        body: "Hi {{coach_name}},\n\nPlease confirm your coaching hours for {{month}}:\n\n  Total hours: {{hours}} ({{sessions}})\n{{travel_line}}" +
+          "\nReview every session and either sign off or request edits here:\n{{link}}\n\nThank you!\nSan Diego East County Aquatics",
+      });
+      const text = m.text;
       try {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from, to: p.email, subject: `Please confirm your ${monthLabel} coaching hours`, text }),
+          body: JSON.stringify({ from, to: p.email, subject: m.subject, text }),
         });
         if (res.ok) sent++;
         else errors.push(`${p.full_name || p.id}: email failed (${res.status})`);
@@ -183,4 +186,20 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

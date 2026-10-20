@@ -173,6 +173,9 @@
       <option value="static:forgot-password.html">Forgot Password</option>
       <option value="static:reset-password.html">Set New Password</option>
       <option value="static:coach-registration.html">Coach Registration</option>
+      <option value="static:tournament-invite.html">Tournament Invite (page frame)</option>
+      <option value="static:hosted-event-signup.html">Hosted Event Invite (page frame)</option>
+      <option value="static:hours-signoff.html">Coach Hours Sign-off (page frame)</option>
     </optgroup>
     <optgroup label="Custom Pages" id="custom-pages-group"></optgroup>
     <option value="new">+ New Page&hellip;</option>
@@ -290,6 +293,22 @@
       <button type="button" id="meta-reset" class="ed-link-secondary">Back to original</button>
       <span style="flex:1"></span>
       <button type="button" id="meta-cancel" class="ed-link-secondary">Cancel</button>
+      <button type="submit" class="ed-link-primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div id="opts-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="opts-dialog-title" hidden>
+  <form id="opts-form" class="ed-link-card">
+    <h3 id="opts-dialog-title">Edit dropdown choices</h3>
+    <p class="ed-link-hint" id="opts-hint"></p>
+    <textarea id="opts-text" rows="8" style="width:100%;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;"></textarea>
+    <p class="ed-link-hint">Saves right away.</p>
+    <div id="opts-msg" class="ed-link-msg"></div>
+    <div class="ed-link-actions">
+      <button type="button" id="opts-reset" class="ed-link-secondary">Back to original</button>
+      <span style="flex:1"></span>
+      <button type="button" id="opts-cancel" class="ed-link-secondary">Cancel</button>
       <button type="submit" class="ed-link-primary">Save</button>
     </div>
   </form>
@@ -1242,6 +1261,9 @@
         const a = e.target.closest && e.target.closest("a[href]");
         if (a && !a.hasAttribute("data-cms-link")) e.preventDefault();
       });
+      // Same for forms: clicking an editable Submit button edits its label.
+      doc.addEventListener("submit", function (e) { e.preventDefault(); e.stopPropagation(); }, true);
+      wireOptionSelects(doc);
 
       // Sections: the saved layout (order, hidden, added sections), or the
       // page as built. Older "added content" (page_extras) becomes an added
@@ -1450,6 +1472,68 @@
     if (err) { metaMsg("Could not save: " + err.error.message, false); return; }
     metaMsg("Saved.", true);
     setTimeout(function () { metaDialog.hidden = true; }, 700);
+  });
+
+  // ---- Dropdown choices (select[data-cms-options], js/option-blocks.js) ----
+  const optsDialog = document.getElementById("opts-dialog");
+  let optsSel = null, optsBuiltin = {}, optsCloseTimer = null;
+  const OPT_HINTS = {
+    amounts: "One amount per line, e.g. 50. \u201cOther amount\u201d stays at the end.",
+    tiers: "One level per line: Name | minimum $ | what it says, e.g. Bronze | 500 | Bronze Sponsor: $500-$1,249",
+    text: "One choice per line.",
+  };
+  async function wireOptionSelects(doc) {
+    const sels = doc.querySelectorAll("select[data-cms-options]");
+    if (!sels.length) return;
+    const win = canvas.contentWindow;
+    optsBuiltin = {};
+    sels.forEach(function (sel) {
+      optsBuiltin[sel.getAttribute("data-cms-options")] = win.ecaLinesFromSelect ? win.ecaLinesFromSelect(sel) : "";
+      sel.style.outline = "2px dashed rgba(255,212,0,.9)";
+      sel.title = "Click to edit these choices";
+      function open(e) { e.preventDefault(); e.stopPropagation(); openOpts(sel); }
+      sel.addEventListener("mousedown", open);
+      sel.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") open(e); });
+    });
+    const keys = Object.keys(optsBuiltin);
+    const { data } = await supabaseClient.from("content_blocks").select("block_key, content").eq("page_path", currentPath).in("block_key", keys);
+    (data || []).forEach(function (r) {
+      const sel = doc.querySelector('select[data-cms-options="' + r.block_key + '"]');
+      if (sel && win.ecaApplyOptions) win.ecaApplyOptions(sel, r.content);
+    });
+  }
+  function openOpts(sel) {
+    clearTimeout(optsCloseTimer);
+    optsSel = sel;
+    const win = canvas.contentWindow;
+    document.getElementById("opts-hint").textContent = OPT_HINTS[sel.getAttribute("data-options-kind") || "text"];
+    document.getElementById("opts-text").value = win.ecaLinesFromSelect(sel);
+    document.getElementById("opts-msg").textContent = "";
+    optsDialog.hidden = false;
+    document.getElementById("opts-text").focus();
+  }
+  document.getElementById("opts-cancel").addEventListener("click", function () { optsDialog.hidden = true; });
+  optsDialog.addEventListener("click", function (e) { if (e.target === optsDialog) optsDialog.hidden = true; });
+  document.getElementById("opts-reset").addEventListener("click", function () {
+    if (optsSel) document.getElementById("opts-text").value = optsBuiltin[optsSel.getAttribute("data-cms-options")] || "";
+  });
+  document.getElementById("opts-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (!optsSel) return;
+    const key = optsSel.getAttribute("data-cms-options");
+    const text = document.getElementById("opts-text").value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean).join("\n");
+    const win = canvas.contentWindow;
+    if (text && !win.ecaOptionsFromLines(optsSel.getAttribute("data-options-kind") || "text", text)) {
+      const m = document.getElementById("opts-msg"); m.style.color = "#c0392b"; m.textContent = "Couldn't read those choices \u2014 check the format above."; return;
+    }
+    const r = !text || text === optsBuiltin[key]
+      ? await supabaseClient.from("content_blocks").delete().eq("page_path", currentPath).eq("block_key", key)
+      : await supabaseClient.from("content_blocks").upsert({ page_path: currentPath, block_key: key, content: text }, { onConflict: "block_key" });
+    const m = document.getElementById("opts-msg");
+    if (r.error) { m.style.color = "#c0392b"; m.textContent = "Could not save: " + r.error.message; return; }
+    win.ecaApplyOptions(optsSel, text || optsBuiltin[key]);
+    m.style.color = "#1f6b35"; m.textContent = "Saved.";
+    optsCloseTimer = setTimeout(function () { optsDialog.hidden = true; }, 600);
   });
 
   const linkDialog = document.getElementById("link-dialog");

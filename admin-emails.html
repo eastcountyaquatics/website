@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emails | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261014i">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Emails</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .em-group{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:28px 0 10px;}
+  .em-card{background:#fff;border:1px solid #e3e6f0;border-radius:10px;margin-bottom:10px;}
+  .em-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:14px 18px;cursor:pointer;}
+  .em-head h4{margin:0 0 2px;font-size:16px;}
+  .em-head p{margin:0;font-size:13px;color:var(--muted);}
+  .em-pill{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;background:#f1f1f1;color:#666;}
+  .em-pill.custom{background:#e3ecff;color:#1a3fa8;}
+  .em-edit{display:none;padding:0 18px 18px;border-top:1px solid #eef0f5;}
+  .em-card.open .em-edit{display:block;}
+  .em-edit label{display:block;font-weight:700;font-size:13px;margin:14px 0 4px;}
+  .em-edit input,.em-edit textarea{width:100%;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;font-size:14.5px;}
+  .em-edit textarea{min-height:170px;resize:vertical;line-height:1.5;}
+  .em-vars{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .em-var{border:1px solid #d7e6ee;background:var(--foam);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;color:var(--navy);}
+  .em-var:hover{background:#e3ecff;}
+  .em-preview{margin-top:14px;background:#f7f8fb;border:1px solid #e3e6f0;border-radius:8px;padding:12px 14px;font-size:14px;white-space:pre-wrap;}
+  .em-preview .subj{font-weight:700;margin-bottom:8px;white-space:normal;}
+  .em-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:860px;">
+    <div class="notice">
+      Change the wording of any email the site sends. Click an email to open it. Words in <strong>{{double braces}}</strong> are filled in automatically when it's sent &mdash; click one below the message to add it where your cursor is. <strong>Back to original</strong> restores the built-in wording. Payment receipts from Stripe and Zeffy themselves are set up in those services.
+    </div>
+    <div id="em-msg" class="form-msg"></div>
+    <div id="em-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261014p"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/email-catalog.js"></script>
+<script>
+  var saved = {};
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  // Example values for the preview.
+  var SAMPLE = {
+    names: "Max Smith — 14U Boys Fall 2026", receipt_from: "Stripe", athlete_name: "Max Smith", event_name: "Finest Tournament",
+    paid: "$100.00", total: "$185.00", balance: "$85.00", code: "ECA-7KQ2MX", registered_or_on_roster: "on the roster",
+    how_to_pay: "Open your invite link from the club to pay the balance with the same payment code: ECA-7KQ2MX",
+    name: "Jordan Lee", amount: "$50.00", date: "October 21, 2026", ein: "12-3456789", company: "Beshay Enterprises",
+    tournament_name: "Finest Tournament", link: "https://eastcountyaquatics.github.io/website/…", title: "Winter 18U team",
+    message: "We're forming a Winter 18U team. Let us know if your athlete wants to play.", deadline_note: " Please respond by November 1.",
+    subject: "Practice moved to Lakeside", sender: "Coach Clint", greeting: "Hi Sam,", team_is: "Coronado WPC is",
+    details: "Date: Sat, Dec 5, 2026\nLocation: Granite Hills HS\nFee per team: $350.00", description: "\n\nRound robin, 3 games guaranteed.",
+    club_email: "eastcountyaquatics@gmail.com", changes: "\n\nWhat changed:\n  - Start time is now 8:00 AM", note: "",
+    next_step: "Pick your teams and pay here (no account needed):", coach_name: "Clint McLaughlin", month: "October 2026",
+    hours: "42.50", sessions: "18 sessions", travel_line: "  Travel days: 2\n",
+  };
+  function fill(s) { return s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, function (m, k) { return k in SAMPLE ? SAMPLE[k] : m; }); }
+  function current(e) { return saved[e.key] || { subject: e.subject, body: e.body }; }
+
+  function render() {
+    var html = "", group = "";
+    ECA_EMAILS.forEach(function (e) {
+      if (e.group !== group) { group = e.group; html += '<div class="em-group">' + esc(group) + "</div>"; }
+      var c = current(e), custom = !!saved[e.key];
+      html += '<div class="em-card" data-key="' + e.key + '">' +
+        '<div class="em-head" data-toggle="1"><div><h4>' + esc(e.name) + "</h4><p>" + esc(e.when) + "</p></div>" +
+        '<span class="em-pill' + (custom ? " custom" : "") + '">' + (custom ? "Customized" : "Built-in wording") + "</span></div>" +
+        '<div class="em-edit">' +
+          '<label>Subject</label><input type="text" data-f="subject" maxlength="200" value="' + esc(c.subject) + '">' +
+          '<label>Message</label><textarea data-f="body" maxlength="8000">' + esc(c.body) + "</textarea>" +
+          '<div class="muted" style="font-size:12.5px;margin-top:8px;">Fill-ins (click to add):</div><div class="em-vars">' +
+            Object.keys(e.vars).map(function (v) { return '<button type="button" class="em-var" data-var="' + v + '" title="' + esc(e.vars[v]) + '">{{' + v + "}}</button>"; }).join("") +
+          "</div>" +
+          '<div class="muted" style="font-size:12.5px;margin-top:14px;">Preview with example details:</div>' +
+          '<div class="em-preview"><div class="subj"></div><div class="body"></div></div>' +
+          '<div class="em-actions"><button type="button" class="btn btn-primary" data-save="1">Save</button>' +
+            '<button type="button" class="btn btn-outline-dark" data-reset="1"' + (custom ? "" : " disabled") + ">Back to original</button>" +
+            '<span class="form-msg" data-msg="1" style="margin:0;"></span></div>' +
+        "</div></div>";
+    });
+    document.getElementById("em-list").innerHTML = html;
+    document.querySelectorAll(".em-card").forEach(preview);
+  }
+  function preview(card) {
+    var subj = card.querySelector('[data-f="subject"]').value, body = card.querySelector('[data-f="body"]').value;
+    card.querySelector(".em-preview .subj").textContent = "Subject: " + fill(subj);
+    card.querySelector(".em-preview .body").textContent = fill(body);
+  }
+  var lastField = {};
+  document.getElementById("em-list").addEventListener("focusin", function (ev) {
+    var f = ev.target.closest("[data-f]"); if (f) lastField[f.closest(".em-card").dataset.key] = f;
+  });
+  document.getElementById("em-list").addEventListener("input", function (ev) {
+    var card = ev.target.closest(".em-card"); if (card) preview(card);
+  });
+  document.getElementById("em-list").addEventListener("click", async function (ev) {
+    var card = ev.target.closest(".em-card"); if (!card) return;
+    var key = card.dataset.key, e = ECA_EMAILS.find(function (x) { return x.key === key; });
+    var msg = card.querySelector("[data-msg]");
+    if (ev.target.closest("[data-toggle]")) { card.classList.toggle("open"); return; }
+    var v = ev.target.closest("[data-var]");
+    if (v) {
+      var f = lastField[key] || card.querySelector('[data-f="body"]');
+      var tok = "{{" + v.dataset.var + "}}", st = f.selectionStart != null ? f.selectionStart : f.value.length, en = f.selectionEnd != null ? f.selectionEnd : st;
+      f.value = f.value.slice(0, st) + tok + f.value.slice(en);
+      f.focus(); f.selectionStart = f.selectionEnd = st + tok.length;
+      preview(card); return;
+    }
+    if (ev.target.closest("[data-save]")) {
+      var subject = card.querySelector('[data-f="subject"]').value.trim(), body = card.querySelector('[data-f="body"]').value.replace(/\s+$/, "");
+      if (!subject || !body) { msg.className = "form-msg error"; msg.textContent = "Subject and message can't be empty."; return; }
+      var r;
+      if (subject === e.subject && body === e.body) r = await supabaseClient.from("email_templates").delete().eq("key", key);
+      else r = await supabaseClient.from("email_templates").upsert({ key: key, subject: subject, body: body, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (r.error) { msg.className = "form-msg error"; msg.textContent = "Could not save: " + r.error.message; return; }
+      if (subject === e.subject && body === e.body) delete saved[key]; else saved[key] = { subject: subject, body: body };
+      var open = key; render(); var c2 = document.querySelector('.em-card[data-key="' + open + '"]'); c2.classList.add("open");
+      var m2 = c2.querySelector("[data-msg]"); m2.className = "form-msg success"; m2.textContent = "Saved — the next email uses this.";
+      return;
+    }
+    if (ev.target.closest("[data-reset]")) {
+      if (!confirm("Go back to the built-in wording for “" + e.name + "”?")) return;
+      var d = await supabaseClient.from("email_templates").delete().eq("key", key);
+      if (d.error) { msg.className = "form-msg error"; msg.textContent = "Could not reset: " + d.error.message; return; }
+      delete saved[key]; render(); document.querySelector('.em-card[data-key="' + key + '"]').classList.add("open");
+    }
+  });
+
+  (async function () {
+    var auth = await requireRole(["owner"]);
+    if (!auth) return;
+    var r = await supabaseClient.from("email_templates").select("key, subject, body");
+    if (r.error) {
+      var m = document.getElementById("em-msg"); m.className = "form-msg error";
+      m.textContent = "Couldn't load saved emails (" + r.error.message + "). If this is new, the email_templates table may not be set up yet.";
+    }
+    (r.data || []).forEach(function (row) { saved[row.key] = { subject: row.subject, body: row.body }; });
+    render();
+  })();
+</script>
+</body>
+</html>

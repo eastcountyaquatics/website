@@ -107,7 +107,7 @@
         <label data-cms="signup-0009" for="confirm_password">Confirm Password</label>
         <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="8" required>
       </div>
-      <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Create Account</button>
+      <button type="submit" id="submit-btn" data-cms="signup-btn01" class="btn btn-primary auth-submit">Create Account</button>
     </form>
 
     <div data-cms="signup-0010" class="auth-switch">Already have an account? <a href="login.html">Sign in</a></div>
@@ -177,7 +177,7 @@
     }
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Creating Account...";
+    submitBtn.dataset.idle = submitBtn.dataset.idle || submitBtn.innerHTML; submitBtn.textContent = "Creating Account...";
 
     const { data, error } = await supabaseClient.auth.signUp({
       email: email,
@@ -189,7 +189,7 @@
     });
 
     submitBtn.disabled = false;
-    submitBtn.textContent = "Create Account";
+    submitBtn.innerHTML = submitBtn.dataset.idle || "Create Account";
 
     if (error) {
       msg.className = "form-msg error";

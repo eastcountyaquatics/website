@@ -97,7 +97,7 @@
         <input type="checkbox" id="stay-signed-in" style="width:auto;" checked>
         <label data-cms="login-0005" for="stay-signed-in" style="margin:0;">Stay signed in on this device</label>
       </div>
-      <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Sign In</button>
+      <button type="submit" id="submit-btn" data-cms="login-btn01" class="btn btn-primary auth-submit">Sign In</button>
     </form>
 
     <div class="auth-switch">
@@ -138,7 +138,7 @@
     const staySignedIn = document.getElementById("stay-signed-in").checked;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Signing In...";
+    submitBtn.dataset.idle = submitBtn.dataset.idle || submitBtn.innerHTML; submitBtn.textContent = "Signing In...";
 
     // The shared global supabaseClient was already constructed (with
     // whatever storage last session left behind) by the time this handler
@@ -153,7 +153,7 @@
     const { error } = await authClient.auth.signInWithPassword({ email: email, password: password });
 
     submitBtn.disabled = false;
-    submitBtn.textContent = "Sign In";
+    submitBtn.innerHTML = submitBtn.dataset.idle || "Sign In";
 
     if (error) {
       msg.className = "form-msg error";

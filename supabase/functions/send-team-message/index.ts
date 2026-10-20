@@ -81,7 +81,10 @@ Deno.serve(async (req) => {
     const from = Deno.env.get("RECEIPT_EMAIL_FROM") || "San Diego East County Aquatics <onboarding@resend.dev>";
     const link = `${siteUrl}/dashboard.html`;
     const sender = profile.full_name || "ECA";
-    const emailText = `${text}\n\n— ${sender}, San Diego East County Aquatics\nYou can also see this on My Account: ${link}`;
+    const m = await emailFor(supabase, "team_message", { subject, message: text, sender, link },
+      { subject: "{{subject}}", body: "{{message}}\n\n— {{sender}}, San Diego East County Aquatics\nYou can also see this on My Account: {{link}}" });
+    const emailText = m.text;
+    const emailSubject = m.subject || subject;
 
     let notified = 0;
     let emailed = 0;
@@ -103,7 +106,7 @@ Deno.serve(async (req) => {
             const res = await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ from, to: email, subject, text: emailText }),
+              body: JSON.stringify({ from, to: email, subject: emailSubject, text: emailText }),
             });
             if (res.ok) emailed++;
             else emailErrors.push(`${email}: ${res.status}`);
@@ -148,4 +151,20 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

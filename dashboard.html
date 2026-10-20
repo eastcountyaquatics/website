@@ -346,7 +346,7 @@
 
     <div class="field" style="margin-top:16px;">
       <label data-cms="dashboard-0034" for="consent-heard-about">How did you hear about us? <span class="muted" style="font-weight:400;">(optional)</span></label>
-      <select id="consent-heard-about">
+      <select id="consent-heard-about" data-cms-options="dashboard-opt-heard" data-options-kind="text">
         <option value="">Select...</option>
         <option value="Returning Player">Returning Player</option>
         <option value="ECA Coach">ECA Coach</option>
@@ -437,12 +437,14 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/fn-error.js"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021"></script>
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/coach-reg-gate.js"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/tournament-teams.js"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/option-blocks.js"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/page-extras.js"></script>
 <script src="js/team-age.js"></script>
@@ -1371,6 +1373,7 @@
 
   async function loadRegistrationOptions() {
     const wrap = document.getElementById("registration-options");
+    await ecaTextReady;
     const { data: options, error } = await supabaseClient
       .from("registration_options")
       .select("id, label, description, amount_cents, season, team_slugs, payment_provider, zeffy_form_url")
@@ -1382,7 +1385,7 @@
       return;
     }
     if (!options || options.length === 0) {
-      wrap.innerHTML = '<p class="muted" style="text-align:center;">No programs are open for registration right now &mdash; check back soon.</p>';
+      wrap.innerHTML = '<p class="muted" style="text-align:center;">' + ecaT("rc.none_open") + '</p>';
       return;
     }
 
@@ -1393,7 +1396,7 @@
       return myAthletes.some(function (a) { return athleteFitsProgram(a, o.team_slugs || []); });
     });
     if (!shown.length) {
-      wrap.innerHTML = '<p class="muted" style="text-align:center;">No programs are open for your athletes&rsquo; age groups right now &mdash; check back soon.</p>' + mastersNote();
+      wrap.innerHTML = '<p class="muted" style="text-align:center;">' + ecaT("rc.none_for_age") + '</p>' + mastersNote();
       return;
     }
 
@@ -1426,13 +1429,13 @@
           const done = fits.filter(function (a) { return regDone[o.id + ":" + a.id]; });
           const eligible = fits.filter(function (a) { return !regDone[o.id + ":" + a.id]; });
           const doneHtml = done.map(function (a) {
-            return '<div style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;color:#1f6b35;font-weight:700;">&#10003; ' +
-              escapeHtml(a.full_name) + " &mdash; Registered</div>";
+            return '<div style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;color:#1f6b35;font-weight:700;">' +
+              ecaT("rc.registered", { name: escapeHtml(a.full_name) }) + "</div>";
           }).join("");
           const athleteChecks = !myAthletes.length
-            ? '<p class="muted" style="font-size:13px;">Add an athlete above first.</p>'
+            ? '<p class="muted" style="font-size:13px;">' + ecaT("rc.add_first") + '</p>'
             : !fits.length
-              ? '<p class="muted" style="font-size:13px;">None of your athletes are in this program&rsquo;s age group.</p>'
+              ? '<p class="muted" style="font-size:13px;">' + ecaT("rc.none_fit") + '</p>'
               : doneHtml + eligible
                   .map(function (a) {
                     const sh = regShort[o.id + ":" + a.id];
@@ -1440,7 +1443,7 @@
                       '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
                       '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
                       escapeHtml(a.full_name) +
-                      (sh ? ' <span style="color:#a15c00;font-weight:700;font-size:12.5px;">&middot; ' + formatAmount(Math.max(0, sh.amount_due_cents - sh.paid_cents), "usd") + " balance due</span>" : "") +
+                      (sh ? ' <span style="color:#a15c00;font-weight:700;font-size:12.5px;">&middot; ' + ecaT("rc.balance", { amount: formatAmount(Math.max(0, sh.amount_due_cents - sh.paid_cents), "usd") }) + "</span>" : "") +
                       "</label>"
                     );
                   })
@@ -1452,7 +1455,7 @@
             '<p style="font-size:22px;font-weight:800;color:var(--blue);margin:10px 0;">' + amount + "</p>" +
             '<div data-athlete-checks="' + o.id + '">' + athleteChecks + "</div>" +
             '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '" style="margin-top:10px;width:100%;" ' +
-            (eligible.length ? "" : "disabled") + ">Register &amp; Pay</button>" +
+            (eligible.length ? "" : "disabled") + ">" + ecaT("rc.button") + "</button>" +
             '<div class="form-msg" data-checkout-msg="' + o.id + '"></div>' +
             "</div>"
           );
@@ -1467,7 +1470,7 @@
         const checked = wrap.querySelectorAll('input[data-option="' + optionId + '"]:checked');
         if (checked.length === 0) {
           msgEl.className = "form-msg error";
-          msgEl.textContent = "Select at least one athlete.";
+          msgEl.textContent = ecaTPlain("rc.select_one");
           return;
         }
         const items = Array.from(checked).map(function (c) {
@@ -1571,24 +1574,21 @@
     const clubForm = data.set_price === false;
     const toPay = data.codes.filter(function (c) { return c.status !== "paid"; });
     zregCodes = toPay.map(function (c) { return c.code; });
-    document.getElementById("zreg-title").textContent = "Pay on Zeffy \u2014 " + data.option_label;
+    document.getElementById("zreg-title").innerHTML = ecaT("dz.title", { session: escapeHtml(data.option_label) });
     document.getElementById("zreg-intro").innerHTML = clubForm
-      ? "The club takes payments through Zeffy, which charges the club no fees. On Zeffy, enter the <strong>amount</strong> shown below and paste the athlete's <strong>payment code</strong>" +
-        (toPay.length === 1 ? " &mdash; tap Copy Code &amp; Open Zeffy and the code is ready to paste." : ".")
-      : "The club takes payments through Zeffy, which charges the club no fees. Each athlete has their own payment code &mdash; copy it, pick the ticket on Zeffy, and paste the code on that athlete's ticket.";
-    document.getElementById("zreg-multi").textContent = toPay.length > 1
-      ? (clubForm ? "Add a ticket for each athlete, each with that athlete's own amount and code." : "Add a ticket for each athlete, with each athlete's own code.")
-      : "";
+      ? ecaT(toPay.length === 1 ? "dz.intro_club_one" : "dz.intro_club")
+      : ecaT("dz.intro_set");
+    document.getElementById("zreg-multi").innerHTML = toPay.length > 1 ? ecaT(clubForm ? "dz.multi_club" : "dz.multi_set") : "";
     document.getElementById("zreg-codes").innerHTML = data.codes.map(function (c) {
       const owing = c.status === "paid"
-        ? '<div style="font-size:12.5px;color:#1f6b35;font-weight:700;">Registered &mdash; nothing to pay' + (data.discount_code ? " (" + escapeHtml(data.discount_code) + ")" : "") + "</div>"
+        ? '<div style="font-size:12.5px;color:#1f6b35;font-weight:700;">' + ecaT("dz.registered") + (data.discount_code ? " (" + escapeHtml(data.discount_code) + ")" : "") + "</div>"
         : c.paid_cents > 0
         ? '<div class="muted" style="font-size:12.5px;">Paid ' + formatAmount(c.paid_cents, "usd") + " of " + formatAmount(c.amount_due_cents, "usd") +
           " &mdash; <strong>" + formatAmount(c.balance_cents, "usd") + " balance due</strong></div>"
         : clubForm
-        ? '<div style="font-size:13px;">Amount to enter: <strong>' + formatAmount(c.amount_due_cents, "usd") + "</strong>" +
+        ? '<div style="font-size:13px;">' + ecaT("dz.amount", { amount: formatAmount(c.amount_due_cents, "usd") }) +
           (data.discount_code ? ' <span class="muted">(' + escapeHtml(data.discount_code) + " applied)</span>" : "") + "</div>"
-        : '<div class="muted" style="font-size:12.5px;">Pick the ticket for ' + formatAmount(c.amount_due_cents, "usd") + "</div>";
+        : '<div class="muted" style="font-size:12.5px;">' + ecaT("dz.pick_ticket", { amount: formatAmount(c.amount_due_cents, "usd") }) + "</div>";
       if (c.status === "paid") {
         return '<div style="border:1px solid #e3e6f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-weight:700;">' + escapeHtml(c.athlete_name) + "</div>" + owing + "</div>";
       }
@@ -1600,7 +1600,7 @@
     const open = document.getElementById("zreg-open");
     open.href = /^https:\/\//.test(data.form_url) ? data.form_url : "#";
     open.style.display = toPay.length ? "" : "none";
-    open.textContent = toPay.length === 1 ? "Copy Code & Open Zeffy" : "Open Zeffy";
+    open.textContent = ecaTPlain(toPay.length === 1 ? "dz.open_one" : "dz.open");
     document.getElementById("zeffy-reg-overlay").style.display = "flex";
   }
   var zregCodes = [];

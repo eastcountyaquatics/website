@@ -96,10 +96,14 @@ Deno.serve(async (req) => {
       if (!invite || !athlete.parent_id) continue;
       const link = `${siteUrl}/tournament-invite.html?token=${encodeURIComponent(invite.token)}`;
       const isUnpaidAccept = invite.status !== "paid";
-      const title = `Reminder: ${athlete.full_name} and ${tournament.name}`;
-      const bodyText = invite.status === "paid"
-        ? `${athlete.full_name} is already paid up for ${tournament.name} -- no action needed.`
-        : `Don't forget to respond${isUnpaidAccept ? " and pay" : ""} for ${athlete.full_name}'s spot in ${tournament.name}. ${link}`;
+      const paidUp = invite.status === "paid";
+      const m = await emailFor(supabase, paidUp ? "tournament_reminder_paid" : "tournament_reminder_unpaid",
+        { athlete_name: athlete.full_name, tournament_name: tournament.name, link }, paidUp
+          ? { subject: "Reminder: {{athlete_name}} and {{tournament_name}}", body: "{{athlete_name}} is already paid up for {{tournament_name}} -- no action needed.\n\nSan Diego East County Aquatics" }
+          : { subject: "Reminder: {{athlete_name}} and {{tournament_name}}", body: "Don't forget to respond" + (isUnpaidAccept ? " and pay" : "") + " for {{athlete_name}}'s spot in {{tournament_name}}. {{link}}\n\nSan Diego East County Aquatics" });
+      const title = m.subject;
+      // The in-app notification gets the message without the sign-off line.
+      const bodyText = m.text.replace(/\n+San Diego East County Aquatics\s*$/, "").trim();
 
       const { error: notifError } = await supabase.from("notifications").insert({
         user_id: athlete.parent_id,
@@ -121,7 +125,7 @@ Deno.serve(async (req) => {
                 from,
                 to: parentProfile.email,
                 subject: title,
-                text: `${bodyText}\n\nSan Diego East County Aquatics`,
+                text: m.text,
               }),
             });
             if (res.ok) emailed++;
@@ -151,4 +155,20 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

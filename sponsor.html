@@ -135,7 +135,7 @@
           </div>
           <div class="field">
             <label data-cms="sponsor-0009" for="dn-amount-choice">Donation Amount</label>
-            <select id="dn-amount-choice">
+            <select id="dn-amount-choice" data-cms-options="sponsor-opt-amounts" data-options-kind="amounts">
               <option value="25">$25</option>
               <option value="50" selected>$50</option>
               <option value="100">$100</option>
@@ -170,7 +170,7 @@
           </div>
           <div class="field">
             <label data-cms="sponsor-0015" for="sp-tier">Sponsorship Level</label>
-            <select id="sp-tier">
+            <select id="sp-tier" data-cms-options="sponsor-opt-tiers" data-options-kind="tiers">
               <option value="Bronze" data-min="500">Bronze Sponsor: $500-$1,249</option>
               <option value="Silver" data-min="1250">Silver Sponsorship: $1,250-$2,499</option>
               <option value="Gold" data-min="2500">Gold Sponsorship: $2,500-$3,999</option>
@@ -198,7 +198,7 @@
           </div>
         </div>
 
-        <button type="submit" id="sponsor-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
+        <button type="submit" id="sponsor-submit" data-cms="sponsor-btn01" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
     </div>
     <p data-cms="sponsor-0022" class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. Contributions are tax-deductible to the extent allowed by law; for sponsorships, the deductible amount may be reduced by the value of any advertising or benefits received &mdash; please consult your tax advisor. Prefer to pay another way, or have questions first? Email us at <a href="mailto:eastcountyaquatics@gmail.com">eastcountyaquatics@gmail.com</a>.</p>
@@ -223,6 +223,7 @@
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/option-blocks.js"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/link-blocks.js?v=20261014p"></script>
 <script src="js/page-extras.js"></script>
@@ -326,7 +327,7 @@
     }
 
     btn.disabled = true;
-    btn.textContent = "Submitting...";
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = "Submitting...";
 
     // Inserted directly (RLS lets anyone submit a pending sponsorship), then
     // the checkout function looks it up by id to build the Stripe session --
@@ -365,7 +366,7 @@
 
     if (error || !row) {
       btn.disabled = false;
-      btn.textContent = "Continue to Payment";
+      btn.innerHTML = btn.dataset.idle || "Continue to Payment";
       msg.className = "form-msg error";
       msg.textContent = "Could not submit: " + (error ? error.message : "unknown error");
       return;
@@ -376,7 +377,7 @@
     });
 
     btn.disabled = false;
-    btn.textContent = "Continue to Payment";
+    btn.innerHTML = btn.dataset.idle || "Continue to Payment";
 
     if (fnError || !data || !data.url) {
       msg.className = "form-msg error";

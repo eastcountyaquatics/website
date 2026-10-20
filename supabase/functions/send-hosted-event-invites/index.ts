@@ -100,41 +100,28 @@ Deno.serve(async (req) => {
           ]),
       ].filter(Boolean);
       const paid = inv.status === "paid";
-      const lines = isUpdate
-        ? [
-          greeting,
-          "",
-          `There's an update to ${ev.name}, hosted by San Diego East County Aquatics.`,
-          ...(changes.length ? ["", "What changed:", ...changes.map((c) => `  - ${c}`)] : []),
-          ...(note ? ["", note] : []),
-          "",
-          "Event details now:",
-          ...details,
-          "",
-          paid
+      const m = isUpdate
+        ? await emailFor(admin, "event_update", {
+          greeting, event_name: ev.name,
+          changes: changes.length ? "\n\nWhat changed:\n" + changes.map((c) => `  - ${c}`).join("\n") : "",
+          note: note ? "\n\n" + note : "",
+          details: details.join("\n"),
+          next_step: paid
             ? `${inv.team_name || "Your team"} is registered -- nothing else to do. Details and the latest schedule:`
             : "Pick your teams and pay here (no account needed):",
-          link,
-          "",
-          `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,
-          "",
-          "San Diego East County Aquatics",
-        ]
-        : [
-          greeting,
-          "",
-          `${inv.team_name ? inv.team_name + " is" : "Your team is"} invited to ${ev.name}, hosted by San Diego East County Aquatics.`,
-          "",
-          ...details,
-          ...(ev.description ? ["", ev.description] : []),
-          "",
-          "Pick your teams and pay here (no account needed):",
-          link,
-          "",
-          `Questions? Just reply to this email or write to ${CLUB_EMAIL}.`,
-          "",
-          "San Diego East County Aquatics",
-        ];
+          link, club_email: CLUB_EMAIL,
+        }, {
+          subject: "Update: {{event_name}}",
+          body: "{{greeting}}\n\nThere's an update to {{event_name}}, hosted by San Diego East County Aquatics.{{changes}}{{note}}\n\nEvent details now:\n{{details}}\n\n{{next_step}}\n{{link}}\n\nQuestions? Just reply to this email or write to {{club_email}}.\n\nSan Diego East County Aquatics",
+        })
+        : await emailFor(admin, "event_invite", {
+          greeting, team_is: inv.team_name ? inv.team_name + " is" : "Your team is", event_name: ev.name,
+          details: details.join("\n"), description: ev.description ? "\n\n" + ev.description : "",
+          link, club_email: CLUB_EMAIL,
+        }, {
+          subject: "You're invited: {{event_name}}",
+          body: "{{greeting}}\n\n{{team_is}} invited to {{event_name}}, hosted by San Diego East County Aquatics.\n\n{{details}}{{description}}\n\nPick your teams and pay here (no account needed):\n{{link}}\n\nQuestions? Just reply to this email or write to {{club_email}}.\n\nSan Diego East County Aquatics",
+        });
       try {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -143,8 +130,8 @@ Deno.serve(async (req) => {
             from,
             to: inv.contact_email,
             reply_to: CLUB_EMAIL,
-            subject: isUpdate ? `Update: ${ev.name}` : `You're invited: ${ev.name}`,
-            text: lines.join("\n"),
+            subject: m.subject,
+            text: m.text,
           }),
         });
         if (res.ok) {
@@ -191,4 +178,20 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Owner-edited wording from Admin > Emails (email_templates), else the
+// built-in text. {{fill_ins}} are replaced from vars. Never throws: a missing
+// table or row just means the built-in wording is used.
+// NOTE: duplicated in every function that sends email; the built-in wording
+// must match js/email-catalog.js.
+// deno-lint-ignore no-explicit-any
+async function emailFor(db: any, key: string, vars: Record<string, string | number | null | undefined>, fallback: { subject: string; body: string }) {
+  let t = fallback;
+  try {
+    const { data } = await db.from("email_templates").select("subject, body").eq("key", key).maybeSingle();
+    if (data && data.subject && data.body) t = { subject: data.subject, body: data.body };
+  } catch (_) { /* built-in wording */ }
+  const fill = (s: string) => s.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k) => (k in vars ? String(vars[k] ?? "") : m));
+  return { subject: fill(t.subject).replace(/\s+/g, " ").trim().slice(0, 250), text: fill(t.body) };
 }

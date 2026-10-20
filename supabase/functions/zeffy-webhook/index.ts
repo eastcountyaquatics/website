@@ -58,7 +58,25 @@ type Kind = "registration" | "tournament" | "masters" | "donation" | "other";
 
 Deno.serve(async (req) => {
   const rawBody = await req.text();
-  if (!(await signatureValid(rawBody, req.headers.get("Zeffy-Signature") ?? ""))) {
+  const sigHeader = req.headers.get("Zeffy-Signature") ?? "";
+  if (!(await signatureValid(rawBody, sigHeader))) {
+    // Log it (at most one row a minute) so Admin > Zeffy shows that Zeffy is
+    // calling but being rejected -- usually ZEFFY_WEBHOOK_SECRET doesn't
+    // match the signing secret on Zeffy's webhook settings.
+    const why = !Deno.env.get("ZEFFY_WEBHOOK_SECRET") ? "ZEFFY_WEBHOOK_SECRET is not set"
+      : !sigHeader ? "no Zeffy-Signature header"
+      : "signature didn't match ZEFFY_WEBHOOK_SECRET (or the clock is off)";
+    try {
+      const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await supabase.from("webhook_events").upsert(
+        { stripe_event_id: "zeffy:rejected:" + Math.floor(Date.now() / 60000), event_type: "zeffy.rejected", status: "error",
+          error_message: "Rejected a call from Zeffy: " + why, reference: null },
+        { onConflict: "stripe_event_id" },
+      );
+    } catch (err) {
+      console.error("Could not log rejected Zeffy call:", err);
+    }
+    console.error("Zeffy webhook rejected:", why, "header:", sigHeader.slice(0, 80));
     return new Response("Invalid signature", { status: 400 });
   }
 

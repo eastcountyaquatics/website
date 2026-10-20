@@ -133,7 +133,7 @@
 
       <div class="dash-card">
         <h3>My Athletes</h3>
-        <p class="muted" style="margin-bottom:14px;">Add your children &mdash; or yourself, if you&rsquo;re the one playing (coaches too) &mdash; so you can register them for programs below. Adults 19 and over join through <a href="#masters-section" style="color:var(--blue);font-weight:700;">Masters Membership</a>.</p>
+        <p class="muted" style="margin-bottom:14px;">Add your children &mdash; or yourself, if you&rsquo;re the one playing (coaches too) &mdash; so you can register them for programs below. Adults 19 and over join through <a href="#masters" style="color:var(--blue);font-weight:700;">Masters Membership</a>.</p>
         <div id="athlete-list"><p class="muted">Loading&hellip;</p></div>
         <button type="button" id="add-athlete-toggle" class="btn btn-outline-dark" style="margin-top:16px;">+ Add an Athlete</button>
         <form id="athlete-form" style="margin-top:16px;display:none;">
@@ -278,7 +278,7 @@
 <section class="section-tight">
   <div class="container">
     <div class="dash-grid" style="grid-template-columns:1fr;">
-      <div class="dash-card">
+      <div class="dash-card" id="masters">
         <h3>Masters Membership</h3>
         <p class="muted" style="margin-bottom:14px;">A separate monthly subscription from team registration &mdash; billed to you directly, and you can pause it anytime. See <a href="masters.html" style="color:var(--blue);font-weight:700;">the Masters page</a> for practice details.</p>
         <p class="muted" style="margin:-6px 0 14px;font-size:13px;"><strong>Coaches register themselves for free</strong> &mdash; add yourself under My Athletes with &ldquo;This athlete is me&rdquo; checked, then click <em>Join Free (Coach)</em>.</p>
@@ -294,7 +294,7 @@
     <div class="dash-grid" style="grid-template-columns:1fr;">
       <div class="dash-card">
         <h3>Team Updates</h3>
-        <p class="muted" style="margin-bottom:14px;">Coaches post things here for your team to weigh in on &mdash; mark your athlete interested or not.</p>
+        <p class="muted" style="margin-bottom:14px;">Your coaches post upcoming events and opportunities here. Let them know whether your athlete is interested.</p>
         <div id="interest-section"><p class="muted">Loading&hellip;</p></div>
       </div>
     </div>
@@ -1365,7 +1365,7 @@
     return '<div class="notice" style="margin-top:20px;">' +
       adults.map(function (a) { return escapeHtml(a.full_name); }).join(", ") +
       (adults.length === 1 ? " is" : " are") + " 19 or older, so youth programs don't apply &mdash; adult players join through " +
-      '<a href="#masters-section" style="color:#7a5b00;font-weight:700;">Masters Membership</a> below.</div>';
+      '<a href="#masters" style="color:#7a5b00;font-weight:700;">Masters Membership</a> below.</div>';
   }
 
   async function loadRegistrationOptions() {

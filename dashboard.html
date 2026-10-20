@@ -226,8 +226,8 @@
             <input type="tel" id="athlete_emergency2_phone1" placeholder="(619) 555-0100">
           </div>
           <div class="field">
-            <label data-cms="dashboard-0020" for="athlete_notes">Medical / Allergy Notes</label>
-            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about &mdash; or NA" required></textarea>
+            <label data-cms="dashboard-0020" for="athlete_notes">Medical / Allergy Notes <span class="muted" style="font-weight:400;">(optional)</span></label>
+            <textarea id="athlete_notes" rows="2" placeholder="Allergies, medications, conditions coaches should know about (leave blank if none)"></textarea>
             <p data-cms="dashboard-0021" class="muted" style="font-size:12px;margin-top:4px;"><strong>Indicate NA if not applicable.</strong></p>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1489,7 +1489,7 @@
       const required = [
         ["School", a.school], ["USWP Number", a.uswp_number],
         ["Emergency Contact 1", a.emergency_contact_name], ["Relationship", a.emergency_contact_relationship],
-        ["Emergency Phone", a.emergency_contact_phone1], ["Medical / Allergy Notes", a.notes],
+        ["Emergency Phone", a.emergency_contact_phone1],
       ];
       required.forEach(function (r) { if (!r[1]) reviewMissing.push(a.full_name + ": " + r[0]); });
       html += '<div class="review-block"><div class="review-head"><strong>' + escapeHtml(a.full_name) + "</strong>" +
@@ -1500,7 +1500,7 @@
         reviewLine("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_relationship, a.emergency_contact_phone1].filter(Boolean).join(" \u00b7 "), true) +
         (a.emergency_contact_name && !a.emergency_contact_relationship ? reviewLine("Relationship", "", true) : "") +
         reviewLine("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_relationship, a.emergency_contact2_phone1].filter(Boolean).join(" \u00b7 "), false) +
-        reviewLine("Medical / Allergy Notes", a.notes, true) +
+        reviewLine("Medical / Allergy Notes", a.notes || "None", false) +
         "</div>";
     });
     wrap.innerHTML = html;

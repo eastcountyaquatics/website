@@ -241,7 +241,7 @@
           <textarea id="cr-availability" rows="4" maxlength="4000" placeholder="e.g. Mon/Wed/Fri after 4pm and Saturdays. Not available Oct 10&ndash;12." required></textarea>
         </div>
 
-        <button type="submit" id="reg-submit" class="btn btn-primary" style="width:100%;margin-top:6px;">Submit Registration</button>
+        <button type="submit" id="reg-submit" data-cms="coach-registration-btn01" class="btn btn-primary" style="width:100%;margin-top:6px;">Submit Registration</button>
       </form>
     </div>
   </div>
@@ -381,10 +381,10 @@
     }
 
     btn.disabled = true;
-    btn.textContent = "Submitting...";
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = "Submitting...";
     const failUpload = function (text) {
       btn.disabled = false;
-      btn.textContent = "Submit Registration";
+      btn.innerHTML = btn.dataset.idle || "Submit Registration";
       msg.className = "form-msg error";
       msg.textContent = text;
     };
@@ -464,7 +464,7 @@
 
     if (error) {
       btn.disabled = false;
-      btn.textContent = "Submit Registration";
+      btn.innerHTML = btn.dataset.idle || "Submit Registration";
       msg.className = "form-msg error";
       msg.textContent = "Could not submit: " + error.message;
       return;

@@ -111,7 +111,7 @@
           <label data-cms="donate-0007" for="dn-amount">Amount (USD)</label>
           <input type="number" id="dn-amount" step="0.01" min="1" placeholder="50.00" required>
         </div>
-        <button type="submit" id="donate-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
+        <button type="submit" id="donate-submit" data-cms="donate-btn01" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
     </div>
     <p data-cms="donate-0008" class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. No goods or services were provided in exchange for this contribution. A receipt will be emailed to you after payment.</p>
@@ -168,7 +168,7 @@
     }
 
     btn.disabled = true;
-    btn.textContent = "Submitting...";
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = "Submitting...";
 
     // Same pattern as sponsor.html: insert the pending row first (RLS lets
     // anyone submit one), then the checkout function looks it up by id so
@@ -189,7 +189,7 @@
 
     if (error || !row) {
       btn.disabled = false;
-      btn.textContent = "Continue to Payment";
+      btn.innerHTML = btn.dataset.idle || "Continue to Payment";
       msg.className = "form-msg error";
       msg.textContent = "Could not submit: " + (error ? error.message : "unknown error");
       return;
@@ -200,7 +200,7 @@
     });
 
     btn.disabled = false;
-    btn.textContent = "Continue to Payment";
+    btn.innerHTML = btn.dataset.idle || "Continue to Payment";
 
     if (fnError || !data || !data.url) {
       msg.className = "form-msg error";

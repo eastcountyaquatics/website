@@ -379,10 +379,10 @@
 <div id="zeffy-reg-overlay" class="consent-overlay" style="display:none;">
   <div class="consent-modal">
     <h3 id="zreg-title">Pay on Zeffy</h3>
-    <p data-cms="dashboard-0037" class="muted" style="font-size:13px;margin-bottom:14px;">The club takes payments through Zeffy, which charges the club no fees. Each athlete has their own payment code &mdash; copy it, pick the ticket on Zeffy, and paste the code on that athlete's ticket.</p>
+    <p class="muted" id="zreg-intro" style="font-size:13px;margin-bottom:14px;">The club takes payments through Zeffy, which charges the club no fees. Each athlete has their own payment code &mdash; copy it, pick the ticket on Zeffy, and paste the code on that athlete's ticket.</p>
     <div id="zreg-codes"></div>
     <a id="zreg-open" class="btn btn-primary" style="width:100%;text-align:center;margin:10px 0;" target="_blank" rel="noopener" href="#">Open Zeffy</a>
-    <p data-cms="dashboard-0038" class="muted" style="font-size:12.5px;">Registering more than one athlete? Add a ticket for each, with each athlete's own code. Zeffy will suggest an optional tip to Zeffy (not the club) &mdash; you can change it to $0. Athletes are registered as soon as the full payment comes in, and you'll get a confirmation email.</p>
+    <p class="muted" style="font-size:12.5px;"><span id="zreg-multi">Registering more than one athlete? Add a ticket for each, with each athlete's own code.</span> <span data-cms="dashboard-zeffy-tip">Zeffy will suggest an optional tip to Zeffy (not the club) &mdash; you can change it to $0. Athletes are registered as soon as the full payment comes in, and you'll get a confirmation email.</span></p>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
       <button type="button" id="zreg-paid-btn" class="btn btn-outline-dark">I've Paid &mdash; Refresh</button>
       <button type="button" id="zreg-close-btn" class="btn btn-outline-dark">Close</button>
@@ -1373,7 +1373,7 @@
     const wrap = document.getElementById("registration-options");
     const { data: options, error } = await supabaseClient
       .from("registration_options")
-      .select("id, label, description, amount_cents, season, team_slugs, payment_provider")
+      .select("id, label, description, amount_cents, season, team_slugs, payment_provider, zeffy_form_url")
       .eq("is_open", true)
       .order("sort_order", { ascending: true });
 
@@ -1452,7 +1452,8 @@
         // Sessions paid on Zeffy get a payment code per athlete instead of
         // the card checkout.
         const picked = shown.find(function (o) { return o.id === optionId; });
-        openConsentModal(items, btn, msgEl, !!picked && picked.payment_provider === "zeffy");
+        const zeffy = !!picked && picked.payment_provider === "zeffy";
+        openConsentModal(items, btn, msgEl, zeffy, zeffy && !!picked.zeffy_form_url);
       });
     });
   }
@@ -1512,10 +1513,11 @@
     });
   }
 
-  function openConsentModal(items, btn, msgEl, zeffy) {
+  function openConsentModal(items, btn, msgEl, zeffy, zeffyOwnForm) {
     pendingCheckout = { items: items, btn: btn, msgEl: msgEl, zeffy: !!zeffy };
-    // Zeffy sessions take discount codes on Zeffy, not here.
-    document.getElementById("consent-discount-field").style.display = zeffy ? "none" : "";
+    // A Zeffy session with its own set-price form takes discount codes on
+    // Zeffy; on the club's payment form they're applied here, like card.
+    document.getElementById("consent-discount-field").style.display = zeffyOwnForm ? "none" : "";
     consentOpener = btn;
     document.getElementById("consent-msg").textContent = "";
     document.querySelectorAll("[data-consent-required]").forEach(function (cb) { cb.checked = false; });
@@ -1542,12 +1544,30 @@
   // Zeffy sessions: each athlete's payment code (one code per athlete per
   // session) with the amount, and the link to the session's Zeffy form.
   function showZeffyCodes(data) {
+    const clubForm = data.set_price === false;
+    const toPay = data.codes.filter(function (c) { return c.status !== "paid"; });
+    zregCodes = toPay.map(function (c) { return c.code; });
     document.getElementById("zreg-title").textContent = "Pay on Zeffy \u2014 " + data.option_label;
+    document.getElementById("zreg-intro").innerHTML = clubForm
+      ? "The club takes payments through Zeffy, which charges the club no fees. On Zeffy, enter the <strong>amount</strong> shown below and paste the athlete's <strong>payment code</strong>" +
+        (toPay.length === 1 ? " &mdash; tap Copy Code &amp; Open Zeffy and the code is ready to paste." : ".")
+      : "The club takes payments through Zeffy, which charges the club no fees. Each athlete has their own payment code &mdash; copy it, pick the ticket on Zeffy, and paste the code on that athlete's ticket.";
+    document.getElementById("zreg-multi").textContent = toPay.length > 1
+      ? (clubForm ? "Add a ticket for each athlete, each with that athlete's own amount and code." : "Add a ticket for each athlete, with each athlete's own code.")
+      : "";
     document.getElementById("zreg-codes").innerHTML = data.codes.map(function (c) {
-      const owing = c.paid_cents > 0
+      const owing = c.status === "paid"
+        ? '<div style="font-size:12.5px;color:#1f6b35;font-weight:700;">Registered &mdash; nothing to pay' + (data.discount_code ? " (" + escapeHtml(data.discount_code) + ")" : "") + "</div>"
+        : c.paid_cents > 0
         ? '<div class="muted" style="font-size:12.5px;">Paid ' + formatAmount(c.paid_cents, "usd") + " of " + formatAmount(c.amount_due_cents, "usd") +
           " &mdash; <strong>" + formatAmount(c.balance_cents, "usd") + " balance due</strong></div>"
+        : clubForm
+        ? '<div style="font-size:13px;">Amount to enter: <strong>' + formatAmount(c.amount_due_cents, "usd") + "</strong>" +
+          (data.discount_code ? ' <span class="muted">(' + escapeHtml(data.discount_code) + " applied)</span>" : "") + "</div>"
         : '<div class="muted" style="font-size:12.5px;">Pick the ticket for ' + formatAmount(c.amount_due_cents, "usd") + "</div>";
+      if (c.status === "paid") {
+        return '<div style="border:1px solid #e3e6f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="font-weight:700;">' + escapeHtml(c.athlete_name) + "</div>" + owing + "</div>";
+      }
       return '<div style="border:1px solid #e3e6f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
         '<div style="flex:1;min-width:150px;"><div style="font-weight:700;">' + escapeHtml(c.athlete_name) + "</div>" + owing +
         '<div style="font-size:20px;font-weight:800;letter-spacing:.5px;">' + escapeHtml(c.code) + "</div></div>" +
@@ -1555,8 +1575,15 @@
     }).join("");
     const open = document.getElementById("zreg-open");
     open.href = /^https:\/\//.test(data.form_url) ? data.form_url : "#";
+    open.style.display = toPay.length ? "" : "none";
+    open.textContent = toPay.length === 1 ? "Copy Code & Open Zeffy" : "Open Zeffy";
     document.getElementById("zeffy-reg-overlay").style.display = "flex";
   }
+  var zregCodes = [];
+  // One athlete: copy their code on the way out, so on Zeffy it's just paste.
+  document.getElementById("zreg-open").addEventListener("click", function () {
+    if (zregCodes.length === 1 && navigator.clipboard) navigator.clipboard.writeText(zregCodes[0]).catch(function () {});
+  });
   document.getElementById("zreg-codes").addEventListener("click", async function (e) {
     const b = e.target.closest("[data-zreg-copy]");
     if (!b) return;

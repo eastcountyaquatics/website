@@ -136,9 +136,15 @@
           </select>
         </div>
         <div class="field" id="zeffy-url-wrap" style="display:none;">
-          <label for="zeffy_form_url">This session's own Zeffy form link <span class="muted" style="font-weight:400;">(optional &mdash; usually leave blank)</span></label>
-          <input type="url" id="zeffy_form_url" placeholder="Leave blank to use the club's payment form">
-          <p class="muted" style="font-size:12px;margin-top:4px;"><strong>Leave blank</strong> and it works like card checkout: the price above and the discount codes on Admin &rarr; Coupons are applied here, and families pay that amount on the club's Zeffy payment form (set once on Admin &rarr; Zeffy &rarr; &ldquo;Use for Site Prices&rdquo;). Families pick their athletes and agree to the consent here, then get one payment code per athlete. Only paste a link if you built a separate Zeffy form just for this session (its ticket price must match, and discount codes then go on Zeffy). Switch back to the card any time.</p>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="zeffy-mode" value="set" checked style="width:auto;margin-top:3px;"> <span><strong>Set-price form</strong> &mdash; this session's own Zeffy form. Families pick the ticket and paste their code.</span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="zeffy-mode" value="club" style="width:auto;margin-top:3px;"> <span><strong>Club form</strong> &mdash; the club's pay-what-you-want form (Admin &rarr; Zeffy). Families type the amount and paste their code; discount codes from Admin &rarr; Coupons work. Rarely needed.</span></label>
+          </div>
+          <div id="zeffy-link-box">
+          <label for="zeffy_form_url">This session's Zeffy form link</label>
+          <input type="url" id="zeffy_form_url" placeholder="https://www.zeffy.com/en-US/ticketing/...">
+          <p class="muted" style="font-size:12px;margin-top:4px;">An Event form on Zeffy with a ticket at the Amount above and a required question on the ticket: &ldquo;Payment code (from ECA)&rdquo;. Discount codes go on the Zeffy form. Families pick their athletes and agree to the consent here, then get one payment code per athlete. Switch back to the card any time.</p>
+          </div>
         </div>
         <div class="field">
           <label for="sort_order">Display Order (lower shows first)</label>
@@ -359,6 +365,7 @@
     document.getElementById("is_open").checked = !!o.is_open;
     document.getElementById("payment_provider").value = o.payment_provider === "zeffy" ? "zeffy" : "stripe";
     document.getElementById("zeffy_form_url").value = o.zeffy_form_url || "";
+    setZeffyMode("", o.payment_provider === "zeffy" && !o.zeffy_form_url ? "club" : "set");
     document.getElementById("zeffy-url-wrap").style.display = o.payment_provider === "zeffy" ? "block" : "none";
     document.getElementById("submit-btn").textContent = "Save Changes";
     document.getElementById("cancel-edit-btn").style.display = "inline-block";
@@ -371,6 +378,7 @@
     document.getElementById("label").dataset.touched = "";
     document.getElementById("is_open").checked = true;
     document.getElementById("zeffy-url-wrap").style.display = "none";
+    setZeffyMode("", "set");
     document.getElementById("form-title").textContent = "Add a Registration Option";
     document.getElementById("submit-btn").textContent = "Add Registration Option";
     document.getElementById("cancel-edit-btn").style.display = "none";
@@ -378,6 +386,20 @@
   }
 
   document.getElementById("cancel-edit-btn").addEventListener("click", resetForm);
+
+  // Zeffy form type: the event's own set-price form (default) or the club's
+  // pay-what-you-want form. The link box only shows for set-price.
+  function setZeffyMode(prefix, mode) {
+    document.querySelectorAll('input[name="' + prefix + 'zeffy-mode"]').forEach(function (r) { r.checked = r.value === mode; });
+    document.getElementById(prefix + "zeffy-link-box").style.display = mode === "set" ? "block" : "none";
+  }
+  function zeffyMode(prefix) {
+    const r = document.querySelector('input[name="' + prefix + 'zeffy-mode"]:checked');
+    return r ? r.value : "set";
+  }
+  document.querySelectorAll('input[name="zeffy-mode"]').forEach(function (r) {
+    r.addEventListener("change", function () { setZeffyMode("", zeffyMode("")); });
+  });
   document.getElementById("payment_provider").addEventListener("change", function () {
     document.getElementById("zeffy-url-wrap").style.display = this.value === "zeffy" ? "block" : "none";
   });
@@ -391,6 +413,14 @@
     if (isNaN(dollars) || dollars < 0) {
       msg.className = "form-msg error";
       msg.textContent = "Enter a valid amount.";
+      return;
+    }
+
+    const zeffyUrlIn = document.getElementById("zeffy_form_url").value.trim();
+    if (document.getElementById("payment_provider").value === "zeffy" && zeffyMode("") === "set" &&
+        !/^https:\/\/(www\.)?zeffy\.com\//.test(zeffyUrlIn)) {
+      msg.className = "form-msg error";
+      msg.textContent = zeffyUrlIn ? "The Zeffy form link should start with https://www.zeffy.com/" : "Paste this session's Zeffy form link, or choose Club form.";
       return;
     }
 
@@ -434,7 +464,7 @@
     // How families pay + the Zeffy form link are plain settings on the
     // option (Owners can update registration options), saved right after.
     const provider = document.getElementById("payment_provider").value;
-    const zeffyUrl = document.getElementById("zeffy_form_url").value.trim();
+    const zeffyUrl = zeffyMode("") === "set" ? document.getElementById("zeffy_form_url").value.trim() : "";
     if (provider === "zeffy" && zeffyUrl && !/^https:\/\/(www\.)?zeffy\.com\//.test(zeffyUrl)) {
       msg.className = "form-msg error";
       msg.textContent = "Saved, but the card is still on: the Zeffy form link should start with https://www.zeffy.com/";

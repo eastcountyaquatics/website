@@ -91,7 +91,18 @@
 
 <section class="section-tight">
   <div class="container" style="max-width:900px;">
-    <h2 style="font-size:22px;">Needs a Look</h2>
+    <h2 style="font-size:22px;">Recent Zeffy Payments</h2>
+    <p class="muted">Every Zeffy payment the site has received, newest first &mdash; who paid, what for, and whether the athlete is registered. If a family paid and it isn&rsquo;t here, Zeffy never told the site (check the connection status just below).</p>
+    <div id="zeffy-health" style="margin:10px 0 14px;"></div>
+    <style>
+      #recent-list table{border-collapse:collapse;background:#fff;border:1px solid #e3e6f0;border-radius:10px;overflow:hidden;}
+      #recent-list th{background:var(--navy);color:#fff;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:9px 12px;}
+      #recent-list td{padding:9px 12px;border-top:1px solid #eef0f5;vertical-align:top;}
+      .status-pill.refunded,.status-pill.canceled{background:#f1f1f1;color:#666;}
+    </style>
+    <div id="recent-list"><p class="muted">Loading&hellip;</p></div>
+
+    <h2 style="font-size:22px;margin-top:40px;">Needs a Look</h2>
     <p class="muted">Payments that came in on Zeffy but couldn't be tied to an athlete automatically &mdash; usually a different email than the family's ECA account, or a misspelled name. Pick the athlete and click Assign; they're registered right away.</p>
     <div id="unmatched-msg" class="form-msg"></div>
     <div id="unmatched-list"><p class="muted">Loading&hellip;</p></div>
@@ -109,7 +120,7 @@
     <div id="campaigns-msg" class="form-msg"></div>
     <div id="campaign-list"><p class="muted">Loading&hellip;</p></div>
 
-    <h2 style="font-size:22px;margin-top:40px;">Webhook Setup</h2>
+    <h2 id="webhook-setup" style="font-size:22px;margin-top:40px;">Webhook Setup</h2>
     <p class="muted">In Zeffy: <strong>Settings &rarr; Integrations &rarr; Webhook</strong>. Paste this URL and subscribe to <code>payment.completed</code>, <code>payment.updated</code> and <code>payment.deleted</code>:</p>
     <p><code id="webhook-url" style="word-break:break-all;"></code></p>
   </div>
@@ -353,6 +364,61 @@
     }).join("");
   }
 
+  function ago(iso) {
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + " min ago";
+    const h = Math.round(mins / 60);
+    if (h < 48) return h + " hour" + (h === 1 ? "" : "s") + " ago";
+    return Math.round(h / 24) + " days ago";
+  }
+  function when(iso) {
+    return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  // Is Zeffy reaching the site? The webhook logs every message it gets.
+  async function loadHealth() {
+    const el = document.getElementById("zeffy-health");
+    const { data, error } = await supabaseClient.from("webhook_events")
+      .select("event_type, status, error_message, received_at")
+      .like("stripe_event_id", "zeffy:%")
+      .order("received_at", { ascending: false }).limit(20);
+    if (error) { el.innerHTML = '<div class="notice">Could not check the Zeffy connection: ' + escapeHtml(error.message) + "</div>"; return; }
+    const rows = data || [];
+    if (!rows.length) {
+      el.innerHTML = '<div class="notice" style="border-left-color:#c0392b;"><strong>Zeffy has never reached the site.</strong> Payments made on Zeffy won&rsquo;t register anyone until the webhook is connected &mdash; see <a href="#webhook-setup">Webhook Setup</a> at the bottom of this page.</div>';
+      return;
+    }
+    const last = rows[0];
+    const errors = rows.filter(function (r) { return r.status === "error"; });
+    el.innerHTML = '<div class="notice"' + (errors.length ? ' style="border-left-color:#c0392b;"' : "") + ">" +
+      "<strong>Connected.</strong> Last message from Zeffy: " + ago(last.received_at) + " (" + escapeHtml(last.event_type.replace(/^zeffy\./, "")) + ")." +
+      (errors.length ? "<br><strong>" + errors.length + " recent message" + (errors.length === 1 ? "" : "s") + " failed</strong> &mdash; latest: " +
+        escapeHtml(errors[0].error_message || "unknown error") + " (" + ago(errors[0].received_at) + ")" : "") +
+      "</div>";
+  }
+
+  async function loadRecent() {
+    const el = document.getElementById("recent-list");
+    const { data, error } = await supabaseClient.from("purchases")
+      .select("created_at, description, amount_cents, currency, status, payer_name, payer_email, program_kind, zeffy_registration_code, receipt_url")
+      .not("zeffy_payment_id", "is", null)
+      .order("created_at", { ascending: false }).limit(50);
+    if (error) { el.innerHTML = '<p class="muted">Could not load payments: ' + escapeHtml(error.message) + "</p>"; return; }
+    if (!data || !data.length) { el.innerHTML = '<p class="muted">No Zeffy payments have reached the site yet.</p>'; return; }
+    const LABEL = { paid: "Registered / paid", pending: "Part paid", refunded: "Refunded", canceled: "Canceled" };
+    el.innerHTML = '<div style="overflow-x:auto;"><table class="report-table" style="width:100%;font-size:14px;"><thead><tr>' +
+      "<th>When</th><th>For</th><th>Paid by</th><th>Amount</th><th>Status</th></tr></thead><tbody>" +
+      data.map(function (p) {
+        return "<tr><td style=\"white-space:nowrap;\">" + when(p.created_at) + "</td>" +
+          "<td>" + escapeHtml(p.description || "") + (p.zeffy_registration_code ? '<div class="muted" style="font-size:12px;">code ' + escapeHtml(p.zeffy_registration_code) + "</div>" : "") + "</td>" +
+          "<td>" + escapeHtml(p.payer_name || "") + '<div class="muted" style="font-size:12px;">' + escapeHtml(p.payer_email || "") + "</div></td>" +
+          "<td>" + money(p.amount_cents) + "</td>" +
+          '<td><span class="status-pill ' + escapeHtml(p.status) + '">' + (LABEL[p.status] || escapeHtml(p.status)) + "</span>" +
+          (p.receipt_url && /^https:\/\//.test(p.receipt_url) ? ' <a href="' + escapeHtml(p.receipt_url) + '" target="_blank" rel="noopener" style="font-size:12px;">receipt</a>' : "") + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
@@ -360,6 +426,8 @@
     const { data: setting } = await supabaseClient.from("site_settings").select("value").eq("key", "zeffy_paylink_form").maybeSingle();
     paylinkForm = setting ? setting.value : null;
     showPaylinkCurrent();
+    loadHealth();
+    loadRecent();
     loadUnmatched();
     loadShort();
     loadCampaigns();

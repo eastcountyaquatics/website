@@ -183,12 +183,12 @@
         <div class="field">
           <label for="t-payment-provider">How families pay</label>
           <select id="t-payment-provider">
+            <option value="zeffy" selected>Zeffy &mdash; no card fees (family pastes a code)</option>
             <option value="stripe">Card on the invite page (Stripe)</option>
-            <option value="zeffy">Zeffy &mdash; no card fees (family pastes a code)</option>
           </select>
           <p class="muted" style="font-size:12px;margin-top:4px;">Prices and discount codes work the same either way. Zeffy needs the club's Zeffy payment form set on Admin &rarr; Zeffy first.</p>
         </div>
-        <div class="field" id="t-zeffy-url-wrap" style="display:none;">
+        <div class="field" id="t-zeffy-url-wrap">
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
             <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="t-zeffy-mode" value="set" checked style="width:auto;margin-top:3px;"> <span><strong>Set-price form</strong> &mdash; this tournament's own Zeffy form. Families pick the ticket and paste their code.</span></label>
             <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="t-zeffy-mode" value="club" style="width:auto;margin-top:3px;"> <span><strong>Club form</strong> &mdash; the club's pay-what-you-want form (Admin &rarr; Zeffy). Families type the amount and paste their code; discount codes from Admin &rarr; Coupons work. Rarely needed.</span></label>
@@ -449,7 +449,8 @@
     document.getElementById("t-age-as-of-wrap").style.display = "none";
     document.getElementById("t-travel-days-wrap").style.display = "none";
     document.getElementById("t-travel-days").dataset.touched = "";
-    document.getElementById("t-zeffy-url-wrap").style.display = "none";
+    document.getElementById("t-payment-provider").value = "zeffy";
+    document.getElementById("t-zeffy-url-wrap").style.display = "block";
     setZeffyMode("t-", "set");
     document.getElementById("tournament-form-title").textContent = "Add a Tournament";
     document.getElementById("t-submit-btn").textContent = "Add Tournament";

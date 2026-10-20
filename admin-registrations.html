@@ -131,11 +131,11 @@
         <div class="field">
           <label for="payment_provider">How families pay</label>
           <select id="payment_provider">
+            <option value="zeffy" selected>Zeffy &mdash; no card fees (family pastes a code)</option>
             <option value="stripe">Card on this site (Stripe)</option>
-            <option value="zeffy">Zeffy &mdash; no card fees (family copies a code)</option>
           </select>
         </div>
-        <div class="field" id="zeffy-url-wrap" style="display:none;">
+        <div class="field" id="zeffy-url-wrap">
           <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
             <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="zeffy-mode" value="set" checked style="width:auto;margin-top:3px;"> <span><strong>Set-price form</strong> &mdash; this session's own Zeffy form. Families pick the ticket and paste their code.</span></label>
             <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="zeffy-mode" value="club" style="width:auto;margin-top:3px;"> <span><strong>Club form</strong> &mdash; the club's pay-what-you-want form (Admin &rarr; Zeffy). Families type the amount and paste their code; discount codes from Admin &rarr; Coupons work. Rarely needed.</span></label>
@@ -377,7 +377,8 @@
     document.getElementById("reg-id").value = "";
     document.getElementById("label").dataset.touched = "";
     document.getElementById("is_open").checked = true;
-    document.getElementById("zeffy-url-wrap").style.display = "none";
+    document.getElementById("payment_provider").value = "zeffy";
+    document.getElementById("zeffy-url-wrap").style.display = "block";
     setZeffyMode("", "set");
     document.getElementById("form-title").textContent = "Add a Registration Option";
     document.getElementById("submit-btn").textContent = "Add Registration Option";

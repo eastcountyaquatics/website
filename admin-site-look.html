@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Look | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261014i">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  .sl-wrap{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:24px;align-items:start;max-width:1400px;}
+  .sl-card{margin-bottom:16px;}
+  .sl-card h3{margin-top:0;}
+  .sl-color{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #eef1f6;}
+  .sl-color:first-child{border-top:0;}
+  .sl-color input[type=color]{width:46px;height:38px;padding:2px;border:1px solid #d7e6ee;border-radius:8px;background:#fff;cursor:pointer;flex:0 0 auto;}
+  .sl-color .sl-text{flex:1;min-width:0;}
+  .sl-color .sl-text strong{display:block;font-size:14.5px;}
+  .sl-color .sl-text span{display:block;font-size:12.5px;color:var(--muted);}
+  .sl-color input[type=text]{width:92px;margin:0;font-family:monospace;padding:7px 8px;}
+  .sl-color button{border:0;background:none;color:var(--blue);font-size:12.5px;font-weight:700;cursor:pointer;padding:4px;}
+  .sl-sample{margin:8px 0 0;padding:10px 12px;background:#f7f8fb;border-radius:8px;}
+  .sl-logo-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;}
+  .sl-logo-row img{width:84px;height:84px;object-fit:contain;background:var(--navy);border-radius:12px;padding:8px;}
+  .sl-actions{display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--foam);padding:12px 0;}
+  .sl-preview{position:sticky;top:96px;}
+  .sl-preview-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;}
+  .sl-preview-bar select{width:auto;margin:0;padding:6px 10px;}
+  #sl-frame{width:100%;height:calc(100vh - 170px);min-height:480px;border:1px solid #d7e6ee;border-radius:12px;background:#fff;}
+  @media (max-width:900px){.sl-wrap{grid-template-columns:1fr;}.sl-preview{position:static;}#sl-frame{height:560px;}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Site Look</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="container sl-wrap">
+    <div class="sl-controls">
+      <p class="muted" style="margin-top:0;">Colors, fonts and logo for the whole site. The preview updates as you go; nothing changes for visitors until you click <strong>Save</strong>.</p>
+      <div id="sl-msg" class="form-msg"></div>
+
+      <div class="card sl-card">
+        <h3>Colors</h3>
+        <div id="sl-colors"></div>
+      </div>
+
+      <div class="card sl-card">
+        <h3>Fonts</h3>
+        <div class="field">
+          <label for="sl-heading-font">Titles &amp; headings</label>
+          <select id="sl-heading-font"></select>
+          <p class="sl-sample" id="sl-heading-sample" style="font-size:24px;font-weight:700;">Building athletes, character &amp; community</p>
+        </div>
+        <div class="field">
+          <label for="sl-body-font">Paragraphs &amp; buttons</label>
+          <select id="sl-body-font"></select>
+          <p class="sl-sample" id="sl-body-sample">A year-round, non-profit water polo program serving El Cajon and San Diego&rsquo;s East County.</p>
+        </div>
+      </div>
+
+      <div class="card sl-card">
+        <h3>Logo</h3>
+        <p class="muted" style="font-size:13.5px;">Shown in the menu bar and footer on every page. A square image (PNG with a transparent background works best).</p>
+        <div class="sl-logo-row">
+          <img id="sl-logo-preview" src="images/eca-logo-240.png" alt="Current logo">
+          <div>
+            <label class="btn btn-outline-dark" style="cursor:pointer;">Upload New Logo<input type="file" id="sl-logo-file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>
+            <button type="button" class="btn btn-outline-dark" id="sl-logo-reset">Use Original</button>
+            <p class="muted" id="sl-logo-status" style="font-size:13px;margin:8px 0 0;"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sl-actions">
+        <button type="button" class="btn btn-primary" id="sl-save">Save</button>
+        <button type="button" class="btn btn-outline-dark" id="sl-defaults">Back to Original Look</button>
+      </div>
+    </div>
+
+    <div class="sl-preview">
+      <div class="sl-preview-bar">
+        <strong>Preview</strong>
+        <select id="sl-preview-page" aria-label="Page to preview">
+          <option value="index.html">Home</option>
+          <option value="teams.html">Teams</option>
+          <option value="masters.html">Masters</option>
+          <option value="about-us.html">About Us</option>
+          <option value="support.html">Donate/Sponsor</option>
+        </select>
+      </div>
+      <iframe id="sl-frame" title="Site preview"></iframe>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261014p"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script>
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+</script>
+<script>
+  // Site look, saved as site_settings "theme" (applied on every page by
+  // js/theme.js). Colors map to the stylesheet's color variables.
+  const COLOR_FIELDS = [
+    ["navy", "Main color", "Menu bar, footer, page banners and headings", "#0a1f6b"],
+    ["blue", "Accent color", "Buttons, links and highlights", "#0000ff"],
+    ["gold", "Highlight color", "Underlines, badges and the menu's current page", "#ffd400"],
+    ["ink", "Text color", "Paragraphs and body text", "#222222"],
+    ["muted", "Soft text color", "Captions and secondary text", "#5a5a5a"],
+    ["foam", "Page background", "Behind the page's sections", "#f7f8fb"],
+  ];
+  const DEFAULT_FONTS = { heading_font: "Bitter", body_font: "Roboto" };
+  const FONT_STACKS = {
+    "Bitter": '"Bitter",Georgia,serif', "Roboto": '"Roboto",Helvetica,Arial,sans-serif', "Montserrat": '"Montserrat",sans-serif',
+    "Oswald": '"Oswald",sans-serif', "Poppins": '"Poppins",sans-serif', "Lato": '"Lato",sans-serif', "Open Sans": '"Open Sans",sans-serif',
+    "Inter": '"Inter",sans-serif', "Raleway": '"Raleway",sans-serif', "Nunito": '"Nunito",sans-serif', "Merriweather": '"Merriweather",serif',
+    "Playfair Display": '"Playfair Display",serif', "Roboto Slab": '"Roboto Slab",serif', "Source Sans 3": '"Source Sans 3",sans-serif',
+  };
+  let theme = { colors: {}, heading_font: null, body_font: null, logo_url: null };
+  let savedJson = "null";
+
+  function msg(text, ok) {
+    const el = document.getElementById("sl-msg");
+    el.className = "form-msg " + (ok ? "success" : "error");
+    el.textContent = text;
+  }
+  function clean(t) {
+    const out = {};
+    const colors = {};
+    COLOR_FIELDS.forEach(function (f) { if (t.colors[f[0]] && t.colors[f[0]].toLowerCase() !== f[3]) colors[f[0]] = t.colors[f[0]].toLowerCase(); });
+    if (Object.keys(colors).length) out.colors = colors;
+    if (t.heading_font && t.heading_font !== DEFAULT_FONTS.heading_font) out.heading_font = t.heading_font;
+    if (t.body_font && t.body_font !== DEFAULT_FONTS.body_font) out.body_font = t.body_font;
+    if (t.logo_url) out.logo_url = t.logo_url;
+    return out;
+  }
+  function dirty() { return JSON.stringify(clean(theme)) !== savedJson; }
+
+  function preview() {
+    const t = clean(theme);
+    const frame = document.getElementById("sl-frame");
+    try { if (frame.contentWindow && frame.contentWindow.ecaApplyTheme) frame.contentWindow.ecaApplyTheme(t, frame.contentDocument); } catch (e) {}
+    document.getElementById("sl-heading-sample").style.fontFamily = FONT_STACKS[theme.heading_font || DEFAULT_FONTS.heading_font];
+    document.getElementById("sl-body-sample").style.fontFamily = FONT_STACKS[theme.body_font || DEFAULT_FONTS.body_font];
+    document.getElementById("sl-logo-preview").src = theme.logo_url || "images/eca-logo-240.png";
+    document.getElementById("sl-logo-preview").style.background = theme.colors.navy || "#0a1f6b";
+    document.getElementById("sl-save").textContent = dirty() ? "Save" : "Saved";
+  }
+
+  function renderColors() {
+    document.getElementById("sl-colors").innerHTML = COLOR_FIELDS.map(function (f) {
+      const v = theme.colors[f[0]] || f[3];
+      return '<div class="sl-color"><input type="color" data-color="' + f[0] + '" value="' + v + '" aria-label="' + escapeHtml(f[1]) + '">' +
+        '<div class="sl-text"><strong>' + escapeHtml(f[1]) + "</strong><span>" + escapeHtml(f[2]) + "</span></div>" +
+        '<input type="text" data-color-text="' + f[0] + '" value="' + v + '" maxlength="7" aria-label="' + escapeHtml(f[1]) + ' code">' +
+        '<button type="button" data-color-reset="' + f[0] + '" title="Back to the original ' + escapeHtml(f[1].toLowerCase()) + '">Reset</button></div>';
+    }).join("");
+  }
+  document.getElementById("sl-colors").addEventListener("input", function (e) {
+    const picker = e.target.closest("[data-color]");
+    const text = e.target.closest("[data-color-text]");
+    if (picker) {
+      theme.colors[picker.dataset.color] = picker.value;
+      document.querySelector('[data-color-text="' + picker.dataset.color + '"]').value = picker.value;
+    } else if (text) {
+      let v = text.value.trim();
+      if (v && v[0] !== "#") v = "#" + v;
+      if (!/^#[0-9a-f]{6}$/i.test(v)) return;
+      theme.colors[text.dataset.colorText] = v;
+      document.querySelector('[data-color="' + text.dataset.colorText + '"]').value = v;
+    }
+    preview();
+  });
+  document.getElementById("sl-colors").addEventListener("click", function (e) {
+    const b = e.target.closest("[data-color-reset]");
+    if (!b) return;
+    delete theme.colors[b.dataset.colorReset];
+    renderColors();
+    preview();
+  });
+
+  function fillFonts() {
+    ["sl-heading-font", "sl-body-font"].forEach(function (id) {
+      document.getElementById(id).innerHTML = Object.keys(FONT_STACKS).map(function (n) {
+        return '<option value="' + escapeHtml(n) + '" style="font-family:' + escapeHtml(FONT_STACKS[n]) + '">' + escapeHtml(n) +
+          ((id === "sl-heading-font" ? DEFAULT_FONTS.heading_font : DEFAULT_FONTS.body_font) === n ? " (original)" : "") + "</option>";
+      }).join("");
+    });
+    document.getElementById("sl-heading-font").value = theme.heading_font || DEFAULT_FONTS.heading_font;
+    document.getElementById("sl-body-font").value = theme.body_font || DEFAULT_FONTS.body_font;
+  }
+  document.getElementById("sl-heading-font").addEventListener("change", function () { theme.heading_font = this.value; preview(); });
+  document.getElementById("sl-body-font").addEventListener("change", function () { theme.body_font = this.value; preview(); });
+  // Every font on offer, so the samples (and the menu above) show them.
+  (function () {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?" + Object.keys(FONT_STACKS).map(function (n) { return "family=" + n.replace(/ /g, "+") + ":wght@400;700"; }).join("&") + "&display=swap";
+    document.head.appendChild(l);
+  })();
+
+  document.getElementById("sl-logo-file").addEventListener("change", async function () {
+    const file = this.files[0];
+    this.value = "";
+    if (!file) return;
+    const status = document.getElementById("sl-logo-status");
+    if (file.size > 3 * 1024 * 1024) { status.textContent = "That file is over 3 MB — try a smaller image."; return; }
+    status.textContent = "Uploading…";
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const path = "theme/logo-" + Date.now() + "." + ext;
+    const { error } = await supabaseClient.storage.from("site-images").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) { status.textContent = "Could not upload: " + error.message; return; }
+    theme.logo_url = supabaseClient.storage.from("site-images").getPublicUrl(path).data.publicUrl;
+    status.textContent = "Uploaded — click Save to use it on the site.";
+    preview();
+  });
+  document.getElementById("sl-logo-reset").addEventListener("click", function () {
+    theme.logo_url = null;
+    document.getElementById("sl-logo-status").textContent = "";
+    preview();
+  });
+
+  document.getElementById("sl-save").addEventListener("click", async function () {
+    const value = clean(theme);
+    const btn = this;
+    btn.disabled = true;
+    const res = Object.keys(value).length
+      ? await supabaseClient.from("site_settings").upsert({ key: "theme", value: value, updated_at: new Date().toISOString() }, { onConflict: "key" })
+      : await supabaseClient.from("site_settings").delete().eq("key", "theme");
+    btn.disabled = false;
+    if (res.error) { msg("Could not save: " + res.error.message, false); return; }
+    savedJson = JSON.stringify(value);
+    try {
+      if (Object.keys(value).length) localStorage.setItem("eca-theme", savedJson);
+      else localStorage.removeItem("eca-theme");
+    } catch (e) {}
+    if (window.ecaApplyTheme) window.ecaApplyTheme(value);
+    msg("Saved — the whole site now uses this look.", true);
+    preview();
+  });
+  document.getElementById("sl-defaults").addEventListener("click", function () {
+    if (!confirm("Go back to the site's original colors, fonts and logo? (Click Save afterward to make it live.)")) return;
+    theme = { colors: {}, heading_font: null, body_font: null, logo_url: null };
+    renderColors();
+    fillFonts();
+    preview();
+  });
+
+  const frame = document.getElementById("sl-frame");
+  frame.addEventListener("load", preview);
+  document.getElementById("sl-preview-page").addEventListener("change", function () {
+    frame.src = this.value + "?theme-preview=1";
+  });
+  window.addEventListener("beforeunload", function (e) { if (dirty()) { e.preventDefault(); e.returnValue = ""; } });
+
+  (async function () {
+    const auth = await requireRole(["owner"]);
+    if (!auth) return;
+    const { data } = await supabaseClient.from("site_settings").select("value").eq("key", "theme").maybeSingle();
+    const v = (data && data.value) || {};
+    theme = { colors: Object.assign({}, v.colors || {}), heading_font: v.heading_font || null, body_font: v.body_font || null, logo_url: v.logo_url || null };
+    savedJson = JSON.stringify(clean(theme));
+    renderColors();
+    fillFonts();
+    frame.src = "index.html?theme-preview=1";
+    preview();
+  })();
+</script>
+</body>
+</html>

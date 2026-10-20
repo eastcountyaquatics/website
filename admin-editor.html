@@ -6,6 +6,7 @@
 <title>Edit Website | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
+<script src="js/theme.js"></script>
 <link rel="icon" type="image/png" href="images/eca-logo-240.png">
 <link rel="apple-touch-icon" href="images/eca-logo-240.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -97,6 +98,14 @@
   .ed-template-text strong { display: block; font-size: 13px; margin-bottom: 2px; }
   .ed-template-text span { display: block; font-size: 11.5px; color: var(--muted, #6b7280); }
 
+  .ed-history-overlay { position: fixed; inset: 0; background: rgba(10,20,60,.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .ed-history-overlay.open { display: flex; }
+  .ed-history-box { background: #fff; border-radius: 12px; width: 100%; max-width: 480px; max-height: 80vh; overflow: auto; padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,.3); font-family: Roboto, sans-serif; }
+  .ed-history-box h3 { margin: 0 0 4px; }
+  .ed-history-box p.ed-hint { margin: 0 0 14px; color: #5b6075; font-size: 13.5px; }
+  .ed-history-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid #eef1f6; font-size: 14px; }
+  .ed-history-row button { border: 1px solid #cfd6e4; background: #fff; border-radius: 6px; padding: 6px 12px; font-weight: 700; cursor: pointer; }
+  .ed-history-row button:hover { border-color: #0000ff; color: #0000ff; }
   .ed-undo-toast {
     display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200;
     background: #1a1a4d; color: #fff; padding: 12px 18px; border-radius: 8px; align-items: center; gap: 16px;
@@ -160,6 +169,7 @@
   </select>
   <a id="view-live-link" class="btn-link" href="#" target="_blank" rel="noopener" style="display:none;">View Live &rarr;</a>
   <button type="button" id="settings-toggle-btn" style="display:none;">Page Settings</button>
+  <button type="button" id="history-btn" style="display:none;">History</button>
   <button type="button" id="reset-page-btn" style="display:none;">Reset Page</button>
   <div class="spacer"></div>
   <span class="status" id="save-status"></span>
@@ -219,7 +229,7 @@
   <button type="button" id="rb-move-up-btn" title="Move this whole block up">&uarr; Move Up</button>
   <button type="button" id="rb-move-down-btn" title="Move this whole block down">&darr; Move Down</button>
   <button type="button" id="rb-delete-section-btn" style="color:#a12626;" title="Remove this whole block">Delete</button>
-  <span class="hint">&#128161; Click any text or photo below to edit it right there. Hover between sections to add something new.</span>
+  <span class="hint">&#128161; Click any text or photo below to edit it right there. Point at any section for its bar: move it, hide it, add a new section above or below, and History (top bar) brings back any earlier version.</span>
 </div>
 
 <div class="ed-canvas-wrap" id="canvas-wrap">
@@ -303,6 +313,7 @@
   const settingsPanel = document.getElementById("settings-panel");
   const settingsToggleBtn = document.getElementById("settings-toggle-btn");
   const resetPageBtn = document.getElementById("reset-page-btn");
+  const historyBtn = document.getElementById("history-btn");
   const viewLiveLink = document.getElementById("view-live-link");
   const saveStatus = document.getElementById("save-status");
   const saveBtn = document.getElementById("save-btn");
@@ -396,10 +407,17 @@
     }
   }
 
+  // On a built-in page, free-form editing happens inside owner-added
+  // sections (each a .cms-added-body); the one holding the cursor is "the"
+  // container for the toolbar's structure tools.
+  function addedBodyOf(node) {
+    while (node && node.nodeType !== 1) node = node.parentNode;
+    return node && node.closest ? node.closest(".cms-added-body") : null;
+  }
   function structuralContainer() {
     const doc = frameDoc();
     if (!doc) return null;
-    if (currentKind === "static") return doc.getElementById("cms-extra-body");
+    if (currentKind === "static") return lastRange ? addedBodyOf(lastRange.startContainer) : null;
     if (currentKind === "custom") return doc.getElementById("page-body");
     return null;
   }
@@ -434,9 +452,9 @@
       // for: people couldn't tell text was clickable at all, only that the
       // obvious "+ Add Section" button was. This still reads as "part of
       // the page" rather than a wireframe, just clearly interactive.
-      '[data-cms],#cms-extra-body,#page-body{outline:1px dashed rgba(0,0,255,.3);outline-offset:3px;cursor:text;min-height:1.4em;transition:outline-color .1s,background-color .1s;}' +
-      '[data-cms]:hover,#cms-extra-body:hover,#page-body:hover{outline:2px dashed rgba(0,0,255,.6);background:rgba(0,0,255,.04);}' +
-      '[data-cms]:focus,#cms-extra-body:focus,#page-body:focus{outline:2px solid #ffd400;background:rgba(255,212,0,.08);}' +
+      '[data-cms],.cms-added-body,#page-body{outline:1px dashed rgba(0,0,255,.3);outline-offset:3px;cursor:text;min-height:1.4em;transition:outline-color .1s,background-color .1s;}' +
+      '[data-cms]:hover,.cms-added-body:hover,#page-body:hover{outline:2px dashed rgba(0,0,255,.6);background:rgba(0,0,255,.04);}' +
+      '[data-cms]:focus,.cms-added-body:focus,#page-body:focus{outline:2px solid #ffd400;background:rgba(255,212,0,.08);}' +
       // Plays once, right when a page opens, so the very first thing
       // someone sees is every editable spot on the page lighting up --
       // showing what's clickable instead of leaving them to guess.
@@ -469,6 +487,22 @@
       '[data-cms-link]{outline:2px dashed rgba(255,212,0,.9) !important;outline-offset:3px;position:relative;cursor:pointer !important;}' +
       '[data-cms-link]::before{content:"✎ Edit button";position:absolute;left:0;top:-24px;background:#ffd400;color:#1a1a4d;font:700 11px/1 Roboto,sans-serif;padding:4px 7px;border-radius:5px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:6;}' +
       '[data-cms-link]:hover::before{opacity:1;}' +
+      // Section bar: every section on a built-in page gets one (move,
+      // hide/show, style, delete, add a section next to it).
+      'body > section[data-section]{position:relative;}' +
+      'body > section[data-section]:hover{box-shadow:inset 0 0 0 2px rgba(255,212,0,.7);}' +
+      '.cms-sec-bar{position:absolute;top:8px;right:8px;z-index:30;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 16px);opacity:0;transition:opacity .15s;font:600 12px/1 Roboto,sans-serif;}' +
+      'body > section[data-section]:hover > .cms-sec-bar,.cms-sec-bar:focus-within{opacity:1;}' +
+      '.cms-sec-bar button{border:0;border-radius:6px;padding:6px 9px;background:rgba(20,30,60,.88);color:#fff;font:inherit;cursor:pointer;white-space:nowrap;}' +
+      '.cms-sec-bar button:hover{background:#0000ff;}' +
+      '.cms-sec-bar button.cms-sec-danger:hover{background:#c0392b;}' +
+      '.cms-sec-bar .cms-sec-name{background:#ffd400;color:#1a1a4d;border-radius:6px;padding:6px 9px;}' +
+      '[data-layout-hidden]{opacity:.38;}' +
+      '[data-layout-hidden] > .cms-sec-bar{opacity:1;}' +
+      '[data-layout-hidden]::after{content:"Hidden \2014 visitors don\2019t see this section";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#1a1a4d;color:#fff;font:700 14px/1.2 Roboto,sans-serif;padding:10px 16px;border-radius:8px;z-index:25;pointer-events:none;}' +
+      '.cms-added{min-height:80px;}' +
+      '.cms-added-body{min-height:60px;}' +
+      '@media (hover: none){.cms-sec-bar{opacity:1;}}' +
       '@media (hover: none){.cms-replace-btn,.cms-figure-remove,.cms-insert-gap-btn{opacity:.85;}[data-cms-link]::before{opacity:1;}}';
     doc.head.appendChild(style);
   }
@@ -477,7 +511,7 @@
   // lights up every editable spot at once so it's obvious at a glance --
   // not something someone has to already know to hover over and discover.
   function flashEditableRegions(doc, extras) {
-    const targets = Array.prototype.slice.call(doc.querySelectorAll("[data-cms]"));
+    const targets = Array.prototype.slice.call(doc.querySelectorAll("[data-cms], .cms-added-body"));
     if (extras) targets.push(extras);
     targets.forEach(function (el) {
       el.classList.add("cms-flash-once");
@@ -588,7 +622,7 @@
       const sel = doc.getSelection();
       if (sel.rangeCount) {
         const range = sel.getRangeAt(0);
-        const container = structuralContainer();
+        const container = currentKind === "static" ? addedBodyOf(range.startContainer) : structuralContainer();
         if (container && container.contains(range.startContainer)) {
           lastRange = range.cloneRange();
         }
@@ -653,10 +687,174 @@
       .from("image_blocks")
       .upsert({ page_path: currentPath, block_key: target.key, image_url: url, alt_text: target.el.getAttribute("alt") || null }, { onConflict: "page_path,block_key" });
     setStatus(dbError ? "Image uploaded, but could not save: " + friendlyError(dbError) : "Image updated.");
+    if (!dbError) recordVersion();
   });
+
+  // ---- Sections on a built-in page -----------------------------------------
+  // Every top-level <section> has a data-section key: built-in ones from the
+  // HTML (e.g. "masters-3"), added ones "x-<id>". The order on screen is the
+  // layout that gets saved (page_layouts, applied by js/page-extras.js).
+  function newAddedId() { return Math.random().toString(36).slice(2, 7) + Date.now().toString(36).slice(-4); }
+  function topSections(doc) { return Array.prototype.slice.call(doc.querySelectorAll("body > section[data-section]")); }
+  // Sections the page itself keeps out of view (e.g. a team's practice
+  // schedule before one is published) get no bar and are skipped when
+  // moving; they keep their place in the saved order.
+  function shownSections(doc) {
+    const win = doc.defaultView;
+    return topSections(doc).filter(function (sec) { return win.getComputedStyle(sec).display !== "none"; });
+  }
+  function markLayoutDirty() { extrasOrBodyDirty = true; refreshDirtyChrome(); }
+  const SECTION_STYLES = [["", "Plain"], ["alt", "White"], ["navy", "Navy"]];
+
+  function makeAddedSection(doc, html, style) {
+    const sec = doc.createElement("section");
+    sec.className = "cms-added" + (style === "alt" ? " alt" : style === "navy" ? " navy-block" : "");
+    sec.setAttribute("data-section", "x-" + newAddedId());
+    if (style) sec.setAttribute("data-style", style);
+    const body = doc.createElement("div");
+    body.className = "container cms-added-body";
+    body.innerHTML = sanitizeHtml(html || "");
+    sec.appendChild(body);
+    return sec;
+  }
+
+  function wireAddedBody(doc, body) {
+    body.setAttribute("contenteditable", "true");
+    wrapExistingImagesForEditing(body, doc);
+    refreshInsertGaps(body, doc);
+    if (body.getAttribute("data-wired")) return;
+    body.setAttribute("data-wired", "1");
+    body.addEventListener("input", markLayoutDirty);
+    body.addEventListener("paste", function (e) {
+      e.preventDefault();
+      const text = (e.clipboardData || canvas.contentWindow.clipboardData).getData("text/plain");
+      doc.execCommand("insertText", false, text);
+    });
+    body.addEventListener("click", function (e) {
+      const removeBtn = e.target.closest(".cms-figure-remove");
+      if (!removeBtn) return;
+      e.preventDefault();
+      const figure = removeBtn.closest(".cms-figure");
+      if (figure) removeFigureWithUndo(figure);
+    });
+  }
+
+  function setSectionStyle(sec, style) {
+    sec.classList.remove("alt", "navy-block");
+    if (style === "alt") sec.classList.add("alt");
+    if (style === "navy") sec.classList.add("navy-block");
+    if (style) sec.setAttribute("data-style", style); else sec.removeAttribute("data-style");
+  }
+
+  // The bar of buttons in each section's top-right corner, rebuilt after
+  // any change so Move Up/Down always match the current order.
+  function refreshSectionBars(doc) {
+    doc.querySelectorAll(".cms-sec-bar").forEach(function (b) { b.remove(); });
+    const secs = shownSections(doc);
+    secs.forEach(function (sec, i) {
+      const added = sec.classList.contains("cms-added");
+      const hidden = sec.hasAttribute("data-layout-hidden");
+      const bar = doc.createElement("div");
+      bar.className = "cms-sec-bar";
+      bar.contentEditable = "false";
+      function add(label, title, fn, cls) {
+        const b = doc.createElement("button");
+        b.type = "button";
+        b.textContent = label;
+        b.title = title;
+        if (cls) b.className = cls;
+        b.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); fn(b); });
+        bar.appendChild(b);
+        return b;
+      }
+      const name = doc.createElement("span");
+      name.className = "cms-sec-name";
+      name.textContent = added ? "Your section" : "Section " + (i + 1);
+      bar.appendChild(name);
+      if (i === 0) add("+ Add above", "Add a new section above this one", function (b) { openTemplateGallery(b, null, { ref: sec, before: true }); }, "cms-sec-add-above");
+      add("+ Add below", "Add a new section below this one", function (b) { openTemplateGallery(b, null, { ref: sec, before: false }); }, "cms-sec-add-below");
+      if (i > 0) add("\u2191", "Move this section up", function () { moveSection(doc, sec, -1); });
+      if (i < secs.length - 1) add("\u2193", "Move this section down", function () { moveSection(doc, sec, 1); });
+      if (added) {
+        const cur = sec.getAttribute("data-style") || "";
+        const idx = SECTION_STYLES.findIndex(function (st) { return st[0] === cur; });
+        add("Background: " + SECTION_STYLES[idx === -1 ? 0 : idx][1], "Change this section's background", function () {
+          const next = SECTION_STYLES[((idx === -1 ? 0 : idx) + 1) % SECTION_STYLES.length][0];
+          setSectionStyle(sec, next);
+          refreshSectionBars(doc);
+          markLayoutDirty();
+        });
+        add("Delete", "Delete this section", function () { deleteAddedSection(doc, sec); }, "cms-sec-danger");
+      } else {
+        add(hidden ? "Show" : "Hide", hidden ? "Show this section to visitors again" : "Hide this section from visitors (you can show it again any time)", function () {
+          if (sec.hasAttribute("data-layout-hidden")) sec.removeAttribute("data-layout-hidden");
+          else sec.setAttribute("data-layout-hidden", "1");
+          refreshSectionBars(doc);
+          markLayoutDirty();
+        });
+      }
+      sec.appendChild(bar);
+    });
+  }
+
+  function moveSection(doc, sec, dir) {
+    const secs = shownSections(doc);
+    const i = secs.indexOf(sec);
+    const other = secs[i + dir];
+    if (!other) return;
+    if (dir < 0) other.parentNode.insertBefore(sec, other);
+    else other.parentNode.insertBefore(sec, other.nextSibling);
+    refreshSectionBars(doc);
+    sec.scrollIntoView({ block: "center" });
+    resetSelectionAfterMove();
+    markLayoutDirty();
+  }
+
+  function deleteAddedSection(doc, sec) {
+    const parent = sec.parentNode;
+    const next = sec.nextSibling;
+    sec.remove();
+    refreshSectionBars(doc);
+    lastRange = null;
+    markLayoutDirty();
+    showUndoToast("Section deleted.", function () {
+      parent.insertBefore(sec, next && next.isConnected ? next : null);
+      refreshSectionBars(doc);
+      markLayoutDirty();
+    });
+  }
+
+  function insertNewSection(target, html) {
+    const doc = frameDoc();
+    const sec = makeAddedSection(doc, html, "");
+    const ref = target.ref && target.ref.isConnected ? target.ref : topSections(doc).slice(-1)[0];
+    if (ref) ref.parentNode.insertBefore(sec, target.before ? ref : ref.nextSibling);
+    else { const f = doc.querySelector(".site-footer"); f.parentNode.insertBefore(sec, f); }
+    wireAddedBody(doc, sec.querySelector(".cms-added-body"));
+    refreshSectionBars(doc);
+    markLayoutDirty();
+    sec.scrollIntoView({ block: "center" });
+  }
+
+  // What gets saved to page_layouts: every section in its on-screen order.
+  function computeLayout(doc) {
+    return topSections(doc).map(function (sec) {
+      if (sec.classList.contains("cms-added")) {
+        const body = sec.querySelector(".cms-added-body");
+        const o = { added: sec.getAttribute("data-section").slice(2), html: body ? getCleanHtml(body) : "" };
+        if (sec.getAttribute("data-style")) o.style = sec.getAttribute("data-style");
+        return o;
+      }
+      const o = { key: sec.getAttribute("data-section") };
+      if (sec.hasAttribute("data-layout-hidden")) o.hidden = true;
+      return o;
+    });
+  }
 
   // ---- Template gallery ---------------------------------------------------
   const SECTION_TEMPLATES = [
+    { key: "text", label: "Heading + Text", hint: "A title and a paragraph", icon: "\u00b6",
+      html: '<h2>New Section</h2><p>Write something here.</p>' },
     { key: "two-col", label: "Two-Column Text", hint: "Side-by-side paragraphs", icon: "▤▤",
       html: '<div class="grid grid-2" style="margin:28px 0;"><div><h3>First Topic</h3><p>Write about the first topic here.</p></div><div><h3>Second Topic</h3><p>Write about the second topic here.</p></div></div>' },
     { key: "feature-cards", label: "Feature Cards", hint: "3 cards in a row", icon: "▦▦▦",
@@ -685,9 +883,11 @@
 
   let galleryInsertBtn = null;
   let galleryInsertAnchor = null; // the node new content gets inserted BEFORE
-  function openTemplateGallery(anchorBtn, insertBeforeNode) {
+  let galleryNewSection = null;   // { ref, before }: add a whole new section there
+  function openTemplateGallery(anchorBtn, insertBeforeNode, newSection) {
     galleryInsertBtn = anchorBtn;
     galleryInsertAnchor = insertBeforeNode || anchorBtn;
+    galleryNewSection = newSection || null;
     // The anchor (e.g. the "+ Add Section" button near the footer, or a
     // hover gap between two sections) is often scrolled out of view inside
     // the iframe on a long page -- bring it into view first, or the
@@ -712,8 +912,14 @@
     btn.addEventListener("click", async function () {
       const tpl = SECTION_TEMPLATES.find(function (t) { return t.key === btn.dataset.template; });
       if (!tpl) return;
-      const container = structuralContainer();
       galleryEl.classList.remove("open");
+      if (galleryNewSection) {
+        const target = galleryNewSection;
+        galleryNewSection = null;
+        insertNewSection(target, typeof tpl.html === "function" ? await tpl.html() : tpl.html);
+        return;
+      }
+      const container = structuralContainer();
       if (!container) return;
       const html = typeof tpl.html === "function" ? await tpl.html() : tpl.html;
       const doc = frameDoc();
@@ -759,6 +965,15 @@
     refreshDirtyChrome();
   });
   document.getElementById("rb-add-section-btn").addEventListener("click", function () {
+    if (currentKind === "static") {
+      const doc = frameDoc();
+      if (!doc) return;
+      let sec = lastRange ? (function (n) { while (n && n.nodeType !== 1) n = n.parentNode; return n && n.closest ? n.closest("body > section[data-section]") : null; })(lastRange.startContainer) : null;
+      if (!sec) sec = topSections(doc).slice(-1)[0];
+      const anchor = sec && sec.querySelector(".cms-sec-add-below");
+      if (anchor) openTemplateGallery(anchor, null, { ref: sec, before: false });
+      return;
+    }
     const container = structuralContainer();
     if (!container) return;
     const addBtn = container.querySelector(".cms-add-section-btn") || container;
@@ -907,6 +1122,7 @@
     settingsPanel.classList.remove("open");
     settingsToggleBtn.style.display = "none";
     resetPageBtn.style.display = "inline-block";
+    historyBtn.style.display = "inline-block";
     viewLiveLink.style.display = "inline-block";
     viewLiveLink.href = path;
     setStatus("Loading…");
@@ -928,11 +1144,12 @@
     Array.prototype.forEach.call(parsed.querySelectorAll("[data-cms-link]"), function (el) {
       linkDefaults[el.getAttribute("data-cms-link")] = { label: el.textContent.trim(), href: el.getAttribute("href") || "" };
     });
-    const [{ data: contentRows }, { data: imageRows }, { data: extrasRow }, { data: linkRows }] = await Promise.all([
+    const [{ data: contentRows }, { data: imageRows }, { data: extrasRow }, { data: linkRows }, { data: layoutRow }] = await Promise.all([
       supabaseClient.from("content_blocks").select("block_key, content, tag").eq("page_path", path),
       supabaseClient.from("image_blocks").select("block_key, image_url, alt_text").eq("page_path", path),
       supabaseClient.from("page_extras").select("body_html").eq("page_path", path).maybeSingle(),
       supabaseClient.from("link_blocks").select("block_key, label, href").eq("page_path", path),
+      supabaseClient.from("page_layouts").select("sections").eq("page_path", path).maybeSingle(),
     ]);
 
     canvas.onload = function () {
@@ -989,34 +1206,20 @@
         openLinkDialog(a, linkDefaults[a.getAttribute("data-cms-link")] || null);
       }, true);
 
-      let extrasSection = doc.getElementById("cms-extra-content");
-      if (!extrasSection) {
-        extrasSection = doc.createElement("section");
-        extrasSection.id = "cms-extra-content";
-        const container = doc.createElement("div");
-        container.className = "container";
-        container.id = "cms-extra-body";
-        extrasSection.appendChild(container);
-        const footer = doc.querySelector(".site-footer");
-        if (footer && footer.parentNode) footer.parentNode.insertBefore(extrasSection, footer);
-        else doc.body.appendChild(extrasSection);
+      // Sections: the saved layout (order, hidden, added sections), or the
+      // page as built. Older "added content" (page_extras) becomes an added
+      // section at the end, saved as part of the layout on the next save.
+      let sections = layoutRow && Array.isArray(layoutRow.sections) ? layoutRow.sections : null;
+      if (!sections && extrasRow && extrasRow.body_html && extrasRow.body_html.trim()) {
+        sections = topSections(doc).map(function (sec) { return { key: sec.getAttribute("data-section") }; });
+        sections.push({ added: newAddedId(), html: extrasRow.body_html });
       }
-      const extrasBody = doc.getElementById("cms-extra-body");
-      extrasBody.innerHTML = sanitizeHtml((extrasRow && extrasRow.body_html) || "");
-      wrapExistingImagesForEditing(extrasBody, doc);
-      extrasBody.appendChild(makeAddSectionButton(doc));
-      refreshInsertGaps(extrasBody, doc);
-      extrasBody.addEventListener("input", function () { extrasOrBodyDirty = true; refreshDirtyChrome(); });
-      extrasBody.addEventListener("click", function (e) {
-        const removeBtn = e.target.closest(".cms-figure-remove");
-        if (!removeBtn) return;
-        e.preventDefault();
-        const figure = removeBtn.closest(".cms-figure");
-        if (figure) removeFigureWithUndo(figure);
-      });
+      if (doc.defaultView.ecaApplyLayout) doc.defaultView.ecaApplyLayout(doc, sections || [], { editing: true });
+      doc.querySelectorAll(".cms-added-body").forEach(function (body) { wireAddedBody(doc, body); });
+      refreshSectionBars(doc);
 
       wireSelectionTracking(doc);
-      flashEditableRegions(doc, extrasBody);
+      flashEditableRegions(doc, null);
       setStatus("All changes saved.");
     };
     canvas.src = path + (path.indexOf("?") === -1 ? "?" : "&") + "edit=1&_=" + Date.now();
@@ -1035,6 +1238,7 @@
     richBar.classList.add("visible");
     settingsToggleBtn.style.display = "inline-block";
     resetPageBtn.style.display = "none";
+    historyBtn.style.display = "inline-block";
     viewLiveLink.style.display = "inline-block";
     viewLiveLink.href = "page.html?slug=" + encodeURIComponent(row.slug);
     fillSettingsFields(row);
@@ -1191,6 +1395,7 @@
     linkTarget.setAttribute("href", href);
     closeLinkDialog();
     setStatus("Button saved.");
+    recordVersion();
   });
   document.getElementById("link-reset").addEventListener("click", async function () {
     if (!linkTarget) return;
@@ -1200,17 +1405,158 @@
     if (linkOriginal) { linkTarget.textContent = linkOriginal.label; linkTarget.setAttribute("href", linkOriginal.href); }
     closeLinkDialog();
     setStatus("Button back to the original.");
+    recordVersion();
+  });
+
+  // ---- Page history ---------------------------------------------------------
+  // Each editing session's saved state of a page (page_versions). Saves made
+  // within 15 minutes of each other update the same version, so History
+  // reads like "how the page looked after each sitting", not every keystroke.
+  let currentUserId = null;
+  const VERSION_WINDOW_MS = 15 * 60 * 1000;
+  const MAX_VERSIONS = 50;
+  function versionPath() {
+    return currentKind === "custom" && currentPageRow ? "custom:" + currentPageRow.id : currentPath;
+  }
+  async function takeSnapshot() {
+    if (currentKind === "custom") {
+      const { data } = await supabaseClient.from("pages").select("*").eq("id", currentPageRow.id).maybeSingle();
+      if (!data) return null;
+      return { kind: "custom", page: {
+        title: data.title, slug: data.slug, nav_label: data.nav_label, meta_description: data.meta_description,
+        body_html: data.body_html, show_in_nav: data.show_in_nav, sort_order: data.sort_order, is_published: data.is_published,
+      } };
+    }
+    const [c, i, l, lay, ex] = await Promise.all([
+      supabaseClient.from("content_blocks").select("block_key, page_path, content, tag").eq("page_path", currentPath),
+      supabaseClient.from("image_blocks").select("page_path, block_key, image_url, alt_text").eq("page_path", currentPath),
+      supabaseClient.from("link_blocks").select("page_path, block_key, label, href").eq("page_path", currentPath),
+      supabaseClient.from("page_layouts").select("page_path, sections").eq("page_path", currentPath).maybeSingle(),
+      supabaseClient.from("page_extras").select("page_path, body_html").eq("page_path", currentPath).maybeSingle(),
+    ]);
+    if (c.error || i.error || l.error || lay.error || ex.error) return null;
+    return { kind: "static", content_blocks: c.data || [], image_blocks: i.data || [], link_blocks: l.data || [],
+      page_layout: lay.data || null, page_extras: ex.data || null };
+  }
+  async function recordVersion(forceNew) {
+    if (!currentKind) return;
+    try {
+      const path = versionPath();
+      const snapshot = await takeSnapshot();
+      if (!snapshot) return;
+      const now = new Date().toISOString();
+      const { data: latest } = await supabaseClient.from("page_versions").select("id, updated_at, created_by, snapshot")
+        .eq("page_path", path).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      if (latest && JSON.stringify(latest.snapshot) === JSON.stringify(snapshot)) return;
+      if (!forceNew && latest && latest.created_by === currentUserId && Date.now() - new Date(latest.updated_at).getTime() < VERSION_WINDOW_MS) {
+        await supabaseClient.from("page_versions").update({ snapshot: snapshot, updated_at: now }).eq("id", latest.id);
+      } else {
+        await supabaseClient.from("page_versions").insert({ page_path: path, snapshot: snapshot, created_by: currentUserId, updated_at: now });
+      }
+      const { data: all } = await supabaseClient.from("page_versions").select("id").eq("page_path", path).order("updated_at", { ascending: false });
+      const extra = (all || []).slice(MAX_VERSIONS).map(function (v) { return v.id; });
+      if (extra.length) await supabaseClient.from("page_versions").delete().in("id", extra);
+    } catch (e) {
+      // History is a convenience; never let it get in the way of saving.
+    }
+  }
+  async function restoreSnapshot(snap) {
+    if (snap.kind === "custom") {
+      const { error } = await supabaseClient.from("pages").update(snap.page).eq("id", currentPageRow.id);
+      if (error) throw error;
+      currentPageRow = Object.assign({}, currentPageRow, snap.page);
+      return;
+    }
+    const p = currentPath;
+    const dels = await Promise.all([
+      supabaseClient.from("content_blocks").delete().eq("page_path", p),
+      supabaseClient.from("image_blocks").delete().eq("page_path", p),
+      supabaseClient.from("link_blocks").delete().eq("page_path", p),
+      supabaseClient.from("page_layouts").delete().eq("page_path", p),
+      supabaseClient.from("page_extras").delete().eq("page_path", p),
+    ]);
+    const delErr = dels.find(function (r) { return r.error; });
+    if (delErr) throw delErr.error;
+    const ins = [];
+    if (snap.content_blocks.length) ins.push(supabaseClient.from("content_blocks").insert(snap.content_blocks));
+    if (snap.image_blocks.length) ins.push(supabaseClient.from("image_blocks").insert(snap.image_blocks));
+    if (snap.link_blocks.length) ins.push(supabaseClient.from("link_blocks").insert(snap.link_blocks));
+    if (snap.page_layout) ins.push(supabaseClient.from("page_layouts").insert(snap.page_layout));
+    if (snap.page_extras) ins.push(supabaseClient.from("page_extras").insert(snap.page_extras));
+    const res = await Promise.all(ins);
+    const insErr = res.find(function (r) { return r.error; });
+    if (insErr) throw insErr.error;
+  }
+
+  const historyOverlay = document.createElement("div");
+  historyOverlay.className = "ed-history-overlay";
+  historyOverlay.innerHTML = '<div class="ed-history-box" role="dialog" aria-modal="true" aria-labelledby="ed-history-title">' +
+    '<h3 id="ed-history-title">Page History</h3><p class="ed-hint">Each time this page was saved, newest first. Restoring brings that version back for everyone &mdash; and the current version is kept here too, so you can switch back.</p>' +
+    '<div id="ed-history-list"></div>' +
+    '<div style="text-align:right;margin-top:14px;"><button type="button" id="ed-history-close" style="border:1px solid #cfd6e4;background:#fff;border-radius:6px;padding:8px 16px;font-weight:700;cursor:pointer;">Close</button></div></div>';
+  document.body.appendChild(historyOverlay);
+  document.getElementById("ed-history-close").addEventListener("click", function () { historyOverlay.classList.remove("open"); });
+  historyOverlay.addEventListener("click", function (e) { if (e.target === historyOverlay) historyOverlay.classList.remove("open"); });
+
+  function fmtWhen(iso) {
+    return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  historyBtn.addEventListener("click", async function () {
+    if (!currentKind) return;
+    if (isDirty()) await saveAll();
+    const list = document.getElementById("ed-history-list");
+    list.innerHTML = '<p class="ed-hint">Loading&hellip;</p>';
+    historyOverlay.classList.add("open");
+    const [{ data: versions }, { data: people }] = await Promise.all([
+      supabaseClient.from("page_versions").select("id, updated_at, created_by, snapshot").eq("page_path", versionPath()).order("updated_at", { ascending: false }),
+      supabaseClient.from("profiles").select("id, full_name, email"),
+    ]);
+    if (!versions || !versions.length) {
+      list.innerHTML = '<p class="ed-hint">No saved versions yet &mdash; they start with your next save.</p>';
+      return;
+    }
+    const who = {};
+    (people || []).forEach(function (p) { who[p.id] = p.full_name || p.email; });
+    list.innerHTML = versions.map(function (v, i) {
+      return '<div class="ed-history-row"><span><strong>' + escapeHtml(fmtWhen(v.updated_at)) + "</strong>" +
+        (i === 0 ? ' <span style="color:#1c7a3a;font-weight:700;">&middot; current</span>' : "") +
+        '<br><span style="color:#5b6075;font-size:12.5px;">' + escapeHtml(v.created_by === currentUserId ? "You" : (who[v.created_by] || "A manager")) + "</span></span>" +
+        (i === 0 ? "" : '<button type="button" data-restore="' + v.id + '">Restore</button>') + "</div>";
+    }).join("");
+    list.querySelectorAll("[data-restore]").forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        const v = versions.find(function (x) { return x.id === btn.dataset.restore; });
+        if (!v || !confirm("Bring back the version from " + fmtWhen(v.updated_at) + "? It goes live right away.")) return;
+        btn.disabled = true;
+        btn.textContent = "Restoring…";
+        try {
+          await recordVersion(true);
+          await restoreSnapshot(v.snapshot);
+          await recordVersion(true);
+          historyOverlay.classList.remove("open");
+          if (currentKind === "static") loadStaticPage(currentPath);
+          else { fillSettingsFields(currentPageRow); loadCustomPage(currentPageRow); }
+          setStatus("Restored the version from " + fmtWhen(v.updated_at) + ".");
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = "Restore";
+          alert("Could not restore: " + friendlyError(e));
+        }
+      });
+    });
   });
 
   resetPageBtn.addEventListener("click", async function () {
     if (currentKind !== "static") return;
-    if (!confirm("Reset all edited text, images, buttons, and added sections on this page back to the original? This can't be undone.")) return;
+    if (!confirm("Reset all edited text, images, buttons, section order and added sections on this page back to the original? (You can still bring a saved version back from History.)")) return;
     setStatus("Resetting…");
+    await recordVersion(true);
     await Promise.all([
       supabaseClient.from("content_blocks").delete().eq("page_path", currentPath),
       supabaseClient.from("image_blocks").delete().eq("page_path", currentPath),
       supabaseClient.from("page_extras").delete().eq("page_path", currentPath),
       supabaseClient.from("link_blocks").delete().eq("page_path", currentPath),
+      supabaseClient.from("page_layouts").delete().eq("page_path", currentPath),
     ]);
     loadStaticPage(currentPath);
   });
@@ -1231,6 +1577,7 @@
     settingsPanel.classList.remove("open");
     settingsToggleBtn.style.display = "none";
     resetPageBtn.style.display = "none";
+    historyBtn.style.display = "none";
     viewLiveLink.style.display = "none";
     setStatus("");
     await refreshCustomPageOptions();
@@ -1277,6 +1624,7 @@
       settingsPanel.classList.remove("open");
       settingsToggleBtn.style.display = "none";
       resetPageBtn.style.display = "none";
+      historyBtn.style.display = "none";
       viewLiveLink.style.display = "none";
       setStatus("");
       return;
@@ -1318,8 +1666,10 @@
           if (error) throw error;
         }
         if (extrasOrBodyDirty) {
-          const html = getCleanHtml(structuralContainer());
-          const { error } = await supabaseClient.from("page_extras").upsert({ page_path: currentPath, body_html: html }, { onConflict: "page_path" });
+          const { error } = await supabaseClient.from("page_layouts").upsert(
+            { page_path: currentPath, sections: computeLayout(frameDoc()), updated_at: new Date().toISOString() },
+            { onConflict: "page_path" }
+          );
           if (error) throw error;
         }
       } else if (currentKind === "custom") {
@@ -1348,6 +1698,7 @@
       settingsDirty = false;
       saveBtn.disabled = false;
       refreshDirtyChrome();
+      recordVersion();
     } catch (e) {
       saveBtn.disabled = false;
       setStatus("Could not save: " + friendlyError(e), "error");
@@ -1361,6 +1712,7 @@
   (async function () {
     const auth = await requireRole(["owner"]);
     if (!auth) return;
+    currentUserId = auth.session.user.id;
     await refreshCustomPageOptions();
   })();
 })();

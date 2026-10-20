@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Create Account | San Diego East County Aquatics</title>
+<title>Create Family Account | San Diego East County Aquatics</title>
 <meta name="description" content="Create your San Diego East County Aquatics account.">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
+<script src="js/theme.js"></script>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="images/eca-logo-240.png">
 <link rel="apple-touch-icon" href="images/eca-logo-240.png">
@@ -78,22 +79,23 @@
 
 <div class="auth-wrap">
   <div class="auth-card">
-    <h1>Create Your Account</h1>
-    <p class="auth-sub">Sign up to manage your ECA registration and see your purchases.</p>
+    <h1>Create Your Family Account</h1>
+    <p class="auth-sub">One account per <strong>family</strong>, not per athlete. A parent or guardian signs up once, then adds each athlete under My Account to register them and see your purchases.</p>
 
     <div id="form-msg" class="form-msg"></div>
 
     <form id="signup-form">
       <div class="field">
-        <label for="full_name">Full Name</label>
+        <label for="full_name">Parent/Guardian Full Name</label>
         <input type="text" id="full_name" name="full_name" autocomplete="name" required>
+        <p class="field-hint">Your name, not your athlete&rsquo;s &mdash; you&rsquo;ll add athletes after signing up. Adult Masters players and coaches: use your own name.</p>
       </div>
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email">Parent/Guardian Email</label>
         <input type="email" id="email" name="email" autocomplete="email" required>
       </div>
       <div class="field">
-        <label for="phone">Phone</label>
+        <label for="phone">Parent/Guardian Phone</label>
         <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="(619) 555-0100" required>
       </div>
       <div class="field">

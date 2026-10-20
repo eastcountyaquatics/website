@@ -6,6 +6,7 @@
 <title>Family Credits | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
+<script src="js/theme.js"></script>
 <link rel="icon" type="image/png" href="images/eca-logo-240.png">
 <link rel="apple-touch-icon" href="images/eca-logo-240.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -85,7 +86,7 @@
 <style>
   .cr-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px;}
   .cr-stat{background:#fff;border:1px solid #e3e6f0;border-top:4px solid var(--blue);border-radius:10px;padding:16px 18px;}
-  .cr-stat b{display:block;font-size:26px;color:var(--navy);font-family:Bitter,serif;}
+  .cr-stat b{display:block;font-size:26px;color:var(--navy);font-family:var(--font-heading);}
   .cr-stat span{font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;}
   .cr-stat.owed{border-top-color:var(--gold);}
   .cr-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;}
@@ -114,7 +115,7 @@
 <section class="section-tight">
   <div class="container" style="max-width:900px;">
     <div class="notice" style="margin-bottom:20px;">
-      Track money the club owes a family (missed sessions, overpayment, injury, etc.) and every time some of it is used. <strong>Issue</strong> a credit when it&rsquo;s applied to a registration, given as a coupon code or refunded &mdash; partial amounts are fine, the balance updates.
+      Track money the club owes a family (missed sessions, overpayment, injury, etc.) and every time some of it is used. <strong>Issue</strong> a credit when it&rsquo;s given as a coupon code or refunded &mdash; partial amounts are fine, the balance updates.
     </div>
 
     <div class="cr-stats" id="cr-stats">
@@ -191,7 +192,10 @@
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script>
   var credits = [], uses = [], me = null;
-  var METHODS = ["Applied to registration", "Coupon code", "Refund", "Cash / check", "Other"];
+  var METHODS = ["Coupon Issued", "Refunded"];
+  // Spreadsheet imports: anything mentioning a refund is "Refunded";
+  // everything else (codes, applied to registration...) is a coupon.
+  function normalizeMethod(m) { return /refund/i.test(m || "") ? "Refunded" : "Coupon Issued"; }
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -431,7 +435,11 @@
   document.getElementById("btn-export").addEventListener("click", function () {
     var head = ["Family", "Athlete", "Email", "Amount", "Issued", "Balance", "Status", "Reason", "Date credited", "Expires", "Issued history", "Notes"];
     var lines = [head.join(",")];
-    credits.forEach(function (c) {
+    // A-Z by first name (family names are entered "First Last").
+    credits.slice().sort(function (a, b) {
+      var n = (a.family_name || "").localeCompare(b.family_name || "", undefined, { sensitivity: "base" });
+      return n || String(a.credit_date).localeCompare(String(b.credit_date));
+    }).forEach(function (c) {
       var hist = usesFor(c.id).map(function (u) { return u.issued_on + " " + money(u.amount) + " " + u.method + (u.note ? " (" + u.note + ")" : ""); }).join("; ");
       lines.push([c.family_name, c.athlete_name, c.email, Number(c.amount).toFixed(2), issuedFor(c.id).toFixed(2), balanceFor(c).toFixed(2),
         LABEL[statusOf(c)], c.reason, c.credit_date, c.expires_on, hist, c.notes].map(csvCell).join(","));
@@ -538,7 +546,7 @@
           expires_on: toDate(o.expires_on), notes: o.notes || null, created_by: me,
         },
         issued: Math.min(iss, amt), issued_on: toDate(o.issued_on),
-        method: o.method || (o.code ? "Coupon code" : null),
+        method: (o.method || o.code) ? normalizeMethod(o.method) : null,
         note: [o.code ? "Code: " + o.code : "", o.used_for || ""].filter(Boolean).join(" - ") || null,
       });
     });
@@ -569,7 +577,7 @@
     var r = await supabaseClient.from("family_credits").insert(pending.map(function (p) { return p.credit; }));
     if (!r.error) {
       var us = pending.filter(function (p) { return p.issued > 0; }).map(function (p) {
-        return { id: uid(), credit_id: p.credit.id, amount: p.issued, issued_on: p.issued_on || p.credit.credit_date, method: p.method ? p.method.slice(0, 100) : "Other", note: p.note ? p.note.slice(0, 900) + " (imported)" : "Imported from spreadsheet", created_by: me };
+        return { id: uid(), credit_id: p.credit.id, amount: p.issued, issued_on: p.issued_on || p.credit.credit_date, method: p.method || "Coupon Issued", note: p.note ? p.note.slice(0, 900) + " (imported)" : "Imported from spreadsheet", created_by: me };
       });
       if (us.length) r = await supabaseClient.from("family_credit_uses").insert(us);
     }

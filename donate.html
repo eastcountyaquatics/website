@@ -78,43 +78,43 @@
   </div>
 </header>
 
-<section class="page-hero">
+<section data-section="donate-1" class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Donate/Sponsor</span>
-    <h1>Make a Donation</h1>
+    <span data-cms="donate-0001" class="breadcrumb">Donate/Sponsor</span>
+    <h1 data-cms="donate-0002">Make a Donation</h1>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
   </div>
 </section>
 
-<section class="section-tight">
+<section data-section="donate-2" class="section-tight">
   <div class="container" style="max-width:560px;">
-    <p class="muted" style="margin-bottom:20px;">A one-time gift to support pool time, equipment, and travel for East County families &mdash; no sponsorship listing or business features, just a straightforward donation.</p>
+    <p data-cms="donate-0003" class="muted" style="margin-bottom:20px;">A one-time gift to support pool time, equipment, and travel for East County families &mdash; no sponsorship listing or business features, just a straightforward donation.</p>
 
     <div id="donate-msg" class="form-msg"></div>
     <div class="card" style="border-top-color:var(--gold);">
       <form id="donate-form">
         <div class="field">
-          <label for="dn-name">Your Name</label>
+          <label data-cms="donate-0004" for="dn-name">Your Name</label>
           <input type="text" id="dn-name" required>
         </div>
         <div class="field">
-          <label for="dn-email">Email</label>
+          <label data-cms="donate-0005" for="dn-email">Email</label>
           <input type="email" id="dn-email" required>
         </div>
         <div class="field">
-          <label for="dn-org">Organization (optional)</label>
+          <label data-cms="donate-0006" for="dn-org">Organization (optional)</label>
           <input type="text" id="dn-org">
         </div>
         <div class="field">
-          <label for="dn-amount">Amount (USD)</label>
+          <label data-cms="donate-0007" for="dn-amount">Amount (USD)</label>
           <input type="number" id="dn-amount" step="0.01" min="1" placeholder="50.00" required>
         </div>
         <button type="submit" id="donate-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
     </div>
-    <p class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. No goods or services were provided in exchange for this contribution. A receipt will be emailed to you after payment.</p>
+    <p data-cms="donate-0008" class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. No goods or services were provided in exchange for this contribution. A receipt will be emailed to you after payment.</p>
   </div>
 </section>
 
@@ -134,6 +134,11 @@
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/image-blocks.js?v=20261014n"></script>
+<script src="js/link-blocks.js?v=20261014p"></script>
+<script src="js/page-extras.js"></script>
 <script>
   (function () {
     const status = new URLSearchParams(window.location.search).get("status");

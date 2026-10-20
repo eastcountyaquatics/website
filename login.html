@@ -79,23 +79,23 @@
 
 <div class="auth-wrap">
   <div class="auth-card">
-    <h1>Welcome Back</h1>
-    <p class="auth-sub">Sign in to view your ECA dashboard.</p>
+    <h1 data-cms="login-0001">Welcome Back</h1>
+    <p data-cms="login-0002" class="auth-sub">Sign in to view your ECA dashboard.</p>
 
     <div id="form-msg" class="form-msg"></div>
 
     <form id="login-form">
       <div class="field">
-        <label for="email">Email</label>
+        <label data-cms="login-0003" for="email">Email</label>
         <input type="email" id="email" name="email" autocomplete="email" required>
       </div>
       <div class="field">
-        <label for="password">Password</label>
+        <label data-cms="login-0004" for="password">Password</label>
         <input type="password" id="password" name="password" autocomplete="current-password" required>
       </div>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="stay-signed-in" style="width:auto;" checked>
-        <label for="stay-signed-in" style="margin:0;">Stay signed in on this device</label>
+        <label data-cms="login-0005" for="stay-signed-in" style="margin:0;">Stay signed in on this device</label>
       </div>
       <button type="submit" id="submit-btn" class="btn btn-primary auth-submit">Sign In</button>
     </form>
@@ -120,7 +120,13 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
-<script src="js/site-chrome.js?v=20261014p"></script><script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/image-blocks.js?v=20261014n"></script>
+<script src="js/link-blocks.js?v=20261014p"></script>
+<script src="js/page-extras.js"></script>
+<script>
   document.getElementById("login-form").addEventListener("submit", async function (e) {
     e.preventDefault();
     const msg = document.getElementById("form-msg");

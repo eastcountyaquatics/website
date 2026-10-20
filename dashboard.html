@@ -1397,6 +1397,22 @@
       return;
     }
 
+    // Who's already in each session: paid (card or Zeffy) -> Registered;
+    // part-paid on Zeffy -> balance due. Those kids aren't offered again.
+    const regDone = {}, regShort = {};
+    if (myAthletes.length) {
+      const athleteIds = myAthletes.map(function (a) { return a.id; });
+      const optionIds = shown.map(function (o) { return o.id; });
+      const [{ data: paidRegs }, { data: shortCodes }] = await Promise.all([
+        supabaseClient.from("purchases").select("athlete_id, registration_option_id")
+          .eq("status", "paid").in("athlete_id", athleteIds).in("registration_option_id", optionIds),
+        supabaseClient.from("zeffy_registration_codes").select("athlete_id, registration_option_id, amount_due_cents, paid_cents")
+          .eq("status", "short").in("athlete_id", athleteIds).in("registration_option_id", optionIds),
+      ]);
+      (paidRegs || []).forEach(function (r) { regDone[r.registration_option_id + ":" + r.athlete_id] = true; });
+      (shortCodes || []).forEach(function (r) { regShort[r.registration_option_id + ":" + r.athlete_id] = r; });
+    }
+
     wrap.innerHTML = '<div class="grid grid-3">' +
       shown
         .map(function (o) {
@@ -1406,17 +1422,25 @@
           // team on the athlete overrides the birthdate rule, so playing
           // up/down a group still works.
           const optionTeams = o.team_slugs || [];
-          const eligible = myAthletes.filter(function (a) { return athleteFitsProgram(a, optionTeams); });
+          const fits = myAthletes.filter(function (a) { return athleteFitsProgram(a, optionTeams); });
+          const done = fits.filter(function (a) { return regDone[o.id + ":" + a.id]; });
+          const eligible = fits.filter(function (a) { return !regDone[o.id + ":" + a.id]; });
+          const doneHtml = done.map(function (a) {
+            return '<div style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;color:#1f6b35;font-weight:700;">&#10003; ' +
+              escapeHtml(a.full_name) + " &mdash; Registered</div>";
+          }).join("");
           const athleteChecks = !myAthletes.length
             ? '<p class="muted" style="font-size:13px;">Add an athlete above first.</p>'
-            : !eligible.length
+            : !fits.length
               ? '<p class="muted" style="font-size:13px;">None of your athletes are in this program&rsquo;s age group.</p>'
-              : eligible
+              : doneHtml + eligible
                   .map(function (a) {
+                    const sh = regShort[o.id + ":" + a.id];
                     return (
                       '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:6px;">' +
                       '<input type="checkbox" value="' + a.id + '" data-option="' + o.id + '"> ' +
                       escapeHtml(a.full_name) +
+                      (sh ? ' <span style="color:#a15c00;font-weight:700;font-size:12.5px;">&middot; ' + formatAmount(Math.max(0, sh.amount_due_cents - sh.paid_cents), "usd") + " balance due</span>" : "") +
                       "</label>"
                     );
                   })

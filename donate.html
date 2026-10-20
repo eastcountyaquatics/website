@@ -135,11 +135,14 @@
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021b"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/link-blocks.js?v=20261014p"></script>
 <script src="js/page-extras.js"></script>
 <script>
+  function escapeHtmlText(t) { return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
   (function () {
     const status = new URLSearchParams(window.location.search).get("status");
     if (status === "success" && showDonationReceipt(document.querySelector(".card"))) {
@@ -150,7 +153,7 @@
         "<strong>Thank you for your donation!</strong> A receipt was sent to your email.</div>";
     } else if (status === "cancelled") {
       document.getElementById("donate-msg").className = "form-msg error";
-      document.getElementById("donate-msg").textContent = "Checkout was cancelled — no payment was made. You can try again below.";
+      document.getElementById("donate-msg").innerHTML = ecaT("give.cancelled");
     }
   })();
 
@@ -163,12 +166,12 @@
     const dollars = parseFloat(document.getElementById("dn-amount").value);
     if (isNaN(dollars) || dollars < 1) {
       msg.className = "form-msg error";
-      msg.textContent = "Enter an amount of at least $1.";
+      msg.innerHTML = ecaT("give.min_one");
       return;
     }
 
     btn.disabled = true;
-    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = "Submitting...";
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = ecaTPlain("give.submitting");
 
     // Same pattern as sponsor.html: insert the pending row first (RLS lets
     // anyone submit one), then the checkout function looks it up by id so
@@ -191,7 +194,7 @@
       btn.disabled = false;
       btn.innerHTML = btn.dataset.idle || "Continue to Payment";
       msg.className = "form-msg error";
-      msg.textContent = "Could not submit: " + (error ? error.message : "unknown error");
+      msg.innerHTML = ecaT("give.failed", { error: escapeHtmlText(error ? error.message : "unknown error") });
       return;
     }
 

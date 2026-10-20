@@ -146,7 +146,7 @@
           </div>
           <div class="field">
             <label data-cms="coach-registration-0014" for="cr-shirt">Shirt Size</label>
-            <select id="cr-shirt" required>
+            <select id="cr-shirt" required data-cms-options="coach-registration-opt-shirt" data-options-kind="text">
               <option value="">Choose&hellip;</option>
               <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option>
             </select>
@@ -263,7 +263,9 @@
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021b"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/option-blocks.js"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/link-blocks.js?v=20261014p"></script>
 <script src="js/page-extras.js"></script>
@@ -288,7 +290,7 @@
       blob = await openPhotoCropper(file);
     } catch (err) {
       msg.className = "form-msg error";
-      msg.textContent = "That photo couldn't be opened. Please choose a JPG or PNG (iPhone: share it as \"Most Compatible\" or take a screenshot of it).";
+      msg.innerHTML = ecaT("cr.bad_photo");
       return;
     }
     if (!blob) return;
@@ -300,10 +302,12 @@
     preview.dataset.url = URL.createObjectURL(blob);
     preview.style.backgroundImage = "url(" + preview.dataset.url + ")";
     preview.classList.add("has-photo");
-    document.getElementById("cr-photo-btn").textContent = "Change Photo";
+    document.getElementById("cr-photo-btn").textContent = ecaTPlain("cr.change_photo");
   });
 </script>
 <script>
+  function escapeHtmlText(t) { return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
   function radioValue(name) {
     const checked = document.querySelector('input[name="' + name + '"]:checked');
     return checked ? checked.value : "";
@@ -364,7 +368,7 @@
 
     if (!croppedPhoto) {
       msg.className = "form-msg error";
-      msg.textContent = "Please add your headshot photo (About You, at the top).";
+      msg.innerHTML = ecaT("cr.need_photo");
       document.getElementById("cr-photo-btn").scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -375,13 +379,13 @@
     for (const f of [w9File, lgFile]) {
       if (f && f.size > 10 * 1024 * 1024) {
         msg.className = "form-msg error";
-        msg.textContent = "\u201c" + f.name + "\u201d is over 10MB. Please upload a smaller PDF or photo.";
+        msg.innerHTML = ecaT("cr.too_big", { file: escapeHtmlText(f.name) });
         return;
       }
     }
 
     btn.disabled = true;
-    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = "Submitting...";
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = ecaTPlain("cr.submitting");
     const failUpload = function (text) {
       btn.disabled = false;
       btn.innerHTML = btn.dataset.idle || "Submit Registration";
@@ -466,7 +470,7 @@
       btn.disabled = false;
       btn.innerHTML = btn.dataset.idle || "Submit Registration";
       msg.className = "form-msg error";
-      msg.textContent = "Could not submit: " + error.message;
+      msg.innerHTML = ecaT("give.failed", { error: escapeHtmlText(error.message) });
       return;
     }
 

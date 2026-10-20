@@ -222,12 +222,15 @@
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021b"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
 <script src="js/option-blocks.js"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/link-blocks.js?v=20261014p"></script>
 <script src="js/page-extras.js"></script>
 <script>
+  function escapeHtmlText(t) { return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
   const typeSelect = document.getElementById("sp-type");
   const donateFields = document.getElementById("donate-fields");
   const sponsorFields = document.getElementById("sponsor-fields");
@@ -285,7 +288,7 @@
         "<strong>Thank you for your support!</strong> A receipt was sent to your email &mdash; please keep it for your tax records.</div>";
     } else if (status === "cancelled") {
       document.getElementById("sponsor-msg").className = "form-msg error";
-      document.getElementById("sponsor-msg").textContent = "Checkout was cancelled \u2014 no payment was made. You can try again below.";
+      document.getElementById("sponsor-msg").innerHTML = ecaT("give.cancelled");
     }
   })();
 
@@ -313,7 +316,7 @@
       const min = tierMin();
       if (isNaN(dollars) || dollars < min) {
         msg.className = "form-msg error";
-        msg.textContent = "Enter an amount of at least $" + min.toLocaleString("en-US") + ".";
+        msg.innerHTML = ecaT("give.min_amount", { amount: "$" + min.toLocaleString("en-US") });
         return;
       }
     } else {
@@ -321,13 +324,13 @@
       dollars = parseFloat(choice === "other" ? document.getElementById("dn-amount-other").value : choice);
       if (isNaN(dollars) || dollars < 1) {
         msg.className = "form-msg error";
-        msg.textContent = "Enter an amount of at least $1.";
+        msg.innerHTML = ecaT("give.min_one");
         return;
       }
     }
 
     btn.disabled = true;
-    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = "Submitting...";
+    btn.dataset.idle = btn.dataset.idle || btn.innerHTML; btn.textContent = ecaTPlain("give.submitting");
 
     // Inserted directly (RLS lets anyone submit a pending sponsorship), then
     // the checkout function looks it up by id to build the Stripe session --
@@ -368,7 +371,7 @@
       btn.disabled = false;
       btn.innerHTML = btn.dataset.idle || "Continue to Payment";
       msg.className = "form-msg error";
-      msg.textContent = "Could not submit: " + (error ? error.message : "unknown error");
+      msg.innerHTML = ecaT("give.failed", { error: escapeHtmlText(error ? error.message : "unknown error") });
       return;
     }
 

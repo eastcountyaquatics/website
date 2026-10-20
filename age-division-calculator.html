@@ -201,12 +201,15 @@
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021b"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/link-blocks.js?v=20261014p"></script>
 <script src="js/page-extras.js"></script>
 <script src="js/uswp-age-division.js"></script>
 <script>
+  function escapeHtmlText(t) { return String(t == null ? "" : t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
   function formatLongDate(d) {
     return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   }
@@ -242,16 +245,16 @@
     resultEl.classList.add("visible");
 
     if (result.division) {
-      document.getElementById("adc-result-division").textContent = "Your Division: " + result.division;
+      document.getElementById("adc-result-division").innerHTML = ecaT("adc.division", { division: escapeHtmlText(result.division) });
       document.getElementById("adc-result-age").textContent = "Age on " + formatLongDate(cutoff) + ": " + result.age;
-      document.getElementById("adc-result-eligible").textContent = "Eligible for " + result.division;
+      document.getElementById("adc-result-eligible").innerHTML = ecaT("adc.eligible", { division: escapeHtmlText(result.division) });
     } else if (result.age > 18) {
-      document.getElementById("adc-result-division").textContent = "No Standard Youth Division";
+      document.getElementById("adc-result-division").innerHTML = ecaT("adc.too_old_title");
       document.getElementById("adc-result-age").textContent = "Age on " + formatLongDate(cutoff) + ": " + result.age;
-      document.getElementById("adc-result-eligible").textContent = "Older than 18U — contact the club about Masters or adult play.";
+      document.getElementById("adc-result-eligible").innerHTML = ecaT("adc.too_old");
     } else {
-      document.getElementById("adc-result-division").textContent = "Check the Date";
-      document.getElementById("adc-result-age").textContent = "That birthdate is after the " + tournamentYear + " cutoff.";
+      document.getElementById("adc-result-division").innerHTML = ecaT("adc.check_title");
+      document.getElementById("adc-result-age").innerHTML = ecaT("adc.check", { year: tournamentYear });
       document.getElementById("adc-result-eligible").textContent = "";
     }
     document.getElementById("adc-result-cutoff").textContent = "USA Water Polo cutoff: " + formatLongDate(cutoff);

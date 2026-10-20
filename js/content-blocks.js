@@ -12,9 +12,19 @@
   if (/[?&]edit=1(&|$)/.test(window.location.search)) return;
 
   const blocks = document.querySelectorAll("[data-cms]");
-  if (!blocks.length || typeof supabaseClient === "undefined") return;
+  if (typeof supabaseClient === "undefined") return;
 
   const pagePath = window.location.pathname.split("/").pop() || "index.html";
+  // Tab title and Google description, set on Edit Website > Tab & Google Text.
+  const metaPrefix = pagePath.replace(/\.html$/, "") + "-meta-";
+  function applyMeta(r) {
+    if (r.block_key === metaPrefix + "title") {
+      document.title = r.content;
+      document.querySelectorAll('meta[property="og:title"], meta[name="twitter:title"]').forEach(function (m) { m.setAttribute("content", r.content); });
+    } else if (r.block_key === metaPrefix + "desc") {
+      document.querySelectorAll('meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]').forEach(function (m) { m.setAttribute("content", r.content); });
+    }
+  }
 
   async function applyOverrides() {
     try {
@@ -32,7 +42,10 @@
       if (!rows || rows.length === 0) return;
 
       const byKey = {};
-      rows.forEach(function (r) { byKey[r.block_key] = r; });
+      rows.forEach(function (r) {
+        byKey[r.block_key] = r;
+        if (typeof r.content === "string" && r.block_key.indexOf(metaPrefix) === 0) applyMeta(r);
+      });
 
       blocks.forEach(function (el) {
         const override = byKey[el.getAttribute("data-cms")];

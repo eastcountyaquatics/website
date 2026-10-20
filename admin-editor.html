@@ -164,12 +164,23 @@
       <option value="static:team-18u-boys.html">Team &mdash; 18U Boys</option>
       <option value="static:team-18u-girls.html">Team &mdash; 18U Girls</option>
     </optgroup>
+    <optgroup label="Forms &amp; Sign-in Pages">
+      <option value="static:sponsor.html">Donate or Sponsor &mdash; form</option>
+      <option value="static:donate.html">Make a Donation &mdash; form</option>
+      <option value="static:age-division-calculator.html">Age Division Calculator</option>
+      <option value="static:signup.html">Create Family Account</option>
+      <option value="static:login.html">Sign In</option>
+      <option value="static:forgot-password.html">Forgot Password</option>
+      <option value="static:reset-password.html">Set New Password</option>
+      <option value="static:coach-registration.html">Coach Registration</option>
+    </optgroup>
     <optgroup label="Custom Pages" id="custom-pages-group"></optgroup>
     <option value="new">+ New Page&hellip;</option>
   </select>
   <a id="view-live-link" class="btn-link" href="#" target="_blank" rel="noopener" style="display:none;">View Live &rarr;</a>
   <button type="button" id="settings-toggle-btn" style="display:none;">Page Settings</button>
   <button type="button" id="history-btn" style="display:none;">History</button>
+  <button type="button" id="meta-btn" style="display:none;" title="The page's name in the browser tab and in Google results">Tab &amp; Google Text</button>
   <button type="button" id="reset-page-btn" style="display:none;">Reset Page</button>
   <div class="spacer"></div>
   <span class="status" id="save-status"></span>
@@ -266,6 +277,24 @@
   </form>
 </div>
 
+<div id="meta-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="meta-dialog-title" hidden>
+  <form id="meta-form" class="ed-link-card">
+    <h3 id="meta-dialog-title">Tab &amp; Google text</h3>
+    <label for="meta-title">Page title <span style="font-weight:400;color:#6b7189;">(browser tab and Google headline)</span></label>
+    <input type="text" id="meta-title" maxlength="120" required>
+    <label for="meta-desc">Description <span style="font-weight:400;color:#6b7189;">(the line under the headline on Google; 1&ndash;2 sentences)</span></label>
+    <textarea id="meta-desc" rows="3" maxlength="300" style="width:100%;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;"></textarea>
+    <p class="ed-link-hint">Saves right away. Google picks up changes the next time it visits the page, usually within a few days.</p>
+    <div id="meta-msg" class="ed-link-msg"></div>
+    <div class="ed-link-actions">
+      <button type="button" id="meta-reset" class="ed-link-secondary">Back to original</button>
+      <span style="flex:1"></span>
+      <button type="button" id="meta-cancel" class="ed-link-secondary">Cancel</button>
+      <button type="submit" class="ed-link-primary">Save</button>
+    </div>
+  </form>
+</div>
+
 <div class="ed-undo-toast" id="undo-toast">
   <span id="undo-toast-text"></span>
   <button type="button" id="undo-toast-btn">Undo</button>
@@ -312,6 +341,7 @@
   const richBar = document.getElementById("rich-bar");
   const settingsPanel = document.getElementById("settings-panel");
   const settingsToggleBtn = document.getElementById("settings-toggle-btn");
+  const metaBtn = document.getElementById("meta-btn");
   const resetPageBtn = document.getElementById("reset-page-btn");
   const historyBtn = document.getElementById("history-btn");
   const viewLiveLink = document.getElementById("view-live-link");
@@ -1122,6 +1152,7 @@
     settingsPanel.classList.remove("open");
     settingsToggleBtn.style.display = "none";
     resetPageBtn.style.display = "inline-block";
+    metaBtn.style.display = "inline-block";
     historyBtn.style.display = "inline-block";
     viewLiveLink.style.display = "inline-block";
     viewLiveLink.href = path;
@@ -1205,6 +1236,12 @@
         e.stopPropagation();
         openLinkDialog(a, linkDefaults[a.getAttribute("data-cms-link")] || null);
       }, true);
+      // Never leave the page while editing: a photo tile or card is a link
+      // around editable text, and clicking that text must edit it.
+      doc.addEventListener("click", function (e) {
+        const a = e.target.closest && e.target.closest("a[href]");
+        if (a && !a.hasAttribute("data-cms-link")) e.preventDefault();
+      });
 
       // Sections: the saved layout (order, hidden, added sections), or the
       // page as built. Older "added content" (page_extras) becomes an added
@@ -1238,6 +1275,7 @@
     richBar.classList.add("visible");
     settingsToggleBtn.style.display = "inline-block";
     resetPageBtn.style.display = "none";
+    metaBtn.style.display = "none";
     historyBtn.style.display = "inline-block";
     viewLiveLink.style.display = "inline-block";
     viewLiveLink.href = "page.html?slug=" + encodeURIComponent(row.slug);
@@ -1355,6 +1393,65 @@
   });
 
   // ---- Button / link editing -------------------------------------------
+  // ---- Tab & Google text (static pages) ---------------------------------
+  // Stored as two content_blocks rows on the page ("<page>-meta-title" and
+  // "<page>-meta-desc"); js/content-blocks.js applies them on the live page.
+  const metaDialog = document.getElementById("meta-dialog");
+  let metaOriginal = { title: "", desc: "" };
+  function metaKeys() {
+    const page = currentPath.replace(/\.html$/, "");
+    return { title: page + "-meta-title", desc: page + "-meta-desc" };
+  }
+  function metaMsg(text, ok) {
+    const m = document.getElementById("meta-msg");
+    m.textContent = text || "";
+    m.style.color = ok ? "#1f6b35" : "#c0392b";
+  }
+  metaBtn.addEventListener("click", async function () {
+    if (currentKind !== "static") return;
+    metaMsg("");
+    const doc = canvas.contentDocument;
+    // The built-in values come from the page's own HTML.
+    let raw = "";
+    try { raw = await (await fetch(currentPath + "?_=" + Date.now(), { cache: "no-store" })).text(); } catch (e) {}
+    const parsed = new DOMParser().parseFromString(raw || "", "text/html");
+    const dm = parsed.querySelector('meta[name="description"]');
+    metaOriginal = { title: parsed.title || (doc && doc.title) || "", desc: dm ? dm.getAttribute("content") || "" : "" };
+    const k = metaKeys();
+    const { data } = await supabaseClient.from("content_blocks").select("block_key, content")
+      .eq("page_path", currentPath).in("block_key", [k.title, k.desc]);
+    const saved = {};
+    (data || []).forEach(function (r) { saved[r.block_key] = r.content; });
+    document.getElementById("meta-title").value = saved[k.title] || metaOriginal.title;
+    document.getElementById("meta-desc").value = saved[k.desc] || metaOriginal.desc;
+    metaDialog.hidden = false;
+    document.getElementById("meta-title").focus();
+  });
+  document.getElementById("meta-cancel").addEventListener("click", function () { metaDialog.hidden = true; });
+  metaDialog.addEventListener("click", function (e) { if (e.target === metaDialog) metaDialog.hidden = true; });
+  document.getElementById("meta-reset").addEventListener("click", function () {
+    document.getElementById("meta-title").value = metaOriginal.title;
+    document.getElementById("meta-desc").value = metaOriginal.desc;
+  });
+  document.getElementById("meta-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const k = metaKeys();
+    const title = document.getElementById("meta-title").value.trim();
+    const desc = document.getElementById("meta-desc").value.trim();
+    // Same as the built-in text: no override needed.
+    const del = [], up = [];
+    if (!title || title === metaOriginal.title) del.push(k.title); else up.push({ page_path: currentPath, block_key: k.title, content: title });
+    if (!desc || desc === metaOriginal.desc) del.push(k.desc); else up.push({ page_path: currentPath, block_key: k.desc, content: desc });
+    const ops = [];
+    if (up.length) ops.push(supabaseClient.from("content_blocks").upsert(up, { onConflict: "block_key" }));
+    if (del.length) ops.push(supabaseClient.from("content_blocks").delete().eq("page_path", currentPath).in("block_key", del));
+    const res = await Promise.all(ops);
+    const err = res.find(function (r) { return r && r.error; });
+    if (err) { metaMsg("Could not save: " + err.error.message, false); return; }
+    metaMsg("Saved.", true);
+    setTimeout(function () { metaDialog.hidden = true; }, 700);
+  });
+
   const linkDialog = document.getElementById("link-dialog");
   const linkForm = document.getElementById("link-form");
   const linkLabel = document.getElementById("link-label");
@@ -1577,6 +1674,7 @@
     settingsPanel.classList.remove("open");
     settingsToggleBtn.style.display = "none";
     resetPageBtn.style.display = "none";
+    metaBtn.style.display = "none";
     historyBtn.style.display = "none";
     viewLiveLink.style.display = "none";
     setStatus("");
@@ -1624,6 +1722,8 @@
       settingsPanel.classList.remove("open");
       settingsToggleBtn.style.display = "none";
       resetPageBtn.style.display = "none";
+      metaBtn.style.display = "none";
+    metaBtn.style.display = "none";
       historyBtn.style.display = "none";
       viewLiveLink.style.display = "none";
       setStatus("");

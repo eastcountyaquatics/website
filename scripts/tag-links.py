@@ -28,7 +28,7 @@ class Finder(HTMLParser):
 total = 0
 for path in sorted(glob.glob("*.html")):
     src = open(path, encoding="utf-8").read()
-    if "css/refresh.css" not in src: continue
+    if "css/refresh.css" not in src and "js/link-blocks.js" not in src: continue
     page = path[:-5]
     used = [int(n) for n in re.findall(r'data-cms-link="%s-link(\d+)"' % re.escape(page), src)]
     nxt = max(used, default=0) + 1

@@ -92,60 +92,60 @@
   </div>
 </header>
 
-<section class="page-hero">
+<section data-section="coach-registration-1" class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Coaches</span>
-    <h1>Coach Registration</h1>
+    <span data-cms="coach-registration-0001" class="breadcrumb">Coaches</span>
+    <h1 data-cms="coach-registration-0002">Coach Registration</h1>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
   </div>
 </section>
 
-<section class="section-tight">
+<section data-section="coach-registration-2" class="section-tight">
   <div class="container" style="max-width:680px;">
-    <p class="muted" style="margin-bottom:20px;">Welcome to the ECA coaching staff! Please fill this out when you start, and again whenever something changes (new phone, renewed certification, etc.). Only the club manager can see what you submit.</p>
+    <p data-cms="coach-registration-0003" class="muted" style="margin-bottom:20px;">Welcome to the ECA coaching staff! Please fill this out when you start, and again whenever something changes (new phone, renewed certification, etc.). Only the club manager can see what you submit.</p>
 
-    <div class="notice" id="reg-required" style="display:none;margin-bottom:16px;"><strong>One more step:</strong> please complete your coach registration. You&rsquo;ll go right back to the site when you&rsquo;re done.</div>
+    <div class="notice" id="reg-required" style="display:none;margin-bottom:16px;"><strong data-cms="coach-registration-0004">One more step:</strong> please complete your coach registration. You&rsquo;ll go right back to the site when you&rsquo;re done.</div>
     <div id="reg-msg" class="form-msg"></div>
     <div class="card" id="reg-card">
       <form id="coach-reg-form">
-        <h3 class="reg-section">About You</h3>
+        <h3 data-cms="coach-registration-0005" class="reg-section">About You</h3>
         <div class="field">
-          <label for="cr-name">Name (First and Last)</label>
+          <label data-cms="coach-registration-0006" for="cr-name">Name (First and Last)</label>
           <input type="text" id="cr-name" autocomplete="name" maxlength="200" required>
         </div>
         <div class="field">
-          <label for="cr-photo">Headshot Photo (required)</label>
+          <label data-cms="coach-registration-0007" for="cr-photo">Headshot Photo (required)</label>
           <div class="photo-pick">
             <div class="photo-preview" id="cr-photo-preview" aria-hidden="true">&#128247;</div>
             <div>
               <input type="file" id="cr-photo" accept="image/jpeg,image/png,image/webp" style="display:none;">
               <button type="button" class="btn btn-outline-dark" id="cr-photo-btn">Choose Photo</button>
-              <p class="muted" style="font-size:12.5px;margin:6px 0 0;">A clear, front-facing photo of your face. You&rsquo;ll crop it to fit after choosing &mdash; it&rsquo;s shown in a circle on the Coaches page.</p>
+              <p data-cms="coach-registration-0008" class="muted" style="font-size:12.5px;margin:6px 0 0;">A clear, front-facing photo of your face. You&rsquo;ll crop it to fit after choosing &mdash; it&rsquo;s shown in a circle on the Coaches page.</p>
             </div>
           </div>
         </div>
         <div class="field">
-          <label for="cr-bio">Short Bio (required)</label>
+          <label data-cms="coach-registration-0009" for="cr-bio">Short Bio (required)</label>
           <textarea id="cr-bio" rows="4" maxlength="1200" required placeholder="Your water polo background, how long you've coached, anything families should know about you."></textarea>
-          <p class="muted" style="font-size:12.5px;margin:4px 0 0;">Shown with your photo on the public Coaches page.</p>
+          <p data-cms="coach-registration-0010" class="muted" style="font-size:12.5px;margin:4px 0 0;">Shown with your photo on the public Coaches page.</p>
         </div>
         <div class="reg-grid">
           <div class="field">
-            <label for="cr-email">Email Address</label>
+            <label data-cms="coach-registration-0011" for="cr-email">Email Address</label>
             <input type="email" id="cr-email" autocomplete="email" required>
           </div>
           <div class="field">
-            <label for="cr-phone">Phone Number</label>
+            <label data-cms="coach-registration-0012" for="cr-phone">Phone Number</label>
             <input type="tel" id="cr-phone" autocomplete="tel" maxlength="40" required>
           </div>
           <div class="field">
-            <label for="cr-dob">Date of Birth</label>
+            <label data-cms="coach-registration-0013" for="cr-dob">Date of Birth</label>
             <input type="date" id="cr-dob" required>
           </div>
           <div class="field">
-            <label for="cr-shirt">Shirt Size</label>
+            <label data-cms="coach-registration-0014" for="cr-shirt">Shirt Size</label>
             <select id="cr-shirt" required>
               <option value="">Choose&hellip;</option>
               <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option>
@@ -153,29 +153,29 @@
           </div>
         </div>
         <div class="field">
-          <label for="cr-address">Mailing Address</label>
+          <label data-cms="coach-registration-0015" for="cr-address">Mailing Address</label>
           <input type="text" id="cr-address" autocomplete="street-address" maxlength="500" placeholder="Street, City, ZIP">
         </div>
 
-        <h3 class="reg-section">Emergency Contact</h3>
+        <h3 data-cms="coach-registration-0016" class="reg-section">Emergency Contact</h3>
         <div class="field">
-          <label for="cr-ec-name">Emergency Contact Name</label>
+          <label data-cms="coach-registration-0017" for="cr-ec-name">Emergency Contact Name</label>
           <input type="text" id="cr-ec-name" maxlength="200" required>
         </div>
         <div class="reg-grid">
           <div class="field">
-            <label for="cr-ec-rel">Relationship</label>
+            <label data-cms="coach-registration-0018" for="cr-ec-rel">Relationship</label>
             <input type="text" id="cr-ec-rel" maxlength="100" placeholder="e.g. Parent" required>
           </div>
           <div class="field">
-            <label for="cr-ec-phone">Emergency Contact Phone</label>
+            <label data-cms="coach-registration-0019" for="cr-ec-phone">Emergency Contact Phone</label>
             <input type="tel" id="cr-ec-phone" maxlength="40" required>
           </div>
         </div>
 
-        <h3 class="reg-section">Certifications</h3>
+        <h3 data-cms="coach-registration-0020" class="reg-section">Certifications</h3>
         <div class="field">
-          <label>Are you a Certified Lifeguard?</label>
+          <label data-cms="coach-registration-0021">Are you a Certified Lifeguard?</label>
           <div class="radio-row">
             <label><input type="radio" name="cr-lifeguard" value="yes" required> Yes</label>
             <label><input type="radio" name="cr-lifeguard" value="no"> No</label>
@@ -183,16 +183,16 @@
         </div>
         <div id="cr-lg-wrap" style="display:none;">
           <div class="field">
-            <label for="cr-lg-exp">Lifeguard Certification Expiration Date</label>
+            <label data-cms="coach-registration-0022" for="cr-lg-exp">Lifeguard Certification Expiration Date</label>
             <input type="date" id="cr-lg-exp">
           </div>
           <div class="field">
-            <label for="cr-lg-file">Upload a Copy of Your Lifeguard Certification</label>
+            <label data-cms="coach-registration-0023" for="cr-lg-file">Upload a Copy of Your Lifeguard Certification</label>
             <input type="file" id="cr-lg-file" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp">
           </div>
         </div>
         <div class="field">
-          <label>Are you a USA Water Polo Coach member?</label>
+          <label data-cms="coach-registration-0024">Are you a USA Water Polo Coach member?</label>
           <div class="radio-row">
             <label><input type="radio" name="cr-uswp" value="yes" required> Yes</label>
             <label><input type="radio" name="cr-uswp" value="no"> No</label>
@@ -200,44 +200,44 @@
         </div>
         <div class="reg-grid" id="cr-uswp-wrap" style="display:none;">
           <div class="field">
-            <label for="cr-uswp-num">USA Water Polo Membership Number</label>
+            <label data-cms="coach-registration-0025" for="cr-uswp-num">USA Water Polo Membership Number</label>
             <input type="text" id="cr-uswp-num" maxlength="50">
           </div>
           <div class="field">
-            <label for="cr-uswp-exp">Membership Expiration</label>
+            <label data-cms="coach-registration-0026" for="cr-uswp-exp">Membership Expiration</label>
             <input type="date" id="cr-uswp-exp">
           </div>
         </div>
 
-        <h3 class="reg-section">Health</h3>
+        <h3 data-cms="coach-registration-0027" class="reg-section">Health</h3>
         <div class="field">
-          <label for="cr-health">Health Issues</label>
+          <label data-cms="coach-registration-0028" for="cr-health">Health Issues</label>
           <textarea id="cr-health" rows="2" maxlength="2000" placeholder="Anything the club should know about (allergies, conditions, medications)" required></textarea>
-          <p class="field-hint">Enter &ldquo;None&rdquo; if there&rsquo;s nothing to share.</p>
+          <p data-cms="coach-registration-0029" class="field-hint">Enter &ldquo;None&rdquo; if there&rsquo;s nothing to share.</p>
         </div>
 
-        <h3 class="reg-section">Getting Paid</h3>
+        <h3 data-cms="coach-registration-0030" class="reg-section">Getting Paid</h3>
         <div class="field">
-          <label for="cr-w9">W-9 Tax Form</label>
-          <p class="field-hint" style="margin-top:0;">Need to fill one out? <a href="https://www.jotform.com/tax-form-generator/w9/" target="_blank" rel="noopener">Use this free W-9 generator</a> to fill it out and sign it online, then download it and upload the completed, fully executed form here.</p>
+          <label data-cms="coach-registration-0031" for="cr-w9">W-9 Tax Form</label>
+          <p data-cms="coach-registration-0032" class="field-hint" style="margin-top:0;">Need to fill one out? <a href="https://www.jotform.com/tax-form-generator/w9/" target="_blank" rel="noopener">Use this free W-9 generator</a> to fill it out and sign it online, then download it and upload the completed, fully executed form here.</p>
           <input type="file" id="cr-w9" accept="application/pdf,image/jpeg,image/png,image/heic,image/heif,image/webp" required>
         </div>
         <div class="reg-grid">
           <div class="field">
-            <label for="cr-zelle-contact">Zelle (phone number or email)</label>
+            <label data-cms="coach-registration-0033" for="cr-zelle-contact">Zelle (phone number or email)</label>
             <input type="text" id="cr-zelle-contact" maxlength="200" required>
-            <p class="field-hint">We prefer to pay through Zelle. Enter N/A if you don&rsquo;t have it.</p>
+            <p data-cms="coach-registration-0034" class="field-hint">We prefer to pay through Zelle. Enter N/A if you don&rsquo;t have it.</p>
           </div>
           <div class="field">
-            <label for="cr-venmo">Venmo Username</label>
+            <label data-cms="coach-registration-0035" for="cr-venmo">Venmo Username</label>
             <input type="text" id="cr-venmo" maxlength="100" placeholder="@username" required>
-            <p class="field-hint">Enter N/A if you don&rsquo;t have it.</p>
+            <p data-cms="coach-registration-0036" class="field-hint">Enter N/A if you don&rsquo;t have it.</p>
           </div>
         </div>
 
-        <h3 class="reg-section">Availability</h3>
+        <h3 data-cms="coach-registration-0037" class="reg-section">Availability</h3>
         <div class="field">
-          <label for="cr-availability">Basic availability, days and times</label>
+          <label data-cms="coach-registration-0038" for="cr-availability">Basic availability, days and times</label>
           <textarea id="cr-availability" rows="4" maxlength="4000" placeholder="e.g. Mon/Wed/Fri after 4pm and Saturdays. Not available Oct 10&ndash;12." required></textarea>
         </div>
 
@@ -262,6 +262,11 @@
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/image-blocks.js?v=20261014n"></script>
+<script src="js/link-blocks.js?v=20261014p"></script>
+<script src="js/page-extras.js"></script>
 <script src="js/photo-cropper.js"></script>
 <script>
   // Required headshot: pick a file, crop it square (js/photo-cropper.js);

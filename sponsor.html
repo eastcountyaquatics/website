@@ -93,26 +93,26 @@
   </div>
 </header>
 
-<section class="page-hero">
+<section data-section="sponsor-1" class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Donate/Sponsor</span>
-    <h1>Donate or Sponsor</h1>
+    <span data-cms="sponsor-0001" class="breadcrumb">Donate/Sponsor</span>
+    <h1 data-cms="sponsor-0002">Donate or Sponsor</h1>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
   </div>
 </section>
 
-<section class="section-tight">
+<section data-section="sponsor-2" class="section-tight">
   <div class="container" style="max-width:640px;">
-    <p class="muted" style="margin-bottom:14px;">Your support pays for pool time, equipment, athlete scholarships, and tournament travel for East County families. Give a one-time donation, or become a sponsor and we'll feature your business.</p>
-    <div class="notice" style="margin-bottom:20px;"><strong>Your gift is tax-deductible.</strong> San Diego East County Aquatics is a 501(c)(3) non-profit organization, and donations and sponsorships are tax-deductible to the extent allowed by law. A receipt is emailed to you after payment.</div>
+    <p data-cms="sponsor-0003" class="muted" style="margin-bottom:14px;">Your support pays for pool time, equipment, athlete scholarships, and tournament travel for East County families. Give a one-time donation, or become a sponsor and we'll feature your business.</p>
+    <div data-cms="sponsor-0004" class="notice" style="margin-bottom:20px;"><strong>Your gift is tax-deductible.</strong> San Diego East County Aquatics is a 501(c)(3) non-profit organization, and donations and sponsorships are tax-deductible to the extent allowed by law. A receipt is emailed to you after payment.</div>
 
     <div id="sponsor-msg" class="form-msg"></div>
     <div class="card" style="border-top-color:var(--gold);">
       <form id="sponsor-form">
         <div class="field">
-          <label for="sp-type">How would you like to give?</label>
+          <label data-cms="sponsor-0005" for="sp-type">How would you like to give?</label>
           <select id="sp-type" required>
             <option value="donate">Make a Donation</option>
             <option value="sponsor">Become a Sponsor</option>
@@ -122,19 +122,19 @@
         <!-- Donation -->
         <div id="donate-fields">
           <div class="field">
-            <label for="dn-name">Your Name</label>
+            <label data-cms="sponsor-0006" for="dn-name">Your Name</label>
             <input type="text" id="dn-name">
           </div>
           <div class="field">
-            <label for="dn-email">Email</label>
+            <label data-cms="sponsor-0007" for="dn-email">Email</label>
             <input type="email" id="dn-email">
           </div>
           <div class="field">
-            <label for="dn-org">Organization (optional)</label>
+            <label data-cms="sponsor-0008" for="dn-org">Organization (optional)</label>
             <input type="text" id="dn-org">
           </div>
           <div class="field">
-            <label for="dn-amount-choice">Donation Amount</label>
+            <label data-cms="sponsor-0009" for="dn-amount-choice">Donation Amount</label>
             <select id="dn-amount-choice">
               <option value="25">$25</option>
               <option value="50" selected>$50</option>
@@ -145,7 +145,7 @@
             </select>
           </div>
           <div class="field" id="dn-other-wrap" style="display:none;">
-            <label for="dn-amount-other">Other Amount (USD)</label>
+            <label data-cms="sponsor-0010" for="dn-amount-other">Other Amount (USD)</label>
             <input type="number" id="dn-amount-other" step="0.01" min="1" placeholder="75.00">
           </div>
         </div>
@@ -153,47 +153,47 @@
         <!-- Sponsorship -->
         <div id="sponsor-fields" style="display:none;">
           <div class="field">
-            <label for="sp-company">Company / Individual Name</label>
+            <label data-cms="sponsor-0011" for="sp-company">Company / Individual Name</label>
             <input type="text" id="sp-company">
           </div>
           <div class="field">
-            <label for="sp-contact-name">Contact Name</label>
+            <label data-cms="sponsor-0012" for="sp-contact-name">Contact Name</label>
             <input type="text" id="sp-contact-name">
           </div>
           <div class="field">
-            <label for="sp-email">Contact Email</label>
+            <label data-cms="sponsor-0013" for="sp-email">Contact Email</label>
             <input type="email" id="sp-email">
           </div>
           <div class="field">
-            <label for="sp-phone">Contact Phone</label>
+            <label data-cms="sponsor-0014" for="sp-phone">Contact Phone</label>
             <input type="tel" id="sp-phone">
           </div>
           <div class="field">
-            <label for="sp-tier">Sponsorship Level</label>
+            <label data-cms="sponsor-0015" for="sp-tier">Sponsorship Level</label>
             <select id="sp-tier">
               <option value="Bronze" data-min="500">Bronze Sponsor: $500-$1,249</option>
               <option value="Silver" data-min="1250">Silver Sponsorship: $1,250-$2,499</option>
               <option value="Gold" data-min="2500">Gold Sponsorship: $2,500-$3,999</option>
               <option value="Platinum" data-min="4000">Platinum Sponsorship: $4,000+</option>
             </select>
-            <p class="field-hint"><a href="support.html">Compare what each level includes</a>.</p>
+            <p data-cms="sponsor-0016" class="field-hint"><a href="support.html">Compare what each level includes</a>.</p>
           </div>
           <div class="field">
-            <label for="sp-amount">Amount (USD)</label>
+            <label data-cms="sponsor-0017" for="sp-amount">Amount (USD)</label>
             <input type="number" id="sp-amount" step="0.01" min="1" value="500">
             <p class="field-hint" id="sp-amount-hint">Minimum $500 for Bronze. You're welcome to give more.</p>
           </div>
           <div class="field">
-            <label for="sp-website">Your Website</label>
+            <label data-cms="sponsor-0018" for="sp-website">Your Website</label>
             <input type="url" id="sp-website" placeholder="https://...">
           </div>
           <div class="field">
-            <label for="sp-logo">Logo Image URL</label>
+            <label data-cms="sponsor-0019" for="sp-logo">Logo Image URL</label>
             <input type="url" id="sp-logo" placeholder="https://...">
-            <p class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
+            <p data-cms="sponsor-0020" class="field-hint">A link to your logo image if you have one hosted somewhere.</p>
           </div>
           <div class="field">
-            <label for="sp-blurb">What would you like us to say about your business?</label>
+            <label data-cms="sponsor-0021" for="sp-blurb">What would you like us to say about your business?</label>
             <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured."></textarea>
           </div>
         </div>
@@ -201,7 +201,7 @@
         <button type="submit" id="sponsor-submit" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
     </div>
-    <p class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. Contributions are tax-deductible to the extent allowed by law; for sponsorships, the deductible amount may be reduced by the value of any advertising or benefits received &mdash; please consult your tax advisor. Prefer to pay another way, or have questions first? Email us at <a href="mailto:eastcountyaquatics@gmail.com">eastcountyaquatics@gmail.com</a>.</p>
+    <p data-cms="sponsor-0022" class="muted" style="font-size:12.5px;margin-top:14px;">San Diego East County Aquatics is a 501(c)(3) non-profit organization. Contributions are tax-deductible to the extent allowed by law; for sponsorships, the deductible amount may be reduced by the value of any advertising or benefits received &mdash; please consult your tax advisor. Prefer to pay another way, or have questions first? Email us at <a href="mailto:eastcountyaquatics@gmail.com">eastcountyaquatics@gmail.com</a>.</p>
   </div>
 </section>
 
@@ -221,6 +221,11 @@
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/image-blocks.js?v=20261014n"></script>
+<script src="js/link-blocks.js?v=20261014p"></script>
+<script src="js/page-extras.js"></script>
 <script>
   const typeSelect = document.getElementById("sp-type");
   const donateFields = document.getElementById("donate-fields");

@@ -102,22 +102,22 @@
   </div>
 </header>
 
-<section class="page-hero">
+<section data-section="age-division-calculator-1" class="page-hero">
   <div class="container">
-    <span class="breadcrumb">Age Divisions</span>
-    <h1>USA Water Polo Age Divisions</h1>
-    <p>Age divisions are based on the athlete's age on August 1 of the tournament year.</p>
+    <span data-cms="age-division-calculator-0001" class="breadcrumb">Age Divisions</span>
+    <h1 data-cms="age-division-calculator-0002">USA Water Polo Age Divisions</h1>
+    <p data-cms="age-division-calculator-0003">Age divisions are based on the athlete's age on August 1 of the tournament year.</p>
   </div>
   <div class="waves">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="#f4fbfd" d="M0,64L60,58.7C120,53,240,43,360,48C480,53,600,75,720,80C840,85,960,75,1080,64C1200,53,1320,43,1380,37.3L1440,32L1440,120L1380,120C1320,120,1200,120,1080,120C960,120,840,120,720,120C600,120,480,120,360,120C240,120,120,120,60,120L0,120Z"></path></svg>
   </div>
 </section>
 
-<section class="alt">
+<section data-section="age-division-calculator-2" class="alt">
   <div class="container" style="max-width:640px;">
     <div class="section-head" style="margin-bottom:24px;">
-      <span class="kicker" style="color:var(--gold);">Find Your Division</span>
-      <h2>Find Your Division</h2>
+      <span data-cms="age-division-calculator-0004" class="kicker" style="color:var(--gold);">Find Your Division</span>
+      <h2 data-cms="age-division-calculator-0005">Find Your Division</h2>
       <p class="muted">Enter the athlete's birthday to find their age division for the <strong id="adc-year-label"></strong> tournament year.</p>
     </div>
 
@@ -125,7 +125,7 @@
       <form id="adc-calc-form">
         <div class="adc-calc-fields">
           <div class="field" style="margin:0;flex:1;min-width:160px;">
-            <label for="adc-dob">Date of Birth</label>
+            <label data-cms="age-division-calculator-0006" for="adc-dob">Date of Birth</label>
             <input type="date" id="adc-dob" required>
           </div>
           <button type="submit" class="btn btn-primary" style="height:46px;">Find Division</button>
@@ -139,7 +139,7 @@
         <p class="adc-cutoff" id="adc-result-cutoff"></p>
       </div>
     </div>
-    <p class="muted" style="font-size:12.5px;margin-top:14px;">Athletes may be permitted to play in an older age division. Tournament-specific eligibility rules may apply.</p>
+    <p data-cms="age-division-calculator-0007" class="muted" style="font-size:12.5px;margin-top:14px;">Athletes may be permitted to play in an older age division. Tournament-specific eligibility rules may apply.</p>
   </div>
 </section>
 
@@ -200,6 +200,11 @@
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/sanitize-html.js"></script>
+<script src="js/content-blocks.js?v=20261020"></script>
+<script src="js/image-blocks.js?v=20261014n"></script>
+<script src="js/link-blocks.js?v=20261014p"></script>
+<script src="js/page-extras.js"></script>
 <script src="js/uswp-age-division.js"></script>
 <script>
   function formatLongDate(d) {

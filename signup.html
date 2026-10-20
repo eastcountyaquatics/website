@@ -130,6 +130,7 @@
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021b"></script>
 <script src="js/content-blocks.js?v=20261020"></script>
 <script src="js/image-blocks.js?v=20261014n"></script>
 <script src="js/link-blocks.js?v=20261014p"></script>
@@ -158,13 +159,13 @@
 
     if (phone.replace(/\D/g, "").length < 10) {
       msg.className = "form-msg error";
-      msg.textContent = "Please enter a phone number with area code.";
+      msg.innerHTML = ecaT("acc.need_phone");
       return;
     }
 
     if (password !== confirmPassword) {
       msg.className = "form-msg error";
-      msg.textContent = "Passwords do not match.";
+      msg.innerHTML = ecaT("acc.pw_mismatch");
       return;
     }
 
@@ -172,12 +173,12 @@
     // emergency contacts, so don't lean on the auth server's 6-char floor.
     if (password.length < 8) {
       msg.className = "form-msg error";
-      msg.textContent = "Please choose a password of at least 8 characters.";
+      msg.innerHTML = ecaT("acc.pw_short");
       return;
     }
 
     submitBtn.disabled = true;
-    submitBtn.dataset.idle = submitBtn.dataset.idle || submitBtn.innerHTML; submitBtn.textContent = "Creating Account...";
+    submitBtn.dataset.idle = submitBtn.dataset.idle || submitBtn.innerHTML; submitBtn.textContent = ecaTPlain("acc.creating");
 
     const { data, error } = await supabaseClient.auth.signUp({
       email: email,
@@ -204,8 +205,7 @@
     // "check your email" for a message that will never arrive.
     if (!data.session && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
       msg.className = "form-msg error";
-      msg.innerHTML = "There's already an account with this email. " +
-        '<a href="login.html">Sign in</a> instead, or use <a href="forgot-password.html">Forgot your password?</a> to set a new one.';
+      msg.innerHTML = ecaT("acc.exists");
       return;
     }
 
@@ -224,8 +224,7 @@
     }
 
     msg.className = "form-msg success";
-    msg.textContent = "Account created! Check your email to confirm your address, then sign in." +
-      " (Coaches: you'll fill out your coach registration right after you sign in.)";
+    msg.innerHTML = ecaT("acc.created");
     document.getElementById("signup-form").reset();
   });
 </script>

@@ -99,6 +99,11 @@
       #recent-list th{background:var(--navy);color:#fff;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:9px 12px;}
       #recent-list td{padding:9px 12px;border-top:1px solid #eef0f5;vertical-align:top;}
       .status-pill.refunded,.status-pill.canceled{background:#f1f1f1;color:#666;}
+      .kind-pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;background:#eef1f8;color:var(--navy);}
+      .kind-pill.kind-registration{background:#e3ecff;color:#1a3fa8;}
+      .kind-pill.kind-tournament{background:#fff4c2;color:#7a5d00;}
+      .kind-pill.kind-masters{background:#e6f6f7;color:#11646b;}
+      .kind-pill.kind-donation{background:#dff3e4;color:#1f6b35;}
     </style>
     <div id="recent-list"><p class="muted">Loading&hellip;</p></div>
 
@@ -406,20 +411,40 @@
   async function loadRecent() {
     const el = document.getElementById("recent-list");
     const { data, error } = await supabaseClient.from("purchases")
-      .select("created_at, description, amount_cents, currency, status, payer_name, payer_email, program_kind, zeffy_registration_code, receipt_url")
+      .select("created_at, description, amount_cents, currency, status, payer_name, payer_email, program_kind, zeffy_registration_code, receipt_url, registration_option_id, tournament_id")
       .not("zeffy_payment_id", "is", null)
       .order("created_at", { ascending: false }).limit(50);
     if (error) { el.innerHTML = '<p class="muted">Could not load payments: ' + escapeHtml(error.message) + "</p>"; return; }
     if (!data || !data.length) { el.innerHTML = '<p class="muted">No Zeffy payments have reached the site yet.</p>'; return; }
     const LABEL = { paid: "Registered / paid", pending: "Part paid", refunded: "Refunded", canceled: "Canceled" };
+    // What each payment was for: the session's season, or the tournament.
+    const optIds = [...new Set(data.map(function (p) { return p.registration_option_id; }).filter(Boolean))];
+    const tIds = [...new Set(data.map(function (p) { return p.tournament_id; }).filter(Boolean))];
+    const [optRes, tRes] = await Promise.all([
+      optIds.length ? supabaseClient.from("registration_options").select("id, label, season").in("id", optIds) : Promise.resolve({ data: [] }),
+      tIds.length ? supabaseClient.from("tournaments").select("id, name").in("id", tIds) : Promise.resolve({ data: [] }),
+    ]);
+    const opts = {}, tours = {};
+    (optRes.data || []).forEach(function (o) { opts[o.id] = o; });
+    (tRes.data || []).forEach(function (t) { tours[t.id] = t; });
+    const KIND = { registration: "Season registration", tournament: "Tournament", masters: "Masters", donation: "Donation", other: "Other" };
+    function typeCell(p) {
+      const kind = p.program_kind || (p.tournament_id ? "tournament" : p.registration_option_id ? "registration" : "other");
+      let detail = "";
+      if (p.registration_option_id && opts[p.registration_option_id]) detail = opts[p.registration_option_id].season || "";
+      else if (p.tournament_id && tours[p.tournament_id]) detail = tours[p.tournament_id].name || "";
+      return '<span class="kind-pill kind-' + escapeHtml(kind) + '">' + escapeHtml(KIND[kind] || kind) + "</span>" +
+        (detail ? '<div class="muted" style="font-size:12px;margin-top:3px;">' + escapeHtml(detail) + "</div>" : "");
+    }
     el.innerHTML = '<div style="overflow-x:auto;"><table class="report-table" style="width:100%;font-size:14px;"><thead><tr>' +
-      "<th>When</th><th>For</th><th>Paid by</th><th>Amount</th><th>Status</th></tr></thead><tbody>" +
+      "<th>When</th><th>Type</th><th>For</th><th>Paid by</th><th>Amount</th><th>Status</th></tr></thead><tbody>" +
       data.map(function (p) {
         return "<tr><td style=\"white-space:nowrap;\">" + when(p.created_at) + "</td>" +
+          "<td>" + typeCell(p) + "</td>" +
           "<td>" + escapeHtml(p.description || "") + (p.zeffy_registration_code ? '<div class="muted" style="font-size:12px;">code ' + escapeHtml(p.zeffy_registration_code) + "</div>" : "") + "</td>" +
           "<td>" + escapeHtml(p.payer_name || "") + '<div class="muted" style="font-size:12px;">' + escapeHtml(p.payer_email || "") + "</div></td>" +
           "<td>" + money(p.amount_cents) + "</td>" +
-          '<td><span class="status-pill ' + escapeHtml(p.status) + '">' + (LABEL[p.status] || escapeHtml(p.status)) + "</span>" +
+          '<td><span class="status-pill ' + escapeHtml(p.status) + '">' + (p.status === "paid" ? ((p.program_kind === "registration" || p.program_kind === "masters") ? "Registered" : p.program_kind === "tournament" ? "Paid &middot; on roster" : "Paid") : (LABEL[p.status] || escapeHtml(p.status))) + "</span>" +
           (p.receipt_url && /^https:\/\//.test(p.receipt_url) ? ' <a href="' + escapeHtml(p.receipt_url) + '" target="_blank" rel="noopener" style="font-size:12px;">receipt</a>' : "") + "</td></tr>";
       }).join("") + "</tbody></table></div>";
   }

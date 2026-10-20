@@ -390,6 +390,11 @@
       return;
     }
     const last = rows[0];
+    if (last.event_type === "zeffy.rejected") {
+      el.innerHTML = '<div class="notice" style="border-left-color:#c0392b;"><strong>Zeffy is reaching the site but being rejected</strong> (' + ago(last.received_at) + "): " +
+        escapeHtml(last.error_message || "") + ". Copy the signing secret from Zeffy&rsquo;s webhook settings into the <code>ZEFFY_WEBHOOK_SECRET</code> Supabase secret, then have Zeffy resend.</div>";
+      return;
+    }
     const errors = rows.filter(function (r) { return r.status === "error"; });
     el.innerHTML = '<div class="notice"' + (errors.length ? ' style="border-left-color:#c0392b;"' : "") + ">" +
       "<strong>Connected.</strong> Last message from Zeffy: " + ago(last.received_at) + " (" + escapeHtml(last.event_type.replace(/^zeffy\./, "")) + ")." +

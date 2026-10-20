@@ -67,3 +67,29 @@ Also confirm for the Zeffy setup (report back what you find):
 - Secrets exist: `ZEFFY_API_KEY`, `ZEFFY_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`.
 - `select value from site_settings where key = 'zeffy_paylink_form';` returns the club form.
 - Recent `zeffy-webhook` logs (any 401 = webhook secret mismatch).
+
+---
+
+# Debug: a $1 Zeffy test payment (Oct 20, ~9:30 PM PT) didn't register
+
+The test athlete "ZZ Zeffy Test Swimmer" paid $1 on https://www.zeffy.com/en-US/ticketing/test-1345
+(payer jean.eric.gagnon619@gmail.com). Zeffy says the webhook is configured, but nothing shows on the site.
+
+1. **Deploy** `supabase functions deploy zeffy-webhook --no-verify-jwt` (keep JWT verification **off**).
+   The new version logs rejected calls to `webhook_events` so Admin → Zeffy shows them.
+2. **Edge logs** for `zeffy-webhook` since 2026-10-20 20:00 PT: was it called at all? Report each call's
+   HTTP status. 400 "Invalid signature" = `ZEFFY_WEBHOOK_SECRET` doesn't match Zeffy's signing secret
+   (or the `Zeffy-Signature` header format differs — paste one header value, it's not secret).
+   500 = handler error (paste the logged error). No calls = Zeffy isn't sending to this URL.
+3. **SQL**:
+   ```sql
+   select received_at, event_type, status, error_message from webhook_events
+   where stripe_event_id like 'zeffy:%' order by received_at desc limit 10;
+   select created_at, description, amount_cents, status, zeffy_registration_code from purchases
+   where zeffy_payment_id is not null order by created_at desc limit 5;
+   select * from zeffy_unmatched order by paid_at desc limit 5;
+   select code, status, amount_due_cents, paid_cents, option_label from zeffy_registration_codes
+   order by created_at desc limit 5;
+   ```
+4. If the secret is the problem: set `ZEFFY_WEBHOOK_SECRET` to the `whsec_...` value from
+   Zeffy → Settings → Integrations → Webhook, then have Zeffy resend the event (or the owner pays $1 again).

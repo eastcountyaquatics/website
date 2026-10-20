@@ -3,6 +3,16 @@
 **For an agent with access to the ECA Supabase project `kdlkkucvdqmcaujhvrwq`.**
 Code: this repo, branch `claude/sd-east-county-aquatics-tv13qz` (latest).
 
+> **Status (Oct 20, 2026): done, no bug found.** `zeffy-webhook` v8 is deployed (JWT off).
+> Zeffy called the webhook at 21:31:20 UTC (`payment.completed`, 200, processed) and 21:32:01 UTC
+> (`payment.updated`, 200, ignored). There was no signature error and nothing went to `zeffy_unmatched`. The times
+> above are off by the UTC offset: the payment was at about 2:31 PM PT, not 9:30 PM.
+> The $1 payment carried the **registration** code `ECA-KCGW6Q` (session "Test"), not tournament code
+> `ECA-33HBB7`. It was recorded as paid, and "ZZ Zeffy Test Swimmer" is now active/registered.
+> `ECA-33HBB7` is still open and its invite is still pending. To test the tournament path, pay with that code.
+> `RESEND_API_KEY` exists, but the payer's confirmation email got a 403 from the Resend sandbox, which only
+> sends to eastcountyaquatics@gmail.com until a domain is verified. No data was changed.
+
 ## What happened
 - Oct 20, ~9:30 PM PT: the owner paid **$1** on the Zeffy form
   https://www.zeffy.com/en-US/ticketing/test-1345 for the test athlete **"ZZ Zeffy Test Swimmer"**.

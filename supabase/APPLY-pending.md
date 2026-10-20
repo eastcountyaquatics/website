@@ -35,3 +35,24 @@ Then sign in as an owner → Admin → Finance → Family Credits: 53 credits, $
 ## Notes
 - Emily Mouneimne was imported at $95 (sheet said amount $85, balance $95); her row has a "please verify" note.
 - Issued entries are dated 2026-10-19 because the sheet had no issue dates.
+
+---
+
+# Apply: Zeffy registration on the club payment form
+
+Zeffy sessions no longer need a Zeffy form each: with the form link left blank on
+Admin → Registrations, the site prices each kid (discount codes included) and the
+family pays on the club's "Use for Site Prices" form. Two steps:
+
+1. Apply `supabase/migrations/20261020000000_zeffy_registration_club_form.sql`
+   (adds `zeffy_registration_codes.discount_code`).
+2. Deploy the function: `supabase functions deploy create-zeffy-registration`
+   (JWT verification **on**, the default). It now also uses `STRIPE_SECRET_KEY`,
+   which the project already has for card checkout.
+
+Also confirm for the Zeffy setup (report back what you find):
+- `list_edge_functions` shows `zeffy-webhook` (verify_jwt **false**), `zeffy-campaigns`,
+  `create-zeffy-pay-link` (verify_jwt false), `create-zeffy-registration`.
+- Secrets exist: `ZEFFY_API_KEY`, `ZEFFY_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`.
+- `select value from site_settings where key = 'zeffy_paylink_form';` returns the club form.
+- Recent `zeffy-webhook` logs (any 401 = webhook secret mismatch).

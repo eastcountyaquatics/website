@@ -135,9 +135,9 @@
           </select>
         </div>
         <div class="field" id="zeffy-url-wrap" style="display:none;">
-          <label for="zeffy_form_url">This session's Zeffy form link</label>
-          <input type="url" id="zeffy_form_url" placeholder="https://www.zeffy.com/en-US/ticketing/...">
-          <p class="muted" style="font-size:12px;margin-top:4px;">An Event form on Zeffy with a ticket at this price and a required question on the ticket: &ldquo;Payment code (from your ECA account)&rdquo;. Its price must match the Amount above. Discount codes go on the Zeffy form. Families still pick their athletes and agree to the consent here, then get one payment code per athlete. Switch back to the card any time.</p>
+          <label for="zeffy_form_url">This session's own Zeffy form link <span class="muted" style="font-weight:400;">(optional &mdash; usually leave blank)</span></label>
+          <input type="url" id="zeffy_form_url" placeholder="Leave blank to use the club's payment form">
+          <p class="muted" style="font-size:12px;margin-top:4px;"><strong>Leave blank</strong> and it works like card checkout: the price above and the discount codes on Admin &rarr; Coupons are applied here, and families pay that amount on the club's Zeffy payment form (set once on Admin &rarr; Zeffy &rarr; &ldquo;Use for Site Prices&rdquo;). Families pick their athletes and agree to the consent here, then get one payment code per athlete. Only paste a link if you built a separate Zeffy form just for this session (its ticket price must match, and discount codes then go on Zeffy). Switch back to the card any time.</p>
         </div>
         <div class="field">
           <label for="sort_order">Display Order (lower shows first)</label>
@@ -434,7 +434,7 @@
     // option (Owners can update registration options), saved right after.
     const provider = document.getElementById("payment_provider").value;
     const zeffyUrl = document.getElementById("zeffy_form_url").value.trim();
-    if (provider === "zeffy" && !/^https:\/\/(www\.)?zeffy\.com\//.test(zeffyUrl)) {
+    if (provider === "zeffy" && zeffyUrl && !/^https:\/\/(www\.)?zeffy\.com\//.test(zeffyUrl)) {
       msg.className = "form-msg error";
       msg.textContent = "Saved, but the card is still on: the Zeffy form link should start with https://www.zeffy.com/";
       loadOptions();
@@ -442,7 +442,7 @@
     }
     const savedId = id || (data.option && data.option.id);
     const { error: providerError } = await supabaseClient.from("registration_options")
-      .update({ payment_provider: provider, zeffy_form_url: provider === "zeffy" ? zeffyUrl : null }).eq("id", savedId);
+      .update({ payment_provider: provider, zeffy_form_url: provider === "zeffy" && zeffyUrl ? zeffyUrl : null }).eq("id", savedId);
     if (providerError) {
       msg.className = "form-msg error";
       msg.textContent = "Saved, but could not set how families pay: " + providerError.message;

@@ -5,7 +5,7 @@
   if (/[?&]edit=1(&|$)/.test(window.location.search)) return; // the editor applies these itself
   var links = document.querySelectorAll("[data-cms-link]");
   if (!links.length || typeof supabaseClient === "undefined") return;
-  var pagePath = window.location.pathname.split("/").pop() || "index.html";
+  var pagePath = window.ECA_PAGE_PATH || window.location.pathname.split("/").pop() || "index.html";
 
   window.ecaSafeHref = window.ecaSafeHref || function (value) {
     var url = String(value || "").trim();

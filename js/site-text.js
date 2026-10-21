@@ -111,6 +111,14 @@
     "adc.check_title": { g: "Age division calculator", w: "Birthdate after the cutoff: heading", t: "Check the Date" },
     "adc.check": { g: "Age division calculator", w: "Birthdate after the cutoff: line under it", v: ["year"], t: "That birthdate is after the {{year}} cutoff." },
 
+    "acc.reset_title": { g: "Sign in & accounts", w: "Set New Password page: heading", t: "Set a New Password" },
+    "acc.reset_sub": { g: "Sign in & accounts", w: "Set New Password page: line under the heading", t: "Choose a new password for your account." },
+    "give.tier_hint": { g: "Donate & sponsor forms", w: "Note under the sponsor amount (changes with the level)", v: ["amount", "level"], t: "Minimum {{amount}} for {{level}}. You&rsquo;re welcome to give more." },
+    "gear.suit_closed": { g: "Team Store page", w: "Suit store status when it's closed", t: "Opens the first 2 weeks of each session" },
+    "gear.suit_open": { g: "Team Store page", w: "Suit store status when it's open", t: "Open now" },
+    "gear.suit_open_label": { g: "Team Store page", w: "Suit store status when it's open and has a note", v: ["label"], t: "Open now &middot; {{label}}" },
+    "gear.suit_btn": { g: "Team Store page", w: "Suit store button when it's open", t: "Shop the Suit Store" },
+
     // Shared
     "zeffy.tip": { g: "Zeffy (shared)", w: "Note about Zeffy's optional tip, on every Zeffy pay screen", t: "Zeffy is free for the club because it runs on donations, so at checkout it suggests an optional tip to Zeffy (not the club). <strong>Feel free to set it to $0.</strong>" },
   };

@@ -16,7 +16,7 @@
   const blocks = document.querySelectorAll("[data-cms-img]");
   if (!blocks.length || typeof supabaseClient === "undefined") return;
 
-  const pagePath = window.location.pathname.split("/").pop() || "index.html";
+  const pagePath = window.ECA_PAGE_PATH || window.location.pathname.split("/").pop() || "index.html";
 
   // Owner-only write access (see the image_blocks RLS policy) already
   // keeps this out of reach of a random visitor, but a URL still ends up

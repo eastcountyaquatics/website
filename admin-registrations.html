@@ -219,8 +219,12 @@
   }
 
   async function loadTeams() {
-    const { data } = await supabaseClient.from("schedules").select("team_slug, team_label").order("sort_order", { ascending: true });
-    teams = data || [];
+    const { data } = await supabaseClient.from("schedules").select("*").order("sort_order", { ascending: true });
+    // Retired teams (Admin > Teams) go last and say so, so an older session
+    // that still lists one keeps it when edited.
+    const rows = data || [];
+    teams = rows.filter(function (t) { return t.is_active !== false; })
+      .concat(rows.filter(function (t) { return t.is_active === false; }).map(function (t) { return { team_slug: t.team_slug, team_label: t.team_label + " (retired)" }; }));
     const wrap = document.getElementById("team-checkboxes");
     wrap.innerHTML = allTeamTags().map(function (t) {
       return '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:400;white-space:nowrap;">' +

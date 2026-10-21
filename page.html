@@ -114,12 +114,53 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/team-dir.js?v=20261021"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/nav-pages.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script>
+  // A custom page that is a team's page (Admin > Teams) also shows the
+  // team's open sessions, published practice schedule and coaches, using
+  // the same scripts as the built-in team pages.
+  async function loadTeamSections(slug) {
+    window.TEAM_SLUG = slug;
+    const teams = typeof ecaTeams !== "undefined" ? await ecaTeams : [];
+    const t = teams.find(function (x) { return x.team_slug === slug; });
+    if (t) window.TEAM_LABEL = t.team_label;
+    const body = document.getElementById("page-body").closest("section");
+    const sched = document.createElement("section");
+    sched.id = "dynamic-schedule-section";
+    sched.style.display = "none";
+    body.parentNode.insertBefore(sched, body.nextSibling);
+    const coaches = document.createElement("section");
+    coaches.className = "alt";
+    coaches.innerHTML = '<div class="container"><div class="section-head"><span class="kicker" data-t="tp.coaches_kicker">Coaches</span><h2 data-t="tp.coaches_title">Team Coaches</h2></div>' +
+      '<div id="head-coach-contact"></div><ul class="donor-columns" style="display:none;"></ul></div>';
+    sched.parentNode.insertBefore(coaches, sched.nextSibling);
+    const load = function (src) {
+      return new Promise(function (resolve) {
+        const el = document.createElement("script");
+        el.src = src; el.onload = resolve; el.onerror = resolve;
+        document.body.appendChild(el);
+      });
+    };
+    // team-schedule.js shows the section itself once a schedule is published.
+    const observer = new MutationObserver(function () { if (sched.innerHTML.trim()) sched.style.display = ""; });
+    observer.observe(sched, { childList: true });
+    await load("js/site-text.js?v=20261021c");
+    if (typeof ecaTextReady !== "undefined") ecaTextReady.then(function () {
+      coaches.querySelectorAll("[data-t]").forEach(function (el) { el.innerHTML = ecaT(el.getAttribute("data-t")); });
+    });
+    await load("js/coach-cards.js?v=20261014c");
+    await load("js/team-schedule.js?v=20261014o");
+    await load("js/team-head-coach.js?v=20261021");
+    await load("js/team-price.js?v=20261021");
+    // No coaches assigned yet: drop the empty block.
+    setTimeout(function () { if (!coaches.querySelector(".cc, .coach-card, .head-coach-card")) coaches.remove(); }, 4000);
+  }
+
   (async function () {
     // admin-editor.html loads this with ?edit=1&slug=... and fetches/
     // renders/edits the row itself, authoritatively -- including a brand
@@ -152,7 +193,7 @@
       // the same URL.
       const { data, error } = await supabaseClient
         .from("pages")
-        .select("title, nav_label, body_html, meta_description")
+        .select("title, nav_label, body_html, meta_description, team_slug")
         .eq("slug", slug)
         .maybeSingle();
 
@@ -171,6 +212,7 @@
       document.getElementById("page-breadcrumb").textContent = data.nav_label || data.title;
       titleEl.textContent = data.title;
       bodyEl.innerHTML = sanitizeHtml(data.body_html);
+      if (data.team_slug) loadTeamSections(data.team_slug);
     } catch (e) {
       notFound("This page is temporarily unavailable. Please try again shortly.");
     }

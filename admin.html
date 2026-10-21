@@ -106,6 +106,12 @@
     <div class="admin-group" data-group="teams" style="display:none;">
       <h2 class="admin-group-title">Teams</h2>
       <div class="admin-nav-cards">
+        <div class="admin-nav-card" id="teams-card">
+          <a href="admin-teams.html" style="display:block;color:inherit;">
+            <h3>Teams</h3>
+            <p class="muted">Add, rename, reorder or retire teams; set each team's ages and page. New teams get a page and a spot in the Teams menu.</p>
+          </a>
+        </div>
         <div class="admin-nav-card" id="athletes-card">
           <a href="admin-athletes.html" style="display:block;color:inherit;">
             <h3>Registered Athletes</h3>
@@ -359,6 +365,7 @@
     // Team Coaches: Manager (under Admin) and Head Coaches only, not
     // Assistant Coaches. Head Coaches don't see the Admin group, so theirs
     // sits under Teams.
+    if (auth.role !== "owner" && document.getElementById("teams-card")) document.getElementById("teams-card").remove();
     if (auth.role === "head_coach") document.querySelector('[data-group="teams"] .admin-nav-cards').appendChild(document.getElementById("team-coaches-card"));
     if (auth.role !== "owner" && auth.role !== "head_coach") document.getElementById("team-coaches-card").remove();
     // Group messaging: Manager and Head Coaches only.

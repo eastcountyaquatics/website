@@ -28,10 +28,13 @@
     "tf.team_page_btn": { g: "Team finder", w: "Button to the team page", t: "Practice times &amp; coaches" },
     "tf.splashball_note": { g: "Team finder", w: "Note for athletes 8 and under", t: "New to the water? <a href=\"team-splashball.html\">Splashball</a> is our learn-to-play program for the youngest athletes." },
     "tf.trial_note": { g: "Team finder", w: "Note about the free trial", t: "New to ECA? <a href=\"signup.html?trial=1\">Try 2 weeks first</a>." },
+    "tf.also_fits": { g: "Team finder", w: "Other teams the athlete can also join (a list of team links follows)", t: "Your athlete can also join:" },
     "tf.cutoff": { g: "Team finder", w: "Fine print about the age cutoff", v: ["year"], t: "Based on age on Aug 1, {{year}}, the USA Water Polo cutoff for this season." },
 
     // Team pages
     "tp.open": { g: "Team pages", w: "Tag on the bar under the header when a session is open", t: "Registration open" },
+    "tp.coaches_kicker": { g: "Team pages", w: "Small label above the coaches on a team page made on Admin > Teams", t: "Coaches" },
+    "tp.coaches_title": { g: "Team pages", w: "Heading above the coaches on a team page made on Admin > Teams", t: "Team Coaches" },
     "tp.register_btn": { g: "Team pages", w: "Register button on that bar", t: "Register" },
 
     // My Account: registering

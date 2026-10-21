@@ -7,7 +7,8 @@
 
   // "12u-boys" -> "12U Boys", "splashball" -> "Splashball" -- the same
   // labels the Team Group checkboxes on admin-coaches.html save.
-  var teamLabel = slug.split("-").map(function (part) {
+  // A team page made on Admin > Teams sets TEAM_LABEL to the team's name.
+  var teamLabel = window.TEAM_LABEL || slug.split("-").map(function (part) {
     return /^\d+u$/.test(part) ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1);
   }).join(" ");
 

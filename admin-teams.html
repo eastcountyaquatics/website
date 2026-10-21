@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teams | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261014i">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Teams</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .tm-row{background:#fff;border:1px solid #e3e6f0;border-radius:10px;margin-bottom:8px;}
+  .tm-row.retired{opacity:.65;background:#fafafa;}
+  .tm-head{display:flex;gap:12px;align-items:center;padding:12px 16px;}
+  .tm-head h4{margin:0;font-size:16px;flex:1;}
+  .tm-head .tm-meta{font-size:12.5px;color:var(--muted);font-weight:400;display:block;margin-top:2px;}
+  .tm-move button,.tm-head .tm-edit-btn{border:1px solid #d7e6ee;background:#fff;border-radius:6px;padding:4px 10px;font-size:13px;font-weight:700;cursor:pointer;color:var(--blue);}
+  .tm-move button:disabled{opacity:.35;cursor:default;}
+  .tm-pill{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:#eef1f8;color:var(--navy);white-space:nowrap;}
+  .tm-pill.off{background:#f1f1f1;color:#777;}
+  .tm-edit{display:none;border-top:1px solid #eef0f5;padding:12px 16px 16px;}
+  .tm-row.open .tm-edit{display:block;}
+  .tm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:4px 14px;}
+  .tm-edit label,.tm-add label{display:block;font-weight:700;font-size:13px;margin:10px 0 4px;}
+  .tm-edit input,.tm-edit select,.tm-add input,.tm-add select{width:100%;padding:8px 10px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;font-size:14px;background:#fff;}
+  .tm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center;}
+  .tm-check{display:flex;gap:8px;align-items:center;font-weight:400 !important;}
+  .tm-check input{width:auto !important;}
+</style>
+
+<section class="section-tight">
+  <div class="container" style="max-width:860px;">
+    <div class="notice" style="margin-bottom:20px;">
+      Every team the club runs. The order here is the order teams appear in admin lists and on the site. <strong>Add a team</strong> and it gets its own page (edit its words in <a href="admin-editor.html">Edit Website</a>), a spot in the Teams menu, and &mdash; once you set its ages &mdash; the team finder and registration offer it to the right athletes. <strong>Retire</strong> a team to take it off the site without losing its history.
+    </div>
+
+    <div class="admin-form tm-add">
+      <h3>Add a Team</h3>
+      <div id="add-msg" class="form-msg"></div>
+      <form id="add-form">
+        <div class="tm-grid">
+          <div><label for="add-name">Team name</label><input type="text" id="add-name" maxlength="60" required placeholder="e.g. 18U Coed"></div>
+          <div><label for="add-who">Who it's for</label><select id="add-who"><option value="coed">Boys &amp; girls</option><option value="boys">Boys</option><option value="girls">Girls</option></select></div>
+          <div><label for="add-min">Youngest age</label><input type="number" id="add-min" min="3" max="99" placeholder="e.g. 15"></div>
+          <div><label for="add-max">Oldest age</label><input type="number" id="add-max" min="3" max="99" placeholder="e.g. 18"></div>
+        </div>
+        <p class="muted" style="font-size:12.5px;margin:6px 0 0;">Age is the athlete&rsquo;s age on Aug 1 of the year after the season starts &mdash; the same rule as every team. Leave ages blank if the team finder and registration shouldn&rsquo;t pick it automatically (staff can still put athletes on it).</p>
+        <label class="tm-check"><input type="checkbox" id="add-page" checked> Make a team page for it</label>
+        <label class="tm-check"><input type="checkbox" id="add-menu" checked> Add it to the Teams menu</label>
+        <button type="submit" class="btn btn-primary" id="add-btn" style="margin-top:12px;">Add Team</button>
+      </form>
+    </div>
+
+    <h3 style="margin-top:28px;">Teams</h3>
+    <div id="tm-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261014p"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script>
+  var teams = [], pages = [];
+  var BUILT_IN = ["splashball", "8u-coed", "10u-coed", "12u-boys", "12u-girls", "14u-boys", "14u-girls", "16u-boys", "16u-girls", "18u-boys", "18u-girls", "masters"];
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function slugify(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50); }
+  function builtIn(t) { return BUILT_IN.indexOf(t.team_slug) !== -1; }
+  function pageOf(t) {
+    if (t.page_url) return t.page_url;
+    if (t.team_slug === "masters") return "masters.html";
+    return builtIn(t) ? "team-" + t.team_slug + ".html" : "";
+  }
+  function whoText(t) {
+    if (t.age_min == null && t.age_max == null) return builtIn(t) ? "Built-in age rule" : "No ages set (staff assign athletes)";
+    var ages = t.age_min != null && t.age_max != null ? "Ages " + t.age_min + "–" + t.age_max : t.age_min != null ? "Ages " + t.age_min + "+" : "Up to age " + t.age_max;
+    return ages + " · " + ({ boys: "Boys", girls: "Girls" }[t.team_gender] || "Boys & girls");
+  }
+  function msg(el, text, ok) { el.className = "form-msg " + (ok ? "success" : "error"); el.textContent = text; }
+
+  async function load() {
+    var r = await supabaseClient.from("schedules").select("id, team_slug, team_label, sort_order, page_url, age_min, age_max, team_gender, is_active").order("sort_order", { ascending: true });
+    if (r.error) { document.getElementById("tm-list").innerHTML = '<p class="muted">Could not load teams: ' + esc(r.error.message) + "</p>"; return; }
+    teams = r.data || [];
+    var p = await supabaseClient.from("pages").select("slug, title, team_slug").order("title");
+    pages = p.data || [];
+    render();
+  }
+
+  function render() {
+    var active = teams.filter(function (t) { return t.is_active !== false; }), retired = teams.filter(function (t) { return t.is_active === false; });
+    function row(t, i, list) {
+      var pg = pageOf(t);
+      var pageOpts = '<option value="">Built-in / none</option>' + pages.map(function (p) {
+        var v = "page.html?slug=" + p.slug; return '<option value="' + esc(v) + '"' + (t.page_url === v ? " selected" : "") + ">" + esc(p.title) + "</option>";
+      }).join("") + (t.page_url && !/^page\.html\?slug=/.test(t.page_url) ? '<option value="' + esc(t.page_url) + '" selected>' + esc(t.page_url) + "</option>" : "");
+      return '<div class="tm-row' + (t.is_active === false ? " retired" : "") + '" data-id="' + t.id + '">' +
+        '<div class="tm-head">' +
+          (t.is_active === false ? "" : '<span class="tm-move"><button type="button" data-up' + (i === 0 ? " disabled" : "") + ' title="Move up">&uarr;</button> <button type="button" data-down' + (i === list.length - 1 ? " disabled" : "") + ' title="Move down">&darr;</button></span>') +
+          "<h4>" + esc(t.team_label) + '<span class="tm-meta">' + esc(whoText(t)) + (pg ? ' &middot; <a href="' + esc(pg) + '" target="_blank" rel="noopener">team page</a>' : " &middot; no team page") + "</span></h4>" +
+          (t.is_active === false ? '<span class="tm-pill off">Retired</span>' : "") +
+          '<button type="button" class="tm-edit-btn" data-toggle>Edit</button>' +
+        "</div>" +
+        '<div class="tm-edit"><div class="tm-grid">' +
+          '<div><label>Team name</label><input type="text" data-f="team_label" maxlength="60" value="' + esc(t.team_label) + '"></div>' +
+          '<div><label>Who it&rsquo;s for</label><select data-f="team_gender"><option value="coed"' + (t.team_gender !== "boys" && t.team_gender !== "girls" ? " selected" : "") + '>Boys &amp; girls</option><option value="boys"' + (t.team_gender === "boys" ? " selected" : "") + '>Boys</option><option value="girls"' + (t.team_gender === "girls" ? " selected" : "") + ">Girls</option></select></div>" +
+          '<div><label>Youngest age</label><input type="number" data-f="age_min" min="3" max="99" value="' + (t.age_min == null ? "" : t.age_min) + '"' + (builtIn(t) ? ' placeholder="built-in rule"' : "") + "></div>" +
+          '<div><label>Oldest age</label><input type="number" data-f="age_max" min="3" max="99" value="' + (t.age_max == null ? "" : t.age_max) + '"' + (builtIn(t) ? ' placeholder="built-in rule"' : "") + "></div>" +
+          '<div style="grid-column:1/-1;"><label>Team page</label><select data-f="page_url">' + pageOpts + "</select></div>" +
+        "</div>" +
+        (builtIn(t) ? '<p class="muted" style="font-size:12.5px;margin:6px 0 0;">Built-in team: leave the ages blank to keep the usual age rule; ages set here offer it to those athletes too.</p>' : "") +
+        '<div class="tm-actions"><button type="button" class="btn btn-primary" data-save>Save</button>' +
+          (t.is_active === false
+            ? '<button type="button" class="btn btn-outline-dark" data-restore>Bring back</button>'
+            : '<button type="button" class="btn btn-outline-dark" data-retire>Retire team</button>') +
+          (!pg && t.is_active !== false ? '<button type="button" class="btn btn-outline-dark" data-mkpage>Make a team page</button>' : "") +
+          '<span class="form-msg" data-msg style="margin:0;"></span></div>' +
+        "</div></div>";
+    }
+    document.getElementById("tm-list").innerHTML =
+      (active.length ? active.map(function (t, i) { return row(t, i, active); }).join("") : '<p class="muted">No teams yet.</p>') +
+      (retired.length ? '<h4 style="margin:24px 0 8px;color:var(--muted);">Retired</h4>' + retired.map(function (t, i) { return row(t, i, retired); }).join("") : "");
+  }
+
+  // ---- the Teams menu (site_settings.site_nav; built-in menu read from the home page) ----
+  async function readNav() {
+    var r = await supabaseClient.from("site_settings").select("value").eq("key", "site_nav").maybeSingle();
+    if (r.data && r.data.value && Array.isArray(r.data.value.items) && r.data.value.items.length) return r.data.value;
+    var html = await (await fetch("index.html", { cache: "no-store" })).text();
+    var d = new DOMParser().parseFromString(html, "text/html");
+    var items = [], crestAfter = 0;
+    Array.prototype.forEach.call(d.querySelectorAll(".main-nav > ul > li"), function (li) {
+      if (li.classList.contains("nav-logo")) { crestAfter = items.length; return; }
+      if (li.id === "nav-auth-slot") return;
+      if (li.classList.contains("has-menu")) {
+        items.push({ label: li.querySelector(".nav-parent").textContent.trim(), children: Array.prototype.map.call(li.querySelectorAll(".nav-menu a"), function (a) { return { label: a.textContent.trim(), href: a.getAttribute("href") }; }) });
+      } else { var a = li.querySelector("a"); if (a) items.push({ label: a.textContent.trim(), href: a.getAttribute("href") }); }
+    });
+    return { items: items, crest_after: crestAfter };
+  }
+  async function saveNav(nav) {
+    return supabaseClient.from("site_settings").upsert({ key: "site_nav", value: nav, updated_at: new Date().toISOString() }, { onConflict: "key" });
+  }
+  function teamsMenu(nav) {
+    return nav.items.find(function (it) { return Array.isArray(it.children) && /team/i.test(it.label); });
+  }
+  async function addToMenu(label, href) {
+    var nav = await readNav(), m = teamsMenu(nav);
+    if (!m) return { error: { message: "There's no Teams menu to add it to — add it on Menu & Footer." } };
+    if (m.children.some(function (c) { return c.href === href; })) return {};
+    // Before "Masters" / "Summer League" if they're there, else at the end.
+    var at = m.children.findIndex(function (c) { return /masters|summer/i.test(c.label); });
+    m.children.splice(at === -1 ? m.children.length : at, 0, { label: label, href: href });
+    return saveNav(nav);
+  }
+  async function menuRename(oldHref, href, label) {
+    var nav = await readNav(), m = teamsMenu(nav); if (!m) return {};
+    var c = m.children.find(function (x) { return x.href === oldHref; }); if (!c) return {};
+    c.label = label; c.href = href;
+    return saveNav(nav);
+  }
+  async function removeFromMenu(href) {
+    var nav = await readNav(), m = teamsMenu(nav); if (!m || !href) return {};
+    var n = m.children.length;
+    m.children = m.children.filter(function (c) { return c.href !== href; });
+    return m.children.length === n ? {} : saveNav(nav);
+  }
+
+  function pageTemplate(label) {
+    return "<h2>About " + esc(label) + "</h2>" +
+      "<p>Who the team is for, what athletes work on, and what to expect this season. (Click here in Edit Website to write this.)</p>" +
+      "<h2>Before the first practice</h2>" +
+      "<p>What to bring, swim requirements, and USA Water Polo membership.</p>";
+  }
+  async function makePage(t) {
+    var slug = "team-" + t.team_slug;
+    if (!pages.some(function (p) { return p.slug === slug; })) {
+      var r = await supabaseClient.from("pages").insert({ slug: slug, title: t.team_label, nav_label: t.team_label, body_html: pageTemplate(t.team_label), is_published: true, show_in_nav: false, team_slug: t.team_slug });
+      if (r.error) return r;
+    } else {
+      await supabaseClient.from("pages").update({ team_slug: t.team_slug }).eq("slug", slug);
+    }
+    return supabaseClient.from("schedules").update({ page_url: "page.html?slug=" + slug }).eq("id", t.id);
+  }
+
+  document.getElementById("add-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = document.getElementById("add-msg"), btn = document.getElementById("add-btn");
+    var label = document.getElementById("add-name").value.trim(), slug = slugify(label);
+    var min = document.getElementById("add-min").value, max = document.getElementById("add-max").value;
+    if (!label || !slug) return msg(m, "Enter a team name.", false);
+    if (teams.some(function (t) { return t.team_slug === slug; })) return msg(m, "There's already a team called that (or something very close).", false);
+    if (min && max && +min > +max) return msg(m, "The youngest age is above the oldest.", false);
+    btn.disabled = true; btn.textContent = "Adding…";
+    var row = {
+      id: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : undefined,
+      team_slug: slug, team_label: label, sort_order: teams.reduce(function (a, t) { return Math.max(a, t.sort_order || 0); }, 0) + 1,
+      age_min: min ? +min : null, age_max: max ? +max : null, team_gender: document.getElementById("add-who").value, is_active: true,
+    };
+    if (!row.id) delete row.id;
+    var r = await supabaseClient.from("schedules").insert(row);
+    var steps = [];
+    if (r.error) { btn.disabled = false; btn.textContent = "Add Team"; return msg(m, "Could not add the team: " + r.error.message, false); }
+    var t = Object.assign({}, row);
+    if (!t.id) { var again = await supabaseClient.from("schedules").select("id").eq("team_slug", slug).maybeSingle(); t.id = again.data && again.data.id; }
+    var href = "";
+    if (document.getElementById("add-page").checked) {
+      var pr = await makePage(t);
+      if (pr && pr.error) steps.push("the page couldn't be made (" + pr.error.message + ")"); else href = "page.html?slug=team-" + slug;
+    }
+    if (document.getElementById("add-menu").checked && href) {
+      var nr = await addToMenu(label, href);
+      if (nr && nr.error) steps.push(nr.error.message);
+    }
+    btn.disabled = false; btn.textContent = "Add Team";
+    document.getElementById("add-form").reset();
+    await load();
+    msg(m, "Added " + label + "." + (href ? " Its page is ready to write in Edit Website (Custom Pages)." : "") + (steps.length ? " Note: " + steps.join("; ") + "." : "") +
+      " Next: put it on a session in Registrations and give it coaches in Team Coaches.", !steps.length);
+  });
+
+  document.getElementById("tm-list").addEventListener("click", async function (e) {
+    var rowEl = e.target.closest(".tm-row"); if (!rowEl) return;
+    var t = teams.find(function (x) { return x.id === rowEl.dataset.id; }); if (!t) return;
+    var m = rowEl.querySelector("[data-msg]");
+    if (e.target.closest("[data-toggle]")) { rowEl.classList.toggle("open"); return; }
+    if (e.target.closest("[data-up]") || e.target.closest("[data-down]")) {
+      var list = teams.filter(function (x) { return x.is_active !== false; });
+      var i = list.indexOf(t), j = e.target.closest("[data-up]") ? i - 1 : i + 1;
+      if (j < 0 || j >= list.length) return;
+      var other = list[j];
+      // Renumber everyone so ties can't stick.
+      list.splice(i, 1); list.splice(j, 0, t);
+      await Promise.all(list.map(function (x, k) { x.sort_order = k + 1; return supabaseClient.from("schedules").update({ sort_order: k + 1 }).eq("id", x.id); }));
+      teams.sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });
+      render(); return;
+    }
+    if (e.target.closest("[data-save]")) {
+      var get = function (f) { return rowEl.querySelector('[data-f="' + f + '"]').value.trim(); };
+      var label = get("team_label");
+      if (!label) return msg(m, "The team needs a name.", false);
+      var min = get("age_min"), max = get("age_max");
+      if (min && max && +min > +max) return msg(m, "The youngest age is above the oldest.", false);
+      var upd = { team_label: label, team_gender: get("team_gender"), age_min: min ? +min : null, age_max: max ? +max : null, page_url: get("page_url") || null };
+      var oldHref = pageOf(t);
+      var r = await supabaseClient.from("schedules").update(upd).eq("id", t.id);
+      if (r.error) return msg(m, "Could not save: " + r.error.message, false);
+      if (upd.page_url && /^page\.html\?slug=/.test(upd.page_url)) await supabaseClient.from("pages").update({ team_slug: t.team_slug }).eq("slug", upd.page_url.split("slug=")[1]);
+      Object.assign(t, upd);
+      if (oldHref) await menuRename(oldHref, pageOf(t) || oldHref, label);
+      render();
+      var r2 = document.querySelector('.tm-row[data-id="' + t.id + '"]'); r2.classList.add("open"); msg(r2.querySelector("[data-msg]"), "Saved.", true);
+      return;
+    }
+    if (e.target.closest("[data-retire]")) {
+      if (!confirm("Retire " + t.team_label + "? It comes off the team finder, registration choices and the Teams menu. Its athletes, schedule and history stay, and you can bring it back.")) return;
+      var rr = await supabaseClient.from("schedules").update({ is_active: false }).eq("id", t.id);
+      if (rr.error) return msg(m, "Could not retire: " + rr.error.message, false);
+      await removeFromMenu(pageOf(t));
+      t.is_active = false; render(); return;
+    }
+    if (e.target.closest("[data-restore]")) {
+      var rb = await supabaseClient.from("schedules").update({ is_active: true }).eq("id", t.id);
+      if (rb.error) return msg(m, "Could not bring it back: " + rb.error.message, false);
+      t.is_active = true;
+      if (pageOf(t)) await addToMenu(t.team_label, pageOf(t));
+      render(); return;
+    }
+    if (e.target.closest("[data-mkpage]")) {
+      var mp = await makePage(t);
+      if (mp && mp.error) return msg(m, "Could not make the page: " + mp.error.message, false);
+      t.page_url = "page.html?slug=team-" + t.team_slug;
+      await addToMenu(t.team_label, t.page_url);
+      await load(); return;
+    }
+  });
+
+  (async function () {
+    var auth = await requireRole(["owner"]);
+    if (!auth) return;
+    load();
+  })();
+</script>
+</body>
+</html>

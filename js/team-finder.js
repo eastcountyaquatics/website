@@ -56,11 +56,21 @@
       if (!slug) { out.innerHTML = '<p class="tf-msg">' + T("tf.pick_sex") + '</p>'; return; }
       var also = age <= 8 && slug !== "splashball" ? "splashball" : null;
       out.innerHTML = '<p class="tf-msg">' + T("tf.looking") + '</p>';
-      loadOptions().then(function (opts) {
+      var teamsP = typeof ecaTeams !== "undefined" ? ecaTeams : Promise.resolve([]);
+      Promise.all([loadOptions(), teamsP]).then(function (res) {
+        var opts = res[0], teams = res[1] || [];
+        var bySlug = {};
+        teams.forEach(function (t) { bySlug[t.team_slug] = t; });
+        var label = function (sl) { return (bySlug[sl] && bySlug[sl].team_label) || LABELS[sl] || sl; };
+        var page = function (sl) { return typeof ecaTeamPage === "function" ? ecaTeamPage(bySlug[sl] || { team_slug: sl }) : pageFor(sl); };
+        // Teams added on Admin > Teams with their own ages, on top of the
+        // built-in age-group team. A retired built-in team isn't offered.
+        var extra = typeof ecaExtraTeams === "function" ? ecaExtraTeams(teams, age, sex).filter(function (t) { return t.team_slug !== slug; }) : [];
+        if (teams.length && !bySlug[slug] && extra.length) { slug = extra[0].team_slug; extra = extra.slice(1); }
         var open = opts.filter(function (o) { return (o.team_slugs || []).indexOf(slug) !== -1; });
         var html = '<div class="tf-card">' +
           '<span class="tf-kicker">' + T("tf.kicker") + '</span>' +
-          '<strong class="tf-team">' + esc(LABELS[slug] || slug) + '</strong>' +
+          '<strong class="tf-team">' + esc(label(slug)) + '</strong>' +
           (open.length
             ? '<ul class="tf-open">' + open.map(function (o) {
                 return '<li><span>' + esc(o.label) + '</span><b>' + money(o.amount_cents) + '</b></li>';
@@ -68,8 +78,11 @@
             : '<p class="tf-note">' + T("tf.none_open") + '</p>') +
           '<div class="tf-actions">' +
             (open.length ? '<a class="btn btn-primary" href="dashboard.html">' + T("tf.register_btn") + '</a>' : "") +
-            '<a class="btn btn-ghost" href="' + pageFor(slug) + '">' + T("tf.team_page_btn") + '</a>' +
+            '<a class="btn btn-ghost" href="' + esc(page(slug)) + '">' + T("tf.team_page_btn") + '</a>' +
           '</div>' +
+          (extra.length ? '<p class="tf-note">' + T("tf.also_fits") + ' ' + extra.map(function (t) {
+            return '<a href="' + esc(page(t.team_slug)) + '">' + esc(t.team_label) + '</a>';
+          }).join(", ") + '</p>' : "") +
           (also ? '<p class="tf-note">' + T("tf.splashball_note") + '</p>' : "") +
           (slug !== "masters" && slug !== "splashball" ? '<p class="tf-note">' + T("tf.trial_note") + '</p>' : "") +
           '<p class="tf-fine">' + T("tf.cutoff", { year: seasonYear() + 1 }) + '</p>' +

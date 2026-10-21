@@ -3,6 +3,10 @@
 **For an agent with access to the ECA Supabase project `kdlkkucvdqmcaujhvrwq`.**
 Code: this repo, branch `claude/sd-east-county-aquatics-tv13qz` (latest).
 
+> **Status (Oct 21, 2026): done.** Migration applied: all 5 `schedules` columns and `pages.team_slug` exist.
+> `team_directory()` returns all 12 teams (all active, none with custom ages/pages yet), including for
+> signed-out visitors. Redeployed create-checkout-session v19 and create-zeffy-registration v3 (JWT on).
+
 ## 1. Apply the migration (needed before owners use Admin → Teams)
 `supabase/migrations/20261021010000_teams_manager.sql`:
 - `schedules`: adds `page_url`, `age_min`, `age_max`, `team_gender`, `is_active`

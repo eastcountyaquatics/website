@@ -6,6 +6,12 @@ Code: this repo, branch `claude/sd-east-county-aquatics-tv13qz` (latest).
 The site's new **Admin → Emails** page lets owners reword every email the site sends. The
 page is live, but saved wording only takes effect once these steps are done.
 
+> **Status (Oct 21, 2026): done.** Migration applied. `email_templates` exists with RLS on, 2 owner-only
+> policies and 0 rows (built-in wording is used until an owner edits an email). Redeployed with the JWT
+> settings above: stripe-webhook v28, zeffy-webhook v9, send-monthly-hours-signoff v11 (JWT off);
+> send-tournament-reminder v11, send-team-announcement-email v12, send-team-message v2,
+> send-hosted-event-invites v6 (JWT on).
+
 ## 1. Apply the migration
 `supabase/migrations/20261021000000_email_templates.sql` creates the `email_templates` table
 (owner-only RLS).

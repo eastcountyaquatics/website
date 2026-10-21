@@ -348,6 +348,19 @@
     }).join("");
   }
   renderTeamGroupOptions();
+  // The team part of the list follows Admin > Teams (active teams, in order);
+  // the staff groups stay at the end.
+  (async function () {
+    try {
+      const { data } = await supabaseClient.from("schedules").select("*").order("sort_order", { ascending: true });
+      const labels = (data || []).filter(function (t) { return t.is_active !== false; }).map(function (t) { return t.team_label; });
+      if (!labels.length) return;
+      const checked = Array.prototype.filter.call(document.querySelectorAll(".team-group-box"), function (b) { return b.checked; }).map(function (b) { return b.value; });
+      TEAM_GROUP_OPTIONS = labels.concat(["Club Founders", "Manager", "Finance"].filter(function (g) { return labels.indexOf(g) === -1; }));
+      renderTeamGroupOptions();
+      document.querySelectorAll(".team-group-box").forEach(function (b) { b.checked = checked.indexOf(b.value) !== -1; });
+    } catch (e) { /* the built-in list stands */ }
+  })();
 
   // A legacy value might not break cleanly into today's checkbox labels
   // (e.g. "8U & 10U Coed & 12U Boys" doesn't literally contain "8U Coed").

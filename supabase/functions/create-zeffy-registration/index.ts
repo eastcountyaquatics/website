@@ -79,8 +79,11 @@ Deno.serve(async (req) => {
     if (option.payment_provider !== "zeffy") {
       return json({ error: `"${option.label}" is paid by card.` }, 409);
     }
+    // Teams with their own ages (Admin > Teams); empty if unavailable.
+    const { data: teamDirRows } = await asUser.rpc("team_directory");
+    const teamDir = (teamDirRows ?? []) as DirTeam[];
     for (const a of athletes) {
-      if (!athleteFitsProgram(a, option.team_slugs || [])) {
+      if (!athleteFitsProgram(a, option.team_slugs || [], teamDir)) {
         return json({ error: `${a.full_name} isn't in the age group for "${option.label}".` }, 400);
       }
     }
@@ -283,9 +286,11 @@ function checkChar(body: string): string {
 // dashboard.html's athleteFitsProgram / js/team-age.js: age group by age on
 // Aug 1 of the year after the season starts; a staff-set team overrides it;
 // Splashball is 8 & under; 19+ only fits "masters".
+type DirTeam = { team_slug: string; age_min: number | null; age_max: number | null; team_gender: string | null };
 function athleteFitsProgram(
   a: { birthdate: string | null; sex: string | null; team_slug: string | null },
   optionTeams: string[],
+  dir: DirTeam[] = [],
 ): boolean {
   if (!optionTeams.length || !a.birthdate) return false;
   const now = new Date();
@@ -293,6 +298,12 @@ function athleteFitsProgram(
   const [y, m, d] = a.birthdate.split("-").map(Number);
   let age = seasonYear + 1 - y;
   if (m > 8 || (m === 8 && d > 1)) age--;
+  // A team from Admin > Teams with its own ages (and boys/girls/coed) fits
+  // on top of the built-in rule. Same as js/team-dir.js ecaExtraTeams.
+  const sx = (a.sex || "").toLowerCase();
+  if (dir.some((t) => optionTeams.includes(t.team_slug) && (t.age_min != null || t.age_max != null) &&
+    (t.age_min == null || age >= t.age_min) && (t.age_max == null || age <= t.age_max) &&
+    (t.team_gender === "boys" ? sx === "male" : t.team_gender === "girls" ? sx === "female" : true))) return true;
   if (age > 18) return optionTeams.includes("masters");
   if (optionTeams.includes("splashball") && age <= 8) return true;
   if (a.team_slug) return optionTeams.includes(a.team_slug);

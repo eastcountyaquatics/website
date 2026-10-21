@@ -435,6 +435,7 @@
 
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
+<script src="js/team-dir.js?v=20261021"></script>
 <script src="js/fn-error.js"></script>
 <script src="js/sanitize-html.js"></script>
 <script src="js/site-text.js?v=20261021c"></script>
@@ -1349,10 +1350,13 @@
   // to everyone, which put a 10U athlete under a high school program).
   // Splashball takes 8 & under. Programs tagged "Masters" are for adults
   // 19+ (as of the Aug 1 cutoff); everything else is youth-only.
+  // Teams from Admin > Teams (a team with its own ages also fits).
+  let dirTeams = [];
   function athleteFitsProgram(a, optionTeams) {
     if (!optionTeams.length) return false;
     const age = calcAge(a.birthdate);
     if (age === null) return false; // needs a birthdate to know the age group
+    if (typeof ecaExtraTeams === "function" && ecaExtraTeams(dirTeams, age, a.sex).some(function (t) { return optionTeams.indexOf(t.team_slug) !== -1; })) return true;
     if (age > 18) return optionTeams.indexOf("masters") !== -1;
     if (optionTeams.indexOf("splashball") !== -1 && age <= 8) return true;
     if (a.team_slug) return optionTeams.indexOf(a.team_slug) !== -1;
@@ -1374,6 +1378,7 @@
   async function loadRegistrationOptions() {
     const wrap = document.getElementById("registration-options");
     await ecaTextReady;
+    if (typeof ecaTeams !== "undefined") dirTeams = await ecaTeams;
     const { data: options, error } = await supabaseClient
       .from("registration_options")
       .select("id, label, description, amount_cents, season, team_slugs, payment_provider, zeffy_form_url")

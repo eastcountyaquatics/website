@@ -49,7 +49,7 @@
   if (/[?&]edit=1(&|$)/.test(window.location.search)) return;
   var sels = document.querySelectorAll("select[data-cms-options]");
   if (!sels.length || typeof supabaseClient === "undefined") return;
-  var page = window.location.pathname.split("/").pop() || "index.html";
+  var page = window.ECA_PAGE_PATH || window.location.pathname.split("/").pop() || "index.html";
   var keys = Array.prototype.map.call(sels, function (s) { return s.getAttribute("data-cms-options"); });
   supabaseClient.from("content_blocks").select("block_key, content").eq("page_path", page).in("block_key", keys).then(function (r) {
     (r && r.data || []).forEach(function (row) {

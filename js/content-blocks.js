@@ -14,7 +14,7 @@
   const blocks = document.querySelectorAll("[data-cms]");
   if (typeof supabaseClient === "undefined") return;
 
-  const pagePath = window.location.pathname.split("/").pop() || "index.html";
+  const pagePath = window.ECA_PAGE_PATH || window.location.pathname.split("/").pop() || "index.html";
   // Tab title and Google description, set on Edit Website > Tab & Google Text.
   const metaPrefix = pagePath.replace(/\.html$/, "") + "-meta-";
   function applyMeta(r) {

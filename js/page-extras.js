@@ -13,7 +13,7 @@
 // renders exactly as built. The last layout is cached in this browser so a
 // rearranged page doesn't visibly jump on the next visit.
 (function () {
-  const pagePath = window.location.pathname.split("/").pop() || "index.html";
+  const pagePath = window.ECA_PAGE_PATH || window.location.pathname.split("/").pop() || "index.html";
   const CACHE_KEY = "eca-layout:" + pagePath;
 
   function clean(html) {

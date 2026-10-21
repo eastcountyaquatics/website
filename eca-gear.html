@@ -207,14 +207,15 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/sanitize-html.js"></script>
+<script src="js/site-text.js?v=20261021c"></script>
 <script src="js/auth.js?v=20261014i"></script>
 <script src="js/main.js?v=20261014p"></script>
 <script src="js/nav-pages.js?v=20261014p"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
-<script src="js/content-blocks.js?v=20261020"></script>
-<script src="js/image-blocks.js?v=20261014n"></script>
-<script src="js/link-blocks.js?v=20261014p"></script>
-<script src="js/page-extras.js"></script>
+<script src="js/content-blocks.js?v=20261021"></script>
+<script src="js/image-blocks.js?v=20261021"></script>
+<script src="js/link-blocks.js?v=20261021"></script>
+<script src="js/page-extras.js?v=20261021"></script>
 <script>
   // site_settings "suit_store_link": { url, label } -- set per session in
   // Admin. Shown only while an https link is set.
@@ -226,14 +227,23 @@
       var slot = document.getElementById("suit-store-slot");
       var a = document.createElement("a");
       a.href = v.url; a.target = "_blank"; a.rel = "noopener"; a.className = "btn btn-primary";
-      a.textContent = "Shop the Suit Store";
+      a.innerHTML = typeof ecaT === "function" ? ecaT("gear.suit_btn") : "Shop the Suit Store";
       slot.innerHTML = "";
       slot.appendChild(a);
       var status = document.getElementById("suit-status");
-      status.textContent = "Open now" + (v.label ? " \u00b7 " + v.label : "");
+      status.innerHTML = typeof ecaT === "function"
+        ? ecaT(v.label ? "gear.suit_open_label" : "gear.suit_open", { label: String(v.label || "").replace(/&/g, "&amp;").replace(/</g, "&lt;") })
+        : "Open now" + (v.label ? " \u00b7 " + v.label : "");
       status.classList.add("open");
     } catch (e) { /* the static note stays */ }
   })();
+</script>
+<script>
+  // Suit store "closed" note from Site Wording (the open state is set above).
+  if (typeof ecaTextReady !== "undefined") ecaTextReady.then(function () {
+    var st = document.getElementById("suit-status");
+    if (st && !st.classList.contains("open")) st.innerHTML = ecaT("gear.suit_closed");
+  });
 </script>
 <script src="js/fx.js?v=20261014g"></script>
 </body>

@@ -112,6 +112,25 @@
           <p class="muted" style="font-size:12px;margin-top:4px;">Choose Interest Form to gauge who'd want to go before committing to anything &mdash; families can say yes, but nobody pays yet. Once it's confirmed, open the tournament's management page and switch it to Live; everyone who said they were interested carries over automatically, so they won't need to sign up again.</p>
         </div>
         <div class="field">
+          <label for="t-payment-provider">How families pay</label>
+          <select id="t-payment-provider">
+            <option value="zeffy" selected>Zeffy &mdash; no card fees (family pastes a code)</option>
+            <option value="stripe">Card on the invite page (Stripe)</option>
+          </select>
+          <p class="muted" style="font-size:12px;margin-top:4px;">Prices and discount codes work the same either way. Zeffy needs the club's Zeffy payment form set on Admin &rarr; Zeffy first.</p>
+        </div>
+        <div class="field" id="t-zeffy-url-wrap">
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="t-zeffy-mode" value="set" checked style="width:auto;margin-top:3px;"> <span><strong>Set-price form</strong> &mdash; this tournament's own Zeffy form. Families pick the ticket and paste their code.</span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="t-zeffy-mode" value="club" style="width:auto;margin-top:3px;"> <span><strong>Club form</strong> &mdash; the club's pay-what-you-want form (Admin &rarr; Zeffy). Families type the amount and paste their code; discount codes from Admin &rarr; Coupons work. Rarely needed.</span></label>
+          </div>
+          <div id="t-zeffy-link-box">
+          <label for="t-zeffy-url">This tournament's Zeffy form link</label>
+          <input type="url" id="t-zeffy-url" data-zeffy-picker data-fill-name="#t-name" data-fill-cost="#t-cost-note" data-fill-desc="#t-description" data-fill-start="#t-event-date" data-fill-end="#t-end-date" placeholder="https://www.zeffy.com/en-US/ticketing/...">
+          <p class="muted" style="font-size:12px;margin-top:4px;">An Event form on Zeffy with one ticket per price (named like the price groups, e.g. &ldquo;14U&rdquo;) and a required question on the ticket: &ldquo;Payment code (from ECA)&rdquo;. Ticket prices must match the prices set here. Discount codes go on the Zeffy form.</p>
+          </div>
+        </div>
+<div class="field">
           <label for="t-name">Tournament Name</label>
           <input type="text" id="t-name" placeholder="e.g. Rocktober Classic" required>
         </div>
@@ -180,26 +199,7 @@
           <input type="checkbox" id="t-shirt-enabled" style="width:auto;">
           <label for="t-shirt-enabled" style="margin:0;">Ask for a shirt size on the invite page</label>
         </div>
-        <div class="field">
-          <label for="t-payment-provider">How families pay</label>
-          <select id="t-payment-provider">
-            <option value="zeffy" selected>Zeffy &mdash; no card fees (family pastes a code)</option>
-            <option value="stripe">Card on the invite page (Stripe)</option>
-          </select>
-          <p class="muted" style="font-size:12px;margin-top:4px;">Prices and discount codes work the same either way. Zeffy needs the club's Zeffy payment form set on Admin &rarr; Zeffy first.</p>
-        </div>
-        <div class="field" id="t-zeffy-url-wrap">
-          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="t-zeffy-mode" value="set" checked style="width:auto;margin-top:3px;"> <span><strong>Set-price form</strong> &mdash; this tournament's own Zeffy form. Families pick the ticket and paste their code.</span></label>
-            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;"><input type="radio" name="t-zeffy-mode" value="club" style="width:auto;margin-top:3px;"> <span><strong>Club form</strong> &mdash; the club's pay-what-you-want form (Admin &rarr; Zeffy). Families type the amount and paste their code; discount codes from Admin &rarr; Coupons work. Rarely needed.</span></label>
-          </div>
-          <div id="t-zeffy-link-box">
-          <label for="t-zeffy-url">This tournament's Zeffy form link</label>
-          <input type="url" id="t-zeffy-url" data-zeffy-picker data-fill-name="#t-name" data-fill-cost="#t-cost-note" data-fill-desc="#t-description" data-fill-start="#t-event-date" data-fill-end="#t-end-date" placeholder="https://www.zeffy.com/en-US/ticketing/...">
-          <p class="muted" style="font-size:12px;margin-top:4px;">An Event form on Zeffy with one ticket per price (named like the price groups below, e.g. &ldquo;14U&rdquo;) and a required question on the ticket: &ldquo;Payment code (from ECA)&rdquo;. Ticket prices must match the prices set here. Discount codes go on the Zeffy form.</p>
-          </div>
-        </div>
-        <div class="field" style="display:flex;align-items:center;gap:8px;">
+                        <div class="field" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="t-published" style="width:auto;">
           <label for="t-published" style="margin:0;">Published (visible if you build a general listing later; invite links work either way)</label>
         </div>

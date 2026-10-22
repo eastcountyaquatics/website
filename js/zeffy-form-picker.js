@@ -2,7 +2,9 @@
 // list of the club's Zeffy forms instead of pasting its link, then see its
 // tickets and prices -- with a warning when no ticket matches the site's
 // price. Uses the owner-only zeffy-campaigns function.
-// Markup: <input id="..." data-zeffy-picker [data-price-input="#amount_dollars"]>
+// Markup: <input id="..." data-zeffy-picker [data-price-input="#amount_dollars"]
+//          [data-fill-name="#label"] [data-fill-cost="#t-cost-note"]>
+// Picking a form fills the link, and the name and price boxes if empty.
 (function () {
   var inputs = document.querySelectorAll("input[data-zeffy-picker]");
   if (!inputs.length || typeof supabaseClient === "undefined") return;
@@ -67,9 +69,30 @@
         forms.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.title || c.url) + "</option>"; }).join("");
       showTickets();
     });
+    // Boxes to fill from the picked form, only when they're still empty.
+    var nameEl = input.getAttribute("data-fill-name") ? document.querySelector(input.getAttribute("data-fill-name")) : null;
+    var costEl = input.getAttribute("data-fill-cost") ? document.querySelector(input.getAttribute("data-fill-cost")) : null;
+    function fillEmpty(el, v) {
+      if (!el || el.value.trim() || v == null || v === "") return;
+      el.value = v;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     sel.addEventListener("change", function () {
       var f = forms.find(function (c) { return c.id === sel.value; });
-      if (f) { input.value = f.url; input.dispatchEvent(new Event("input", { bubbles: true })); }
+      if (f) {
+        input.value = f.url; input.dispatchEvent(new Event("input", { bubbles: true }));
+        fillEmpty(nameEl, f.title);
+        detail(f.id).then(function (c) {
+          var fixed = ((c && c.rates) || []).filter(function (r) { return !r.is_pay_what_you_can && typeof r.amount === "number"; }).map(function (r) { return r.amount; });
+          if (!fixed.length) return;
+          var lo = Math.min.apply(null, fixed), hi = Math.max.apply(null, fixed);
+          // One price: the session Amount. Tournaments' cost line shows the range.
+          if (priceEl && lo === hi) fillEmpty(priceEl, (lo / 100).toFixed(2));
+          if (costEl) fillEmpty(costEl, lo === hi ? money(lo) : money(lo) + " \u2013 " + money(hi));
+          showTickets();
+        });
+      }
       showTickets();
     });
     input.addEventListener("change", showTickets);

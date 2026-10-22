@@ -24,3 +24,5 @@ Don't change other RLS, delete data, or touch Stripe.
 ## Update (Oct 22): redeploy `zeffy-campaigns` again
 It now also returns a form's description and dates (for the auto-fill on Admin → Registrations /
 Tournaments). JWT verification **on**, as before. No migration.
+
+> **Done (Oct 22, 2026):** redeployed zeffy-campaigns v5, JWT on.

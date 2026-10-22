@@ -1,5 +1,8 @@
 // Owner-only: lists the club's Zeffy forms (campaigns) for Admin > Zeffy,
-// so each can be marked as registration / tournament / Masters / donation.
+// so each can be marked as registration / tournament / Masters / donation,
+// and for the "pick a Zeffy form" dropdown on Registrations / Tournaments.
+// With { id } it returns that one form with its tickets (rates) and prices,
+// so the admin page can check them against the site's price.
 // Server-side because it needs the Zeffy API key; the browser never sees it.
 //
 // Deploy: supabase functions deploy zeffy-campaigns
@@ -47,6 +50,24 @@ Deno.serve(async (req) => {
       return json({ error: "Zeffy isn't connected yet (ZEFFY_API_KEY is not set)." }, 400);
     }
 
+    const body = await req.json().catch(() => ({}));
+    if (body && typeof body.id === "string" && body.id) {
+      const res = await fetch("https://api.zeffy.com/api/v1/campaigns/" + encodeURIComponent(body.id), {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!res.ok) return json({ error: `Zeffy API error ${res.status}` }, 502);
+      const c = await res.json();
+      return json({
+        campaign: {
+          id: c.id, title: c.title, url: c.url, type: c.type, is_archived: c.is_archived,
+          rates: (c.rates ?? []).filter((r: Record<string, unknown>) => !r.is_add_on).map((r: Record<string, unknown>) => ({
+            id: r.id, title: r.title, amount: r.amount, is_pay_what_you_can: r.is_pay_what_you_can,
+            minimum: r.pay_what_you_can_minimum_amount,
+          })),
+        },
+      });
+    }
+
     // Page through every campaign (100 per page, cursor = last id).
     const campaigns: Array<Record<string, unknown>> = [];
     let after: string | null = null;
@@ -68,7 +89,10 @@ Deno.serve(async (req) => {
     return json({
       campaigns: campaigns
         .filter((c) => !c.deleted_at)
-        .map((c) => ({ id: c.id, title: c.title, url: c.url, category: c.category, is_archived: c.is_archived })),
+        .map((c) => ({
+          id: c.id, title: c.title, url: c.url, category: c.category, is_archived: c.is_archived,
+          type: c.type, status: c.status, start_date: c.start_date, end_date: c.end_date,
+        })),
     });
   } catch (err) {
     console.error("zeffy-campaigns failed:", err);

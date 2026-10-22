@@ -121,7 +121,7 @@
     <p id="paylink-current" class="muted"></p>
 
     <h2 style="font-size:22px;margin-top:40px;">Zeffy Forms</h2>
-    <p class="muted">Tell the site what each Zeffy form is for. <strong>Registration</strong> and <strong>Masters</strong> forms register the athlete; <strong>Tournament</strong> forms mark that tournament paid. Set this before sharing a new form &mdash; a form's first payment shows up here as &ldquo;Other&rdquo; until you do. Each form should have a question with &ldquo;Athlete&rdquo; in it (per ticket on multi-athlete forms) asking for the athlete's full name.</p>
+    <p class="muted">Tell the site what each Zeffy form is for. <strong>Registration</strong> and <strong>Masters</strong> forms register the athlete; <strong>Tournament</strong> forms mark that tournament paid. Set this before sharing a new form &mdash; a form's first payment shows up here as &ldquo;Other&rdquo; until you do. Each form should have a question with &ldquo;Athlete&rdquo; in it (per ticket on multi-athlete forms) asking for the athlete's full name. Tick <strong>Show on website</strong> to put a form (a fundraiser, donation form or club event) on the Donate/Sponsor and Home pages, with its banner and link.</p>
     <div id="campaigns-msg" class="form-msg"></div>
     <div id="campaign-list"><p class="muted">Loading&hellip;</p></div>
 
@@ -249,13 +249,17 @@
 
   let tournamentOptions = "";
 
+  let hasShowOnSite = false;
   async function loadCampaigns() {
     const listEl = document.getElementById("campaign-list");
-    const [fnRes, { data: saved }, { data: tournaments }] = await Promise.all([
+    const [fnRes, { data: saved }, { data: tournaments }, probe] = await Promise.all([
       supabaseClient.functions.invoke("zeffy-campaigns", { body: {} }),
-      supabaseClient.from("zeffy_campaigns").select("campaign_id, title, kind, tournament_id"),
+      supabaseClient.from("zeffy_campaigns").select("*"),
+      // "Show on website" needs the show_on_site column (a migration); hide it until then.
+      supabaseClient.from("zeffy_campaigns").select("show_on_site").limit(1),
       supabaseClient.from("tournaments").select("id, name, event_date").order("event_date", { ascending: false }),
     ]);
+    hasShowOnSite = !(probe && probe.error);
     tournamentOptions = '<option value="">Which tournament?</option>' + (tournaments || []).map(function (t) {
       return '<option value="' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + (t.event_date ? " (" + escapeHtml(t.event_date) + ")" : "") + "</option>";
     }).join("");
@@ -295,6 +299,8 @@
         (paylinkForm && paylinkForm.campaign_id === r.id
           ? '<span class="muted"><strong>&check; Used for site prices</strong></span>'
           : (r.url ? '<button type="button" class="btn btn-outline-dark paylink-use" data-url="' + escapeHtml(r.url) + '" style="padding:8px 16px;">Use for Site Prices</button>' : "")) +
+        (hasShowOnSite ? '<label style="display:flex;gap:6px;align-items:center;font-weight:400;margin:0;"><input type="checkbox" class="show-site" style="width:auto;"' +
+          (r.saved && r.saved.show_on_site ? " checked" : "") + "> Show on website</label>" : "") +
         '<span class="muted campaign-status"></span></div></div>';
     }).join("");
     rows.forEach(function (r) {
@@ -332,13 +338,16 @@
     const status = row.querySelector(".campaign-status");
     if (kind === "tournament" && !tournamentId) { status.textContent = "Pick the tournament."; return; }
     btn.disabled = true;
-    const { error } = await supabaseClient.from("zeffy_campaigns").upsert({
+    const rowData = {
       campaign_id: row.dataset.campaign,
       title: row.dataset.title || null,
       kind: kind,
       tournament_id: kind === "tournament" ? tournamentId : null,
       updated_at: new Date().toISOString(),
-    }, { onConflict: "campaign_id" });
+    };
+    const showBox = row.querySelector(".show-site");
+    if (showBox) rowData.show_on_site = showBox.checked;
+    const { error } = await supabaseClient.from("zeffy_campaigns").upsert(rowData, { onConflict: "campaign_id" });
     btn.disabled = false;
     status.textContent = error ? "Could not save: " + error.message : "Saved.";
     setTimeout(function () { status.textContent = ""; }, 3000);

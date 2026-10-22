@@ -595,3 +595,17 @@ a.store:hover .store-photo img{transform:scale(1.05);}
 .season-card .info-list li{padding:8px 0;}
 .season-card.next{background:var(--tint);border-style:dashed;}
 .season-card .muted{margin:10px 0 0;font-weight:600;color:#145c2c;}
+
+/* Zeffy form cards (js/zeffy-showcase.js) */
+.zc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;}
+.zc-card{background:#fff;border:1px solid #e3e6f0;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 18px rgba(10,31,107,.06);}
+.zc-img{display:block;aspect-ratio:16/7;background:#eef1f8;overflow:hidden;}
+.zc-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.zc-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px;flex:1;}
+.zc-body h3{margin:0;font-size:19px;}
+.zc-body p{margin:0;font-size:14.5px;}
+.zc-body .btn{margin-top:auto;align-self:flex-start;}
+.zc-when{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue);}
+.zc-progress{height:8px;border-radius:999px;background:#eef1f8;overflow:hidden;margin-top:4px;}
+.zc-progress span{display:block;height:100%;background:var(--gold);border-radius:999px;}
+.zc-raised{font-size:13px;color:var(--muted);}

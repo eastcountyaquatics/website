@@ -122,6 +122,11 @@
     "gear.suit_open_label": { g: "Team Store page", w: "Suit store status when it's open and has a note", v: ["label"], t: "Open now &middot; {{label}}" },
     "gear.suit_btn": { g: "Team Store page", w: "Suit store button when it's open", t: "Shop the Suit Store" },
 
+    // Zeffy form cards (Donate/Sponsor and Home)
+    "zc.donate_btn": { g: "Zeffy form cards", w: "Button on a fundraiser or donation form card", t: "Give on Zeffy" },
+    "zc.event_btn": { g: "Zeffy form cards", w: "Button on an event card", t: "Get tickets" },
+    "zc.raised": { g: "Zeffy form cards", w: "Under the progress bar", v: ["raised", "goal"], t: "{{raised}} raised of {{goal}}" },
+
     // Shared
     "zeffy.tip": { g: "Zeffy (shared)", w: "Note about Zeffy's optional tip, on every Zeffy pay screen", t: "Zeffy is free for the club because it runs on donations, so at checkout it suggests an optional tip to Zeffy (not the club). <strong>Feel free to set it to $0.</strong>" },
   };

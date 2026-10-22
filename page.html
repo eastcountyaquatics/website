@@ -6,7 +6,7 @@
 <title>San Diego East County Aquatics</title>
 <link rel="stylesheet" href="css/styles.css?v=20261014i">
 <script src="js/theme.js"></script>
-<link rel="stylesheet" href="css/refresh.css?v=20261014o">
+<link rel="stylesheet" href="css/refresh.css?v=20261022">
 <link rel="icon" type="image/png" href="images/eca-logo-240.png">
 <link rel="apple-touch-icon" href="images/eca-logo-240.png">
 <meta name="theme-color" content="#0a1f6b">
@@ -149,7 +149,7 @@
     // team-schedule.js shows the section itself once a schedule is published.
     const observer = new MutationObserver(function () { if (sched.innerHTML.trim()) sched.style.display = ""; });
     observer.observe(sched, { childList: true });
-    await load("js/site-text.js?v=20261021c");
+    await load("js/site-text.js?v=20261022");
     if (typeof ecaTextReady !== "undefined") ecaTextReady.then(function () {
       coaches.querySelectorAll("[data-t]").forEach(function (el) { el.innerHTML = ecaT(el.getAttribute("data-t")); });
     });

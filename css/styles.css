@@ -539,3 +539,24 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 #nav-auth-slot .nav-parent.nav-btn:hover,#nav-auth-slot.open .nav-parent.nav-btn{border-color:var(--gold);color:var(--gold);}
 .main-nav .nav-menu.nav-menu-right{left:auto;right:0;min-width:190px;}
 @media (max-width:1150px){#nav-auth-slot.nav-account{display:block;}#nav-auth-slot .nav-parent.nav-btn{border:none;padding:14px 10px !important;border-radius:0;}}
+
+/* Dropdowns match the text boxes */
+.field select{
+  width:100%;padding:12px 40px 12px 14px;border:1px solid #d7e6ee;border-radius:8px;font-size:15px;font-family:inherit;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230a1f6b' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center;
+  -webkit-appearance:none;appearance:none;color:var(--text,#1a1a2e);cursor:pointer;
+}
+.field select:focus{outline:2px solid var(--aqua);outline-offset:1px;border-color:var(--blue);}
+.field select:disabled{opacity:.6;cursor:default;}
+
+/* Zeffy form picker (js/zeffy-form-picker.js) */
+.zp-box{background:var(--foam,#f2f7fb);border:1px solid #d7e6ee;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.zp-box .zp-label{display:block;font-size:12.5px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+.zp-box select{background-color:#fff;}
+.zp-info{margin-top:10px;font-size:13px;color:var(--muted);}
+.zp-info:empty{display:none;}
+.zp-tickets{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
+.zp-ticket{background:#fff;border:1px solid #d7e6ee;border-radius:999px;padding:3px 10px;font-size:12.5px;color:var(--navy);font-weight:600;}
+.zp-ticket.ok{border-color:#9bd3ab;background:#eaf7ee;color:#1f6b35;}
+.zp-warn{color:#a12626;font-weight:700;}
+.zp-good{color:#1f6b35;font-weight:700;}

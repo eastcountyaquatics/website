@@ -3,8 +3,11 @@
 // tickets and prices -- with a warning when no ticket matches the site's
 // price. Uses the owner-only zeffy-campaigns function.
 // Markup: <input id="..." data-zeffy-picker [data-price-input="#amount_dollars"]
-//          [data-fill-name="#label"] [data-fill-cost="#t-cost-note"]>
-// Picking a form fills the link, and the name and price boxes if empty.
+//          [data-fill-name="#label"] [data-fill-cost="#t-cost-note"]
+//          [data-fill-desc="#description"] [data-fill-start="#t-event-date"] [data-fill-end="#t-end-date"]>
+// Picking a form fills the link, plus name, price, description and dates --
+// only boxes that are still empty, so anything typed stays and all of it
+// can be changed after.
 (function () {
   var inputs = document.querySelectorAll("input[data-zeffy-picker]");
   if (!inputs.length || typeof supabaseClient === "undefined") return;
@@ -72,6 +75,14 @@
     // Boxes to fill from the picked form, only when they're still empty.
     var nameEl = input.getAttribute("data-fill-name") ? document.querySelector(input.getAttribute("data-fill-name")) : null;
     var costEl = input.getAttribute("data-fill-cost") ? document.querySelector(input.getAttribute("data-fill-cost")) : null;
+    var q = function (a) { return input.getAttribute(a) ? document.querySelector(input.getAttribute(a)) : null; };
+    var descEl = q("data-fill-desc"), startEl = q("data-fill-start"), endEl = q("data-fill-end");
+    // Unix seconds -> "YYYY-MM-DD" in local time, for <input type="date">.
+    function day(ts) {
+      if (!ts) return null;
+      var d = new Date(ts * 1000);
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
     function fillEmpty(el, v) {
       if (!el || el.value.trim() || v == null || v === "") return;
       el.value = v;
@@ -84,6 +95,20 @@
         input.value = f.url; input.dispatchEvent(new Event("input", { bubbles: true }));
         fillEmpty(nameEl, f.title);
         detail(f.id).then(function (c) {
+          if (c) {
+            fillEmpty(descEl, c.description);
+            // Event dates: the first and last day across its dates on Zeffy.
+            var occ = (c.occurrences || []).filter(function (o) { return o.start; });
+            var first = occ.length ? Math.min.apply(null, occ.map(function (o) { return o.start; })) : c.start_date;
+            var last = occ.length ? Math.max.apply(null, occ.map(function (o) { return o.end || o.start; })) : c.end_date;
+            var d1 = day(first), d2 = day(last);
+            if (startEl && !startEl.value) fillEmpty(startEl, d1);
+            if (endEl && !endEl.value && d2 && d1 && d2 > d1) {
+              var rangeBtn = document.querySelector('[data-datemode="range"]');
+              if (rangeBtn) rangeBtn.click();
+              fillEmpty(endEl, d2);
+            }
+          }
           var fixed = ((c && c.rates) || []).filter(function (r) { return !r.is_pay_what_you_can && typeof r.amount === "number"; }).map(function (r) { return r.amount; });
           if (!fixed.length) return;
           var lo = Math.min.apply(null, fixed), hi = Math.max.apply(null, fixed);

@@ -60,6 +60,10 @@ Deno.serve(async (req) => {
       return json({
         campaign: {
           id: c.id, title: c.title, url: c.url, type: c.type, is_archived: c.is_archived,
+          description: plain(c.description).slice(0, 1000),
+          start_date: c.start_date ?? null, end_date: c.end_date ?? null,
+          occurrences: (c.occurrences ?? []).filter((o: Record<string, unknown>) => !o.is_archived)
+            .map((o: Record<string, unknown>) => ({ start: o.start ?? o.start_date ?? null, end: o.end ?? o.end_date ?? null })),
           rates: (c.rates ?? []).filter((r: Record<string, unknown>) => !r.is_add_on).map((r: Record<string, unknown>) => ({
             id: r.id, title: r.title, amount: r.amount, is_pay_what_you_can: r.is_pay_what_you_can,
             minimum: r.pay_what_you_can_minimum_amount,
@@ -105,4 +109,13 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Zeffy descriptions can be rich text; the admin form gets plain text.
+function plain(html: unknown): string {
+  return String(html ?? "")
+    .replace(/<br\s*\/?>|<\/p>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n\n").trim();
 }

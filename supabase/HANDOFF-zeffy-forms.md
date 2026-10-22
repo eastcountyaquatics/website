@@ -20,3 +20,7 @@ Code: this repo, branch `claude/sd-east-county-aquatics-tv13qz` (latest).
    → `{"campaigns":[]}` until an owner ticks a form.
 
 Don't change other RLS, delete data, or touch Stripe.
+
+## Update (Oct 22): redeploy `zeffy-campaigns` again
+It now also returns a form's description and dates (for the auto-fill on Admin → Registrations /
+Tournaments). JWT verification **on**, as before. No migration.

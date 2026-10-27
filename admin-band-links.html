@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BAND Links | Admin | San Diego East County Aquatics</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="css/styles.css?v=20261022c">
+<link rel="stylesheet" href="css/styles.css?v=20261027">
 <script src="js/theme.js"></script>
 <link rel="icon" type="image/png" href="images/eca-logo-240.png">
 <link rel="apple-touch-icon" href="images/eca-logo-240.png">
@@ -111,7 +111,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js?v=20261014i"></script>
-<script src="js/main.js?v=20261014p"></script>
+<script src="js/main.js?v=20261027"></script>
 <script src="js/site-chrome.js?v=20261014p"></script>
 <script>
   function escapeHtml(str) {
@@ -123,44 +123,82 @@
       .replace(/'/g, "&#39;");
   }
 
+  // One row per BAND group, in age order. 12U boys and girls share one
+  // group; 16U and 18U girls each have their own. Saving a row updates every
+  // team in it, and the label families see ("Join 16U Girls BAND Group").
+  const GROUPS = [
+    { slugs: ["splashball"], label: "Splashball" },
+    { slugs: ["8u-coed"], label: "8U" },
+    { slugs: ["10u-coed"], label: "10U" },
+    { slugs: ["12u-boys", "12u-girls"], label: "12U CoEd" },
+    { slugs: ["14u-girls"], label: "14U Girls" },
+    { slugs: ["14u-boys"], label: "14U Boys" },
+    { slugs: ["16u-girls"], label: "16U Girls" },
+    { slugs: ["16u-boys"], label: "16U Boys" },
+    { slugs: ["18u-girls"], label: "18U Girls" },
+    { slugs: ["18u-boys"], label: "18U Boys" },
+    { slugs: ["masters"], label: "Masters" },
+  ];
+  let groups = [];
+
   async function load() {
     const listEl = document.getElementById("band-list");
-    const { data, error } = await supabaseClient
-      .from("band_links")
-      .select("team_slug, label, url")
-      .order("team_slug", { ascending: true });
+    const { data, error } = await supabaseClient.from("band_links").select("team_slug, label, url");
     if (error) {
       listEl.innerHTML = '<p class="muted">Could not load BAND links.</p>';
       return;
     }
-    listEl.innerHTML = (data || [])
-      .map(function (row) {
-        return (
-          '<div class="band-row" data-slug="' + escapeHtml(row.team_slug) + '">' +
-          "<label>" + escapeHtml(row.label) + "</label>" +
-          '<input type="url" placeholder="https://band.us/n/..." value="' + escapeHtml(row.url || "") + '">' +
-          '<button type="button" class="btn btn-outline-dark band-save-btn">Save</button>' +
-          '<span class="muted band-save-status"></span>' +
-          "</div>"
-        );
-      })
-      .join("");
+    const bySlug = {};
+    (data || []).forEach(function (r) { bySlug[r.team_slug] = r; });
+    const known = {};
+    groups = GROUPS.map(function (g) {
+      g.slugs.forEach(function (sl) { known[sl] = true; });
+      const url = g.slugs.map(function (sl) { return bySlug[sl] && bySlug[sl].url; }).filter(Boolean)[0] || "";
+      return { slugs: g.slugs, label: g.label, url: url };
+    });
+    // Any other team (e.g. added on Admin > Teams) goes at the end.
+    (data || []).filter(function (r) { return !known[r.team_slug]; })
+      .sort(function (a, b) { return a.label.localeCompare(b.label); })
+      .forEach(function (r) { groups.push({ slugs: [r.team_slug], label: r.label, url: r.url || "" }); });
+
+    // Old labels (e.g. "HS Girls" on both girls' high school teams) -> the
+    // group's name, so My Account shows the right one.
+    const fixes = [];
+    groups.forEach(function (g) {
+      g.slugs.forEach(function (sl) {
+        if (bySlug[sl] && bySlug[sl].label !== g.label) {
+          fixes.push(supabaseClient.from("band_links").update({ label: g.label }).eq("team_slug", sl));
+        }
+      });
+    });
+    if (fixes.length) await Promise.all(fixes);
+
+    listEl.innerHTML = groups.map(function (g, i) {
+      return (
+        '<div class="band-row" data-i="' + i + '">' +
+        "<label>" + escapeHtml(g.label) + "</label>" +
+        '<input type="url" placeholder="https://band.us/n/..." value="' + escapeHtml(g.url) + '">' +
+        '<button type="button" class="btn btn-outline-dark band-save-btn">Save</button>' +
+        '<span class="muted band-save-status"></span>' +
+        "</div>"
+      );
+    }).join("");
   }
 
   document.getElementById("band-list").addEventListener("click", async function (e) {
     const btn = e.target.closest(".band-save-btn");
     if (!btn) return;
     const row = btn.closest(".band-row");
-    const teamSlug = row.getAttribute("data-slug");
+    const g = groups[+row.getAttribute("data-i")];
     const input = row.querySelector("input");
     const statusEl = row.querySelector(".band-save-status");
     const url = input.value.trim() || null;
+    if (url && !/^https:\/\//.test(url)) { statusEl.textContent = "Use the full https:// link."; return; }
     btn.disabled = true;
-    statusEl.textContent = "Saving…";
-    const { error } = await supabaseClient
-      .from("band_links")
-      .update({ url: url, updated_at: new Date().toISOString() })
-      .eq("team_slug", teamSlug);
+    statusEl.textContent = "Saving\u2026";
+    const { error } = await supabaseClient.from("band_links").upsert(
+      g.slugs.map(function (sl) { return { team_slug: sl, label: g.label, url: url, updated_at: new Date().toISOString() }; }),
+      { onConflict: "team_slug" });
     btn.disabled = false;
     statusEl.textContent = error ? "Could not save." : "Saved.";
     setTimeout(function () { statusEl.textContent = ""; }, 2500);

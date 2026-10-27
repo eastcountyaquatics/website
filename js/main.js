@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ["wheel", "touchmove", "keydown", "mousedown"].forEach(function (evt) {
       window.addEventListener(evt, function () { userMoved = true; }, { once: true, passive: true });
     });
-    [0, 300, 800, 1500, 2500, 4000].forEach(function (ms) {
+    [0, 300, 800, 1500, 2500, 4000, 6000].forEach(function (ms) {
       setTimeout(function () {
         if (!userMoved && run === settleRun) target.scrollIntoView({ block: "start" });
       }, ms);

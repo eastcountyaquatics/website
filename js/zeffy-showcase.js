@@ -26,7 +26,7 @@
         (pct !== null ? '<div class="zc-progress" aria-label="' + pct + '% of goal"><span style="width:' + pct + '%"></span></div>' +
           '<p class="zc-raised">' + T("zc.raised", { raised: money(c.raised_cents), goal: money(c.goal_cents) }, money(c.raised_cents) + " raised of " + money(c.goal_cents)) + "</p>" : "") +
         '<a class="btn ' + (c.type === "event" ? "btn-primary" : "btn-gold") + '" href="' + esc(c.url) + '" target="_blank" rel="noopener">' +
-          (c.type === "event" ? T("zc.event_btn", null, "Get tickets") : T("zc.donate_btn", null, "Give on Zeffy")) + "</a>" +
+          (c.type === "event" ? T("zc.event_btn", null, "Purchase") : T("zc.donate_btn", null, "Give on Zeffy")) + "</a>" +
       "</div></article>";
   }
   var ready = typeof ecaTextReady !== "undefined" ? ecaTextReady : Promise.resolve();

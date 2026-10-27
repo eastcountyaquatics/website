@@ -124,7 +124,7 @@
 
     // Zeffy form cards (Donate/Sponsor and Home)
     "zc.donate_btn": { g: "Zeffy form cards", w: "Button on a fundraiser or donation form card", t: "Give on Zeffy" },
-    "zc.event_btn": { g: "Zeffy form cards", w: "Button on an event card", t: "Get tickets" },
+    "zc.event_btn": { g: "Zeffy form cards", w: "Button on an event card", t: "Purchase" },
     "zc.raised": { g: "Zeffy form cards", w: "Under the progress bar", v: ["raised", "goal"], t: "{{raised}} raised of {{goal}}" },
 
     // Shared

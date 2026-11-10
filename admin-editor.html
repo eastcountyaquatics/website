@@ -199,6 +199,7 @@
   </span>
   <button type="button" id="settings-toggle-btn" style="display:none;">Page Settings</button>
   <button type="button" id="history-btn" style="display:none;">History</button>
+  <button type="button" id="pagesched-btn" style="display:none;" title="Make this whole page go live, or come down, on a date">Page Schedule</button>
   <button type="button" id="meta-btn" style="display:none;" title="The page's name in the browser tab and in Google results">Tab &amp; Google Text</button>
   <button type="button" id="reset-page-btn" style="display:none;">Reset Page</button>
   <div class="spacer"></div>
@@ -314,6 +315,21 @@
   </form>
 </div>
 
+<div id="pagesched-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="pagesched-title" hidden>
+  <form id="pagesched-form" class="ed-link-card">
+    <h3 id="pagesched-title">Schedule this whole page</h3>
+    <p class="ed-link-hint">Outside these times visitors see a &ldquo;not available&rdquo; note instead of the page. Leave a box empty for no start or no end. Saves right away.</p>
+    <label class="ed-link-hint">Goes live<br><input type="datetime-local" id="pagesched-from" style="width:100%;padding:8px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;"></label>
+    <label class="ed-link-hint">Comes down<br><input type="datetime-local" id="pagesched-until" style="width:100%;padding:8px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;"></label>
+    <div id="pagesched-msg" class="ed-link-msg"></div>
+    <div class="ed-link-actions">
+      <button type="button" id="pagesched-clear" class="ed-link-secondary">Remove schedule</button>
+      <span style="flex:1"></span>
+      <button type="button" id="pagesched-cancel" class="ed-link-secondary">Cancel</button>
+      <button type="submit" class="ed-link-primary">Save</button>
+    </div>
+  </form>
+</div>
 <div id="sched-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="sched-title" hidden>
   <form id="sched-form" class="ed-link-card">
     <h3 id="sched-title">Schedule this section</h3>
@@ -400,6 +416,7 @@
     wrap.style.setProperty("--dev-w", b.dataset.w || "100%");
   });
   const metaBtn = document.getElementById("meta-btn");
+  const pageSchedBtn = document.getElementById("pagesched-btn");
   const resetPageBtn = document.getElementById("reset-page-btn");
   const historyBtn = document.getElementById("history-btn");
   const viewLiveLink = document.getElementById("view-live-link");
@@ -1036,6 +1053,8 @@
       html: '<div class="grid grid-2" style="margin:28px 0;align-items:center;"><p class="muted">Click the <strong>Image</strong> button above to add a photo here, then delete this placeholder text.</p><div><h3>About This Photo</h3><p>Write a caption or related text here.</p></div></div>' },
     { key: "cta", cat: "start", label: "Call to Action", hint: "Banner with a button", icon: "📣",
       html: '<div class="cta-band" style="margin:28px 0;"><h2>Ready to Join East County Aquatics?</h2><p>Write a short call to action here.</p><p style="margin-top:16px;"><a href="#" class="btn btn-primary">Button Text</a></p></div>' },
+    { key: "downloads", label: "Downloads", hint: "Forms and documents to download", icon: "\uD83D\uDCC4", cat: "community",
+      html: '<h2>Forms &amp; Documents</h2><ul><li><a href="#">Name of the first document (PDF)</a></li><li><a href="#">Name of the second document</a></li><li><a href="#">Name of the third document</a></li></ul><p class="muted">Select a document name and use the Link button to point it at the file.</p>' },
     { key: "faq", label: "FAQ", hint: "Questions and answers", icon: "?", cat: "start",
       html: '<h2>Frequently Asked Questions</h2><h3>First question?</h3><p>Write the answer here.</p><h3>Second question?</h3><p>Write the answer here.</p><h3>Third question?</h3><p>Write the answer here.</p>' },
     { key: "testimonials", label: "Testimonials", hint: "Kind words from families", icon: "\u2605", cat: "community",
@@ -1322,7 +1341,7 @@
     settingsPanel.classList.remove("open");
     settingsToggleBtn.style.display = "none";
     resetPageBtn.style.display = "inline-block";
-    metaBtn.style.display = "inline-block";
+    metaBtn.style.display = "inline-block"; pageSchedBtn.style.display = "inline-block";
     historyBtn.style.display = "inline-block";
     viewLiveLink.style.display = "inline-block";
     viewLiveLink.href = path;
@@ -1448,7 +1467,7 @@
     richBar.classList.add("visible");
     settingsToggleBtn.style.display = "inline-block";
     resetPageBtn.style.display = "none";
-    metaBtn.style.display = "none";
+    metaBtn.style.display = "none"; pageSchedBtn.style.display = "none";
     historyBtn.style.display = "inline-block";
     viewLiveLink.style.display = "inline-block";
     viewLiveLink.href = "page.html?slug=" + encodeURIComponent(row.slug);
@@ -1623,6 +1642,39 @@
     if (err) { metaMsg("Could not save: " + err.error.message, false); return; }
     metaMsg("Saved.", true);
     setTimeout(function () { metaDialog.hidden = true; }, 700);
+  });
+
+  // ---- Whole-page schedule (site_settings "page_windows", read by js/page-extras.js) ----
+  const psDialog = document.getElementById("pagesched-dialog");
+  async function readWindows() {
+    const r = await supabaseClient.from("site_settings").select("value").eq("key", "page_windows").maybeSingle();
+    return (r && r.data && r.data.value && typeof r.data.value === "object") ? r.data.value : {};
+  }
+  pageSchedBtn.addEventListener("click", async function () {
+    const w = (await readWindows())[currentPath] || {};
+    document.getElementById("pagesched-from").value = localInput(w.from);
+    document.getElementById("pagesched-until").value = localInput(w.until);
+    document.getElementById("pagesched-msg").textContent = "";
+    psDialog.hidden = false;
+  });
+  document.getElementById("pagesched-cancel").addEventListener("click", function () { psDialog.hidden = true; });
+  psDialog.addEventListener("click", function (e) { if (e.target === psDialog) psDialog.hidden = true; });
+  async function savePageWindow(from, until) {
+    const all = await readWindows();
+    if (from || until) all[currentPath] = { from: from || null, until: until || null }; else delete all[currentPath];
+    const res = await supabaseClient.from("site_settings").upsert({ key: "page_windows", value: all, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    const msg = document.getElementById("pagesched-msg");
+    if (res && res.error) { msg.textContent = "Could not save: " + res.error.message; return; }
+    msg.textContent = "Saved.";
+    setTimeout(function () { psDialog.hidden = true; }, 600);
+  }
+  document.getElementById("pagesched-clear").addEventListener("click", function () { savePageWindow(null, null); });
+  document.getElementById("pagesched-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const fv = document.getElementById("pagesched-from").value, uv = document.getElementById("pagesched-until").value;
+    const f = fv ? new Date(fv) : null, u = uv ? new Date(uv) : null;
+    if (f && u && u <= f) { document.getElementById("pagesched-msg").textContent = "The end has to be after the start."; return; }
+    savePageWindow(f ? f.toISOString() : null, u ? u.toISOString() : null);
   });
 
   // ---- Dropdown choices (select[data-cms-options], js/option-blocks.js) ----
@@ -1909,7 +1961,7 @@
     settingsPanel.classList.remove("open");
     settingsToggleBtn.style.display = "none";
     resetPageBtn.style.display = "none";
-    metaBtn.style.display = "none";
+    metaBtn.style.display = "none"; pageSchedBtn.style.display = "none";
     historyBtn.style.display = "none";
     viewLiveLink.style.display = "none";
     setStatus("");
@@ -1957,8 +2009,8 @@
       settingsPanel.classList.remove("open");
       settingsToggleBtn.style.display = "none";
       resetPageBtn.style.display = "none";
-      metaBtn.style.display = "none";
-    metaBtn.style.display = "none";
+      metaBtn.style.display = "none"; pageSchedBtn.style.display = "none";
+    metaBtn.style.display = "none"; pageSchedBtn.style.display = "none";
       historyBtn.style.display = "none";
       viewLiveLink.style.display = "none";
       setStatus("");

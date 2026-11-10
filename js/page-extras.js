@@ -156,5 +156,28 @@
     }
   }
 
+  // Whole-page schedule from Admin > Edit Website > Page Schedule: outside the
+  // window visitors see a short note instead of the page.
+  async function checkWindow() {
+    try {
+      const r = await supabaseClient.from("site_settings").select("value").eq("key", "page_windows").maybeSingle();
+      const w = r && r.data && r.data.value && r.data.value[pagePath];
+      if (!w) return;
+      const now = Date.now();
+      if ((w.from && now < Date.parse(w.from)) || (w.until && now >= Date.parse(w.until))) {
+        document.querySelectorAll("body > section").forEach(function (el) { el.style.display = "none"; });
+        const note = document.createElement("section");
+        const box = document.createElement("div");
+        box.className = "container";
+        box.style.cssText = "padding:80px 0;text-align:center;";
+        const h = document.createElement("h2"); h.textContent = "This page isn\u2019t available right now";
+        const a = document.createElement("a"); a.href = "index.html"; a.className = "btn btn-primary"; a.textContent = "Back to home";
+        box.appendChild(h); box.appendChild(a); note.appendChild(box);
+        const f = document.querySelector(".site-footer");
+        if (f && f.parentNode) f.parentNode.insertBefore(note, f); else document.body.appendChild(note);
+      }
+    } catch (e) {}
+  }
+  checkWindow();
   load();
 })();

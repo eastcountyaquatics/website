@@ -365,3 +365,23 @@ test("tournament invite for a deleted athlete shows as unavailable instead of a 
   await page.waitForSelector("text=no longer on your account");
   assert.equal(await page.locator('[data-notif-response]').count(), 2); // only the live invite (a1) keeps Yes/No
 });
+
+test("alumni CRM: importing a CSV adds new people, skips duplicates and bad rows, and keeps the Group column", async () => {
+  const page = await env.page({ seed: { alumni_contacts: [{ id: "x1", first_name: "Old", last_name: "Timer", email: "old@example.com", segment: "player", wants_email: true, created_at: "2026-01-01T00:00:00Z" }] } });
+  await page.goto(env.url + "/admin-alumni.html");
+  await page.waitForSelector("text=Old Timer");
+  const csv = "First name,Last name,Email,Phone,Group,Last year,OK to email,Notes\n" +
+    "Jamie,Lee,jamie@example.com,619-555-0100,Player,2022,yes,\n" +
+    "Sam,Kim,sam@example.com,,Parent,,no,helps with events\n" +
+    "Old,Timer,OLD@example.com,,Player,,yes,\n" +
+    "Bad,Row,not-an-email,,Player,,yes,\n";
+  await page.setInputFiles("#al-file", { name: "alumni.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await page.waitForSelector("#al-imp-summary");
+  assert.match(await page.textContent("#al-imp-summary"), /2 new, 1 already on the list \(skipped\), 1 with problems/);
+  await page.click("#imp-go");
+  await page.waitForSelector("text=Sam Kim");
+  const all = await rows(page, "alumni_contacts");
+  assert.equal(all.length, 3);
+  assert.equal(all.find((r) => r.email === "sam@example.com").segment, "parent");
+  assert.equal(all.find((r) => r.email === "sam@example.com").wants_email, false);
+});

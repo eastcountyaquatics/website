@@ -257,6 +257,7 @@
   <button type="button" id="rb-add-section-btn" class="ed-btn-highlight" title="Add a ready-made block (photo, boxes, banner, etc.) below where you clicked">+ Add Section</button>
   <button type="button" id="rb-add-card-btn" title="Adds one more box next to the ones you already have">+ Add Box</button>
   <button type="button" id="rb-insert-image-btn" title="Add a photo where your cursor is">+ Add Photo</button>
+  <button type="button" id="rb-library-btn" title="Pick an approved photo from the Photo Library">+ From Photo Library</button>
   <button type="button" id="rb-move-up-btn" title="Move this whole block up">&uarr; Move Up</button>
   <button type="button" id="rb-move-down-btn" title="Move this whole block down">&darr; Move Down</button>
   <button type="button" id="rb-delete-section-btn" style="color:#a12626;" title="Remove this whole block">Delete</button>
@@ -315,6 +316,16 @@
   </form>
 </div>
 
+<div id="picker-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="picker-title" hidden>
+  <div class="ed-link-card" style="max-width:760px;width:94vw;">
+    <h3 id="picker-title">Choose from the Photo Library</h3>
+    <p class="ed-link-hint">Only photos you've approved in Admin &rarr; Photo Library are listed.</p>
+    <select id="picker-team" style="padding:8px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;margin-bottom:8px;"><option value="">All teams</option></select>
+    <div id="picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:52vh;overflow:auto;"></div>
+    <div id="picker-msg" class="ed-link-msg"></div>
+    <div class="ed-link-actions"><span style="flex:1"></span><button type="button" id="picker-cancel" class="ed-link-secondary">Cancel</button></div>
+  </div>
+</div>
 <div id="pagesched-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="pagesched-title" hidden>
   <form id="pagesched-form" class="ed-link-card">
     <h3 id="pagesched-title">Schedule this whole page</h3>
@@ -771,6 +782,15 @@
       pendingImageUploadTarget = { el: el, key: key, isBg: isBg };
       imageFileInput.click();
     });
+    const lib = doc.createElement("button");
+    lib.type = "button";
+    lib.className = "cms-replace-btn";
+    lib.style.right = "auto"; lib.style.left = "8px";
+    lib.textContent = "From Photo Library";
+    wrap.appendChild(lib);
+    lib.addEventListener("click", function () {
+      openPhotoPicker(function (url, alt) { applyImageUrl({ el: el, key: key, isBg: isBg }, url, alt); });
+    });
   }
 
   imageFileInput.addEventListener("change", async function () {
@@ -785,15 +805,56 @@
     const { error } = await supabaseClient.storage.from("site-images").upload(storagePath, file, { upsert: true });
     if (error) { setStatus("Could not upload: " + friendlyError(error), "error"); return; }
     const { data } = supabaseClient.storage.from("site-images").getPublicUrl(storagePath);
-    const url = data.publicUrl;
+    await applyImageUrl(target, data.publicUrl);
+  });
+
+  // Put a picture's address into a replaceable image (uploaded or picked from the library) and save it.
+  async function applyImageUrl(target, url, alt) {
     if (target.isBg) target.el.style.backgroundImage = "url('" + url.replace(/'/g, "%27") + "')";
-    else { target.el.removeAttribute("srcset"); target.el.removeAttribute("sizes"); target.el.src = url; }
+    else { target.el.removeAttribute("srcset"); target.el.removeAttribute("sizes"); target.el.src = url; if (alt) target.el.setAttribute("alt", alt); }
     const { error: dbError } = await supabaseClient
       .from("image_blocks")
       .upsert({ page_path: currentPath, block_key: target.key, image_url: url, alt_text: target.el.getAttribute("alt") || null }, { onConflict: "page_path,block_key" });
     setStatus(dbError ? "Image uploaded, but could not save: " + friendlyError(dbError) : "Image updated.");
     if (!dbError) recordVersion();
-  });
+  }
+
+  // ---- Photo Library picker (approved photos only) ----
+  const pickerDialog = document.getElementById("picker-dialog");
+  let pickerCb = null, pickerRows = [];
+  function drawPicker() {
+    const team = document.getElementById("picker-team").value;
+    const grid = document.getElementById("picker-grid");
+    grid.innerHTML = "";
+    const rows = pickerRows.filter(function (r) { return !team || r.team_slug === team; });
+    document.getElementById("picker-msg").textContent = rows.length ? "" : "No approved photos here yet.";
+    rows.forEach(function (r) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.style.cssText = "padding:0;border:2px solid transparent;border-radius:8px;overflow:hidden;cursor:pointer;aspect-ratio:1;background:#e9eef5;";
+      const img = document.createElement("img");
+      img.src = r.public_thumb_url; img.alt = r.alt || ""; img.loading = "lazy";
+      img.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+      b.appendChild(img);
+      b.addEventListener("click", function () { const cb = pickerCb; pickerDialog.hidden = true; if (cb) cb(r.public_url, r.alt || ""); });
+      grid.appendChild(b);
+    });
+  }
+  async function openPhotoPicker(cb) {
+    pickerCb = cb;
+    pickerDialog.hidden = false;
+    document.getElementById("picker-msg").textContent = "Loading…";
+    const r = await supabaseClient.from("photo_library").select("public_url, public_thumb_url, alt, team_slug").eq("status", "approved").order("created_at", { ascending: false }).range(0, 199);
+    if (r && r.error) { document.getElementById("picker-msg").textContent = "Could not load: " + friendlyError(r.error); return; }
+    pickerRows = ((r && r.data) || []).filter(function (p) { return /^https:\/\//.test(p.public_url || "") && /^https:\/\//.test(p.public_thumb_url || ""); });
+    const sel = document.getElementById("picker-team");
+    const teams = Array.from(new Set(pickerRows.map(function (p) { return p.team_slug; }).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="">All teams</option>' + teams.map(function (t) { return '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + "</option>"; }).join("");
+    drawPicker();
+  }
+  document.getElementById("picker-team").addEventListener("change", drawPicker);
+  document.getElementById("picker-cancel").addEventListener("click", function () { pickerDialog.hidden = true; });
+  pickerDialog.addEventListener("click", function (e) { if (e.target === pickerDialog) pickerDialog.hidden = true; });
 
   // ---- Sections on a built-in page -----------------------------------------
   // Every top-level <section> has a data-section key: built-in ones from the
@@ -1307,6 +1368,23 @@
     if (!requireStructuralFocus()) return;
     pendingImageUploadTarget = { insertInline: true };
     imageFileInputForInsert();
+  });
+  document.getElementById("rb-library-btn").addEventListener("click", function () {
+    if (!requireStructuralFocus()) return;
+    const restoreRange = lastRange;
+    openPhotoPicker(function (url, alt) {
+      focusFrameAndRestoreRange();
+      const doc = frameDoc();
+      if (restoreRange && doc.contains(restoreRange.startContainer)) {
+        const sel = doc.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(restoreRange);
+      }
+      doc.execCommand("insertHTML", false,
+        '<figure class="cms-figure" contenteditable="false"><img src="' + escapeHtml(url) + '" alt="' + escapeHtml(alt) + '"><button type="button" class="cms-figure-remove" title="Remove image" aria-label="Remove image">\u2715</button></figure>');
+      extrasOrBodyDirty = true;
+      refreshDirtyChrome();
+    });
   });
   function imageFileInputForInsert() {
     const input = document.createElement("input");

@@ -1480,8 +1480,12 @@
             (o.description ? '<p class="muted">' + escapeHtml(o.description) + "</p>" : "") +
             '<p style="font-size:22px;font-weight:800;color:var(--blue);margin:10px 0;">' + amount + "</p>" +
             '<div data-athlete-checks="' + o.id + '">' + athleteChecks + "</div>" +
-            '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '" style="margin-top:10px;width:100%;" ' +
-            (eligible.length ? "" : "disabled") + ">" + ecaT("rc.button") + "</button>" +
+            // No athletes yet: keep the button clickable and send them to the Add Athlete form
+            // (a dead-looking button was confusing). If athletes exist but none fit this program, or all are
+            // already registered, the button is greyed out.
+            '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '"' + (!myAthletes.length ? ' data-need-athlete="1"' : "") + ' style="margin-top:10px;width:100%;' +
+            (eligible.length || !myAthletes.length ? "" : "opacity:.45;cursor:not-allowed;") + '" ' +
+            (eligible.length || !myAthletes.length ? "" : "disabled") + ">" + ecaT("rc.button") + "</button>" +
             '<div class="form-msg" data-checkout-msg="' + o.id + '"></div>' +
             "</div>"
           );
@@ -1493,6 +1497,13 @@
       btn.addEventListener("click", function () {
         const optionId = btn.dataset.checkout;
         const msgEl = wrap.querySelector('[data-checkout-msg="' + optionId + '"]');
+        if (btn.dataset.needAthlete) {
+          msgEl.className = "form-msg error";
+          msgEl.textContent = "Add your athlete first, then come back and register.";
+          toggleAthleteForm(true);
+          document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
         const checked = wrap.querySelectorAll('input[data-option="' + optionId + '"]:checked');
         if (checked.length === 0) {
           msgEl.className = "form-msg error";

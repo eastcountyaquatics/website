@@ -110,6 +110,8 @@
       <select id="al-seg" aria-label="Group"><option value="">Everyone</option><option value="player">Players</option><option value="parent">Parents</option><option value="both">Both</option></select>
       <button type="button" class="btn btn-primary" id="al-add">+ Add someone</button>
       <button type="button" class="btn btn-outline-dark" id="al-paste">Paste a list</button>
+      <button type="button" class="btn btn-outline-dark" id="al-import">Import CSV</button>
+      <input type="file" id="al-file" accept=".csv,.tsv,.txt,text/csv" hidden>
       <button type="button" class="btn btn-outline-dark" id="al-copy">Copy emails</button>
       <button type="button" class="btn btn-outline-dark" id="al-csv">Download CSV</button>
     </div>
@@ -137,6 +139,15 @@
       <select id="p-seg" aria-label="Group" style="margin-bottom:8px;padding:8px;border:1px solid #d7e6ee;border-radius:8px;"><option value="player">Players</option><option value="parent">Parents</option><option value="both">Both</option></select>
       <textarea id="p-text" rows="6" style="width:100%;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;" placeholder="Jamie Lee, jamie@example.com, 619-555-0100"></textarea>
       <p style="margin-top:8px;"><button type="button" class="btn btn-primary" id="p-go">Add them</button> <button type="button" class="btn btn-outline-dark" id="p-cancel">Cancel</button></p>
+    </div>
+
+    <div class="admin-form" id="al-imp-wrap" style="display:none;">
+      <h3>Import from a spreadsheet</h3>
+      <p class="muted" style="font-size:13px;margin-top:0;">Save your sheet as CSV (File &rarr; Download &rarr; CSV). Columns we recognise: <strong>First name, Last name</strong> (or one <strong>Name</strong> column), <strong>Email</strong>, Phone, Group (Player / Parent / Both), Last year, OK to email, Notes. The file you get from <em>Download CSV</em> imports back in as is. <a href="#" id="al-template">Download a blank template</a>.</p>
+      <div id="al-imp-summary" style="margin:8px 0;"></div>
+      <label style="font-weight:400;font-size:14px;">If the file doesn&rsquo;t say who they are, treat everyone as:
+        <select id="imp-seg" style="padding:6px 8px;border:1px solid #d7e6ee;border-radius:8px;"><option value="player">Players</option><option value="parent">Parents</option><option value="both">Both</option></select></label>
+      <p style="margin-top:10px;"><button type="button" class="btn btn-primary" id="imp-go" disabled>Import</button> <button type="button" class="btn btn-outline-dark" id="imp-cancel">Cancel</button></p>
     </div>
 
     <div id="al-list"><p class="muted">Loading&hellip;</p></div>
@@ -279,6 +290,101 @@
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "alumni.csv"; document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   });
+  // ---- Import a CSV (people already on the list, matched by email, are skipped) ----
+  function parseCSV(text) {
+    text = String(text || "").replace(/^\ufeff/, "");
+    var delim = text.split("\n")[0].indexOf("\t") !== -1 ? "\t" : ",";
+    var out = [], row = [], cell = "", q = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) { if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; } else if (ch === '"') q = false; else cell += ch; }
+      else if (ch === '"' && cell === "") q = true;
+      else if (ch === delim) { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); out.push(row); row = []; cell = ""; }
+      else cell += ch;
+    }
+    if (cell !== "" || row.length) { row.push(cell); out.push(row); }
+    return out.filter(function (r) { return r.some(function (c) { return c.trim() !== ""; }); });
+  }
+  var FIELDS = [
+    ["first", /^(first ?name|given ?name|first)$/], ["last", /^(last ?name|surname|family ?name|last)$/], ["name", /^(full )?name$/], ["email", /e-?mail/], ["phone", /phone|mobile|cell/],
+    ["segment", /^(group|segment|type|role|who|i was a)/], ["year", /year|grad|class of/], ["wants", /ok to email|opt|subscri|wants|email ok/], ["notes", /note|comment/],
+  ];
+  function mapHeaders(hdr) {
+    var map = {};
+    hdr.forEach(function (h, i) {
+      var t = h.trim().toLowerCase();
+      for (var k = 0; k < FIELDS.length; k++) if (!(FIELDS[k][0] in map) && FIELDS[k][1].test(t)) { map[FIELDS[k][0]] = i; break; }
+    });
+    return map;
+  }
+  function segOf(v) {
+    var t = String(v || "").toLowerCase();
+    if (/both|player.*parent|parent.*player/.test(t)) return "both";
+    if (/parent|mom|dad|mother|father|guardian/.test(t)) return "parent";
+    if (/player|athlete|alum|swimmer/.test(t)) return "player";
+    return null;
+  }
+  var pending = [];
+  document.getElementById("al-import").addEventListener("click", function () { document.getElementById("al-file").click(); });
+  document.getElementById("al-template").addEventListener("click", function (e) {
+    e.preventDefault();
+    var blob = new Blob(["First name,Last name,Email,Phone,Group,Last year,OK to email,Notes\r\nJamie,Lee,jamie@example.com,619-555-0100,Player,2022,yes,\r\n"], { type: "text/csv" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "alumni-template.csv"; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  });
+  document.getElementById("imp-cancel").addEventListener("click", function () { document.getElementById("al-imp-wrap").style.display = "none"; pending = []; });
+  document.getElementById("al-file").addEventListener("change", async function () {
+    var f = this.files[0]; this.value = "";
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) return say("That file is too big (5 MB max).", false);
+    var table = parseCSV(await f.text());
+    if (table.length < 2) return say("That file has no rows. The first row must be the column names.", false);
+    var m = mapHeaders(table[0]);
+    if (!("email" in m)) return say("Couldn\u2019t find an Email column in the first row.", false);
+    if (!("name" in m) && !("first" in m)) return say("Couldn\u2019t find a name column (First name and Last name, or Name).", false);
+    var have = {}; rows.forEach(function (r) { have[r.email.toLowerCase()] = true; });
+    var fallback = document.getElementById("imp-seg").value, good = [], dup = 0, bad = [];
+    table.slice(1).forEach(function (r, i) {
+      var get = function (k) { return k in m ? String(r[m[k]] == null ? "" : r[m[k]]).trim() : ""; };
+      var first = get("first"), last = get("last");
+      if (!first && get("name")) { var parts = get("name").split(/\s+/); first = parts[0]; last = parts.slice(1).join(" "); }
+      var email = get("email").toLowerCase();
+      if (!first || !last) return bad.push("Row " + (i + 2) + ": needs a first and last name");
+      if (!/^[^@\s]+@[^@\s]+$/.test(email)) return bad.push("Row " + (i + 2) + ": email doesn\u2019t look right");
+      if (have[email]) { dup++; return; }
+      have[email] = true;
+      var yr = parseInt(get("year"), 10);
+      good.push({
+        first_name: first.slice(0, 100), last_name: last.slice(0, 100), email: email.slice(0, 200), phone: get("phone").slice(0, 40) || null,
+        segment: segOf(get("segment")) || null, grad_year: yr >= 1990 && yr <= 2100 ? yr : null,
+        wants_email: !/^(no|n|false|0|unsub)/i.test(get("wants")), notes: get("notes").slice(0, 2000) || null, source: "imported",
+      });
+    });
+    pending = good;
+    document.getElementById("al-imp-wrap").style.display = "block";
+    document.getElementById("al-paste-wrap").style.display = "none"; document.getElementById("al-form-wrap").style.display = "none";
+    var sum = document.getElementById("al-imp-summary");
+    sum.textContent = "";
+    var line = document.createElement("p"); line.style.margin = "0";
+    line.textContent = good.length + " new, " + dup + " already on the list (skipped), " + bad.length + " with problems.";
+    sum.appendChild(line);
+    bad.slice(0, 5).forEach(function (b) { var d = document.createElement("div"); d.className = "muted"; d.style.fontSize = "13px"; d.textContent = b; sum.appendChild(d); });
+    if (bad.length > 5) { var more = document.createElement("div"); more.className = "muted"; more.style.fontSize = "13px"; more.textContent = "\u2026and " + (bad.length - 5) + " more."; sum.appendChild(more); }
+    document.getElementById("imp-go").disabled = !good.length;
+  });
+  document.getElementById("imp-go").addEventListener("click", async function () {
+    var btn = this, fallback = document.getElementById("imp-seg").value;
+    btn.disabled = true;
+    var list = pending.map(function (r) { return Object.assign({}, r, { segment: r.segment || fallback }); });
+    for (var i = 0; i < list.length; i += 200) {
+      var res = await supabaseClient.from("alumni_contacts").insert(list.slice(i, i + 200));
+      if (res.error) { btn.disabled = false; return say("Stopped after " + i + " people: " + res.error.message, false); }
+    }
+    say("Imported " + list.length + " " + (list.length === 1 ? "person" : "people") + ".", true);
+    pending = []; document.getElementById("al-imp-wrap").style.display = "none"; load();
+  });
+
   (async function () { var auth = await requireRole(["owner"]); if (!auth) return; load(); })();
 </script>
 </body>

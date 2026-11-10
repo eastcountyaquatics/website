@@ -121,8 +121,8 @@
         <div id="send-msg" class="form-msg"></div>
         <form id="send-form">
           <div class="field">
-            <label for="send-to">To</label>
-            <select id="send-to"></select>
+            <label>To <span class="muted" style="font-weight:400;">(tick one or more)</span></label>
+            <div id="send-to" class="grp-members" style="margin-top:4px;"></div>
           </div>
           <div class="field">
             <label for="send-subject">Subject</label>
@@ -133,11 +133,14 @@
             <textarea id="send-body" rows="5" maxlength="2000" required></textarea>
           </div>
           <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-bottom:12px;"><input type="checkbox" id="send-email" checked style="width:auto;"> Also send by email</label>
+          <p class="muted" style="font-size:13px;margin:0 0 12px;">A copy of every email is also sent to East County Aquatics.</p>
           <button type="submit" class="btn btn-primary" id="send-btn">Send Message</button>
         </form>
       </div>
 
       <h3>Sent</h3>
+      <p style="margin:0 0 8px;"><button type="button" class="btn btn-outline-dark" id="export-sent" style="padding:6px 14px;font-size:13px;">Download sent emails (CSV)</button>
+        <button type="button" class="btn btn-outline-dark" id="export-emails" style="padding:6px 14px;font-size:13px;">Download family emails for this team (CSV)</button></p>
       <div id="sent-list"><p class="muted">Nothing sent yet.</p></div>
     </div>
   </div>
@@ -236,7 +239,8 @@
         '<span><button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-toggle="' + g.id + '">' + (open ? "Done" : "Choose athletes") + "</button> " +
         '<button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-remove="' + g.id + '">Remove</button></span></div>' +
         (open
-          ? '<div class="grp-members">' + (teamAthletes.length ? teamAthletes.map(function (a) {
+          ? '<input type="search" data-filter="' + g.id + '" placeholder="Type to filter names&hellip;" aria-label="Filter athletes" style="margin-top:10px;max-width:320px;">' +
+            '<div class="grp-members">' + (teamAthletes.length ? teamAthletes.map(function (a) {
               return '<label><input type="checkbox" data-member="' + g.id + '" value="' + a.id + '"' + (set.has(a.id) ? " checked" : "") + "> " + escapeHtml(a.full_name) + "</label>";
             }).join("") : '<span class="muted">No registered athletes on this team yet.</span>') +
             playUps(g.id, set).map(function (a) {
@@ -252,6 +256,15 @@
           : "") +
         "</div>";
     }).join("");
+    // Type to filter the athletes shown in a group's picker (hides the rest; checked ones stay saved).
+    el.querySelectorAll("[data-filter]").forEach(function (inp) {
+      inp.addEventListener("input", function () {
+        const q = inp.value.trim().toLowerCase();
+        inp.parentNode.querySelectorAll(".grp-members label").forEach(function (l) {
+          l.style.display = !q || l.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
+        });
+      });
+    });
     el.querySelectorAll("[data-toggle]").forEach(function (b) {
       b.addEventListener("click", function () { openGroupId = openGroupId === b.dataset.toggle ? null : b.dataset.toggle; renderGroups(); });
     });
@@ -298,15 +311,26 @@
     });
   }
 
+  // Checkboxes: "Whole team" or any mix of groups. Ticking "Whole team" clears the groups,
+  // ticking a group clears "Whole team", so the audience is always clear.
   function renderSendTo(keep) {
-    const sel = document.getElementById("send-to");
-    const prev = sel.value;
-    sel.innerHTML = '<option value="">Whole team (' + teamAthletes.length + " athletes)</option>" +
+    const box = document.getElementById("send-to");
+    const prev = keep ? selectedAudience() : [];
+    box.innerHTML = '<label><input type="checkbox" value="" data-aud="team"' + (!prev.length ? " checked" : "") + "> Whole team (" + teamAthletes.length + " athletes)</label>" +
       groups.map(function (g) {
         const n = (membersByGroup[g.id] || new Set()).size;
-        return '<option value="' + g.id + '">' + escapeHtml(g.name) + " (" + n + ")</option>";
+        return '<label><input type="checkbox" data-aud="group" value="' + g.id + '"' + (prev.indexOf(g.id) !== -1 ? " checked" : "") + "> " + escapeHtml(g.name) + " (" + n + ")</label>";
       }).join("");
-    if (keep) sel.value = prev;
+    box.querySelectorAll("input").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        if (cb.dataset.aud === "team" && cb.checked) box.querySelectorAll('[data-aud="group"]').forEach(function (g) { g.checked = false; });
+        if (cb.dataset.aud === "group" && cb.checked) box.querySelector('[data-aud="team"]').checked = false;
+        if (!selectedAudience().length) box.querySelector('[data-aud="team"]').checked = true;
+      });
+    });
+  }
+  function selectedAudience() {
+    return Array.prototype.map.call(document.querySelectorAll('#send-to [data-aud="group"]:checked'), function (c) { return c.value; });
   }
 
   document.getElementById("grp-form").addEventListener("submit", async function (e) {
@@ -326,15 +350,15 @@
     const msg = document.getElementById("send-msg");
     const btn = document.getElementById("send-btn");
     const slug = document.getElementById("team-pick").value;
-    const gid = document.getElementById("send-to").value;
-    const label = gid ? groups.find(function (g) { return g.id === gid; }).name : "the whole team";
+    const gids = selectedAudience();
+    const label = gids.length ? gids.map(function (id) { return groups.find(function (g) { return g.id === id; }).name; }).join(", ") : "the whole team";
     if (!confirm("Send this to " + label + "?")) return;
     btn.disabled = true;
     msg.className = "form-msg";
     msg.textContent = "Sending\u2026";
     const { data, error } = await supabaseClient.functions.invoke("send-team-message", {
       body: {
-        team_slug: slug, subgroup_id: gid || null,
+        team_slug: slug, subgroup_ids: gids,
         subject: document.getElementById("send-subject").value.trim(),
         body: document.getElementById("send-body").value.trim(),
         send_email: document.getElementById("send-email").checked,
@@ -363,6 +387,43 @@
         new Date(m.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + "</span></div>";
     }).join("") : '<p class="muted">Nothing sent yet.</p>';
   }
+
+  // CSV helpers. Cells that start with = + - @ get a leading apostrophe so a spreadsheet never runs them as a formula.
+  function csvCell(v) {
+    let t = String(v == null ? "" : v);
+    if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+    return '"' + t.replace(/"/g, '""') + '"';
+  }
+  function downloadCsv(name, rows) {
+    const blob = new Blob(["\ufeff" + rows.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  document.getElementById("export-sent").addEventListener("click", async function () {
+    const slug = document.getElementById("team-pick").value;
+    let res = await supabaseClient.from("team_messages").select("created_at, audience_label, subject, body, families_notified, families_emailed, recipients").eq("team_slug", slug).order("created_at", { ascending: false }).limit(1000);
+    if (res.error) res = await supabaseClient.from("team_messages").select("created_at, audience_label, subject, body, families_notified, families_emailed").eq("team_slug", slug).order("created_at", { ascending: false }).limit(1000);
+    if (res.error) return pageMsg("Could not export: " + res.error.message, false);
+    const rows = [["Sent", "To", "Subject", "Message", "Families on My Account", "Families emailed", "Emailed to"]].concat((res.data || []).map(function (m) {
+      return [m.created_at, m.audience_label, m.subject, m.body, m.families_notified, m.families_emailed, (m.recipients || []).join("; ")];
+    }));
+    downloadCsv("sent-emails-" + slug + ".csv", rows);
+  });
+  document.getElementById("export-emails").addEventListener("click", async function () {
+    const ids = teamAthletes.map(function (a) { return a.id; });
+    if (!ids.length) return pageMsg("No registered athletes on this team yet.", false);
+    const { data: kids, error } = await supabaseClient.from("athletes").select("id, full_name, parent_id").in("id", ids);
+    if (error) return pageMsg("Could not export: " + error.message, false);
+    const pids = Array.from(new Set((kids || []).map(function (k) { return k.parent_id; }).filter(Boolean)));
+    const { data: people } = pids.length ? await supabaseClient.from("profiles").select("id, full_name, email").in("id", pids) : { data: [] };
+    const byId = {}; (people || []).forEach(function (p) { byId[p.id] = p; });
+    const rows = [["Athlete", "Parent / guardian", "Email"]].concat((kids || []).map(function (k) {
+      const p = byId[k.parent_id] || {};
+      return [k.full_name, p.full_name || "", p.email || ""];
+    }));
+    downloadCsv("family-emails-" + document.getElementById("team-pick").value + ".csv", rows);
+  });
 
   document.getElementById("team-pick").addEventListener("change", function () { openGroupId = null; loadTeam(); });
 

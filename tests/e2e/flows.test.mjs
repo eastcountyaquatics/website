@@ -273,3 +273,17 @@ test("approved team photos are spread between sections, not one block", async ()
   assert.ok(r.bands >= 2, "photos should be in several places: " + JSON.stringify(r));
   assert.equal(r.unapproved, 0);
 });
+
+test("family with no athletes sees no programs, just a prompt to add an athlete", async () => {
+  const page = await env.page({
+    seed: {
+      registration_options: [{ id: "o1", label: "14U Boys Winter", amount_cents: 39500, team_slugs: ["14u-boys"], payment_provider: "zeffy", is_open: true, sort_order: 0 }],
+      profiles: [{ id: "owner1", full_name: "Jordan", role: "parent" }],
+    },
+  });
+  await page.goto(env.url + "/dashboard.html");
+  await page.waitForSelector("#reg-add-athlete");
+  assert.equal(await page.locator("#registration-options [data-checkout]").count(), 0);
+  await page.click("#reg-add-athlete");
+  await page.waitForSelector("#athlete-form", { state: "visible" });
+});

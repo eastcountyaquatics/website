@@ -1,0 +1,13 @@
+{
+  "name": "eca-website",
+  "private": true,
+  "description": "East County Aquatics website. Static HTML + Supabase; no build step.",
+  "scripts": {
+    "test": "node --test \"tests/static/*.test.mjs\" \"tests/unit/*.test.mjs\"",
+    "test:e2e": "node --test --test-concurrency=1 \"tests/e2e/*.test.mjs\"",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

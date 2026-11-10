@@ -34,6 +34,18 @@
   .sl-preview-bar select{width:auto;margin:0;padding:6px 10px;}
   #sl-frame{width:100%;height:calc(100vh - 170px);min-height:480px;border:1px solid #d7e6ee;border-radius:12px;background:#fff;}
   @media (max-width:900px){.sl-wrap{grid-template-columns:1fr;}.sl-preview{position:static;}#sl-frame{height:560px;}}
+  .sl-presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+  .sl-preset{border:1px solid #d7e6ee;background:#fff;border-radius:10px;padding:10px;text-align:left;cursor:pointer;font:inherit;}
+  .sl-preset:hover{border-color:var(--blue);}
+  .sl-preset.on{border-color:var(--blue);box-shadow:0 0 0 2px var(--aqua,#9fd8ff);}
+  .sl-preset .sw{display:flex;height:22px;border-radius:6px;overflow:hidden;margin-bottom:6px;}
+  .sl-preset .sw i{flex:1;}
+  .sl-preset strong{display:block;font-size:13px;color:var(--navy);}
+  .sl-preset span{font-size:11.5px;color:var(--muted);}
+  .sl-mine-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #eef0f5;}
+  .sl-mine-row b{flex:1;}
+  .sl-mine-row button{border:1px solid #d7e6ee;background:#fff;border-radius:6px;padding:4px 10px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--blue);}
+  .sl-mine-row button.del{color:#c0392b;}
 </style>
 </head>
 <body>
@@ -110,6 +122,19 @@
     <div class="sl-controls">
       <p class="muted" style="margin-top:0;">Colors, fonts and logo for the whole site. The preview updates as you go; nothing changes for visitors until you click <strong>Save</strong>.</p>
       <div id="sl-msg" class="form-msg"></div>
+
+      <div class="card sl-card">
+        <h3>Designs</h3>
+        <p class="muted" style="font-size:13.5px;margin-top:0;">Start from a ready-made look, then adjust it below. Picking one only changes the preview &mdash; click <strong>Save</strong> to put it on the site.</p>
+        <div id="sl-presets" class="sl-presets"></div>
+        <h4 style="margin:18px 0 6px;font-size:14px;">My saved designs</h4>
+        <div id="sl-mine" class="muted" style="font-size:13.5px;">None yet.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <input type="text" id="sl-design-name" maxlength="40" placeholder="Name this look, e.g. Holiday 2026" style="flex:1;min-width:180px;">
+          <button type="button" class="btn btn-outline-dark" id="sl-design-save" style="padding:8px 16px;">Save current look</button>
+        </div>
+        <p class="muted" id="sl-design-msg" style="font-size:13px;margin:6px 0 0;"></p>
+      </div>
 
       <div class="card sl-card">
         <h3>Colors</h3>
@@ -211,6 +236,64 @@
   let theme = { colors: {}, heading_font: null, body_font: null, logo_url: null };
   let savedJson = "null";
 
+  // Ready-made looks. Colors map to the same variables as the fields below;
+  // the logo is never changed by picking one.
+  const PRESETS = [
+    { id: "original", name: "ECA Classic", note: "Navy, blue and gold", colors: {}, heading_font: null, body_font: null },
+    { id: "ocean", name: "Ocean", note: "Deep teal and aqua", colors: { navy: "#0b3d4f", blue: "#0a8fb5", gold: "#ffd166", ink: "#1b2a30", muted: "#55656b", foam: "#f1f8fa" }, heading_font: "Montserrat", body_font: "Open Sans" },
+    { id: "sunset", name: "Sunset", note: "Maroon and orange", colors: { navy: "#5a1630", blue: "#d9480f", gold: "#ffb703", ink: "#2a1a1e", muted: "#6b5459", foam: "#fbf5f3" }, heading_font: "Playfair Display", body_font: "Lato" },
+    { id: "forest", name: "Forest", note: "Green and sand", colors: { navy: "#16402b", blue: "#2e7d32", gold: "#e9c46a", ink: "#1e2a22", muted: "#586559", foam: "#f4f7f1" }, heading_font: "Roboto Slab", body_font: "Source Sans 3" },
+    { id: "midnight", name: "Midnight", note: "Near-black and gold", colors: { navy: "#0d0f1a", blue: "#3b5bdb", gold: "#ffd43b", ink: "#1a1b25", muted: "#5b5d6b", foam: "#f4f5f9" }, heading_font: "Oswald", body_font: "Inter" },
+    { id: "slate", name: "Slate", note: "Quiet grays", colors: { navy: "#2b3340", blue: "#3d6fb4", gold: "#f2b84b", ink: "#20252d", muted: "#626b78", foam: "#f5f6f8" }, heading_font: "Raleway", body_font: "Nunito" },
+  ];
+  let designs = [];
+  function colorOf(c, key) { const f = COLOR_FIELDS.find(function (x) { return x[0] === key; }); return (c && c[key]) || f[3]; }
+  function swatch(c) { return '<span class="sw">' + ["navy", "blue", "gold", "foam"].map(function (k) { return '<i style="background:' + colorOf(c, k) + '"></i>'; }).join("") + "</span>"; }
+  function sameLook(a, b) { return JSON.stringify(clean(a)) === JSON.stringify(clean(b)); }
+  function applyLook(l) {
+    theme = { colors: Object.assign({}, l.colors || {}), heading_font: l.heading_font || null, body_font: l.body_font || null, logo_url: l.logo_url || theme.logo_url || null };
+    renderColors(); fillFonts(); preview(); drawDesigns();
+  }
+  function drawDesigns() {
+    document.getElementById("sl-presets").innerHTML = PRESETS.map(function (p) {
+      return '<button type="button" class="sl-preset' + (sameLook(theme, p) ? " on" : "") + '" data-preset="' + p.id + '">' + swatch(p.colors) + "<strong>" + escapeHtml(p.name) + "</strong><span>" + escapeHtml(p.note) + "</span></button>";
+    }).join("");
+    document.getElementById("sl-mine").innerHTML = designs.length ? designs.map(function (d) {
+      return '<div class="sl-mine-row">' + swatch(d.look.colors) + "<b>" + escapeHtml(d.name) + '</b><button type="button" data-apply="' + d.id + '">Use</button><button type="button" class="del" data-del="' + d.id + '">Delete</button></div>';
+    }).join("") : "None yet.";
+  }
+  async function saveDesigns() {
+    return supabaseClient.from("site_settings").upsert({ key: "site_designs", value: { designs: designs }, updated_at: new Date().toISOString() }, { onConflict: "key" });
+  }
+  document.getElementById("sl-presets").addEventListener("click", function (e) {
+    const b = e.target.closest("[data-preset]"); if (!b) return;
+    applyLook(PRESETS.find(function (p) { return p.id === b.dataset.preset; }));
+  });
+  document.getElementById("sl-mine").addEventListener("click", async function (e) {
+    const a = e.target.closest("[data-apply]"), d = e.target.closest("[data-del]");
+    if (a) { applyLook(designs.find(function (x) { return x.id === a.dataset.apply; }).look); return; }
+    if (d) {
+      const it = designs.find(function (x) { return x.id === d.dataset.del; });
+      if (!confirm("Delete the saved design \u201c" + it.name + "\u201d?")) return;
+      designs = designs.filter(function (x) { return x !== it; });
+      const r = await saveDesigns();
+      document.getElementById("sl-design-msg").textContent = r.error ? "Could not delete: " + r.error.message : "Deleted.";
+      drawDesigns();
+    }
+  });
+  document.getElementById("sl-design-save").addEventListener("click", async function () {
+    const nameEl = document.getElementById("sl-design-name"), name = nameEl.value.trim(), m = document.getElementById("sl-design-msg");
+    if (!name) { m.textContent = "Give it a name first."; return; }
+    if (designs.length >= 25) { m.textContent = "You have 25 saved designs \u2014 delete one first."; return; }
+    const look = clean(theme);
+    look.heading_font = look.heading_font || null; look.body_font = look.body_font || null;
+    const prev = designs.slice();
+    designs.push({ id: "d" + Date.now().toString(36), name: name.slice(0, 40), look: { colors: look.colors || {}, heading_font: look.heading_font, body_font: look.body_font, logo_url: look.logo_url || null } });
+    const r = await saveDesigns();
+    if (r.error) { designs = prev; m.textContent = "Could not save: " + r.error.message; return; }
+    nameEl.value = ""; m.textContent = "Saved \u201c" + name + "\u201d."; drawDesigns();
+  });
+
   function msg(text, ok) {
     const el = document.getElementById("sl-msg");
     el.className = "form-msg " + (ok ? "success" : "error");
@@ -237,6 +320,7 @@
     document.getElementById("sl-logo-preview").src = theme.logo_url || "images/eca-logo-240.png";
     document.getElementById("sl-logo-preview").style.background = theme.colors.navy || "#0a1f6b";
     document.getElementById("sl-save").textContent = dirty() ? "Save" : "Saved";
+    if (document.getElementById("sl-presets").children.length) drawDesigns();
   }
 
   function renderColors() {
@@ -349,12 +433,15 @@
     const auth = await requireRole(["owner"]);
     if (!auth) return;
     const { data } = await supabaseClient.from("site_settings").select("value").eq("key", "theme").maybeSingle();
+    const dd = await supabaseClient.from("site_settings").select("value").eq("key", "site_designs").maybeSingle();
+    designs = (dd.data && dd.data.value && Array.isArray(dd.data.value.designs) ? dd.data.value.designs : []).filter(function (x) { return x && x.id && x.name && x.look; });
     const v = (data && data.value) || {};
     theme = { colors: Object.assign({}, v.colors || {}), heading_font: v.heading_font || null, body_font: v.body_font || null, logo_url: v.logo_url || null };
     savedJson = JSON.stringify(clean(theme));
     renderColors();
     fillFonts();
     frame.src = "index.html?theme-preview=1";
+    drawDesigns();
     preview();
   })();
 </script>

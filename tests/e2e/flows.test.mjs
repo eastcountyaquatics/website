@@ -226,3 +226,27 @@ test("credits: importing the spreadsheet CSV gives the right totals", async () =
   await page.waitForFunction(() => document.getElementById("st-total").textContent !== "$0.00");
   assert.deepEqual(await page.$$eval(".cr-stat b", (b) => b.map((x) => x.textContent)), ["$65.00", "$150.00", "2", "$215.00"]);
 });
+
+test("a section scheduled for the future or the past stays hidden; one in its window shows", async () => {
+  const day = 86400000, iso = (d) => new Date(Date.now() + d).toISOString();
+  const page = await env.page({
+    seed: {
+      page_layouts: [{ page_path: "about-us.html", sections: [
+        { key: "about-us-1" },
+        { key: "about-us-2", from: iso(day) },
+        { key: "about-us-3", until: iso(-day) },
+        { added: "w1", html: "<h2>InWindow</h2>", from: iso(-day), until: iso(day) },
+      ] }],
+    },
+  });
+  await page.goto(env.url + "/about-us.html");
+  await page.waitForSelector('[data-section="about-us-1"]');
+  await page.waitForFunction(() => document.querySelector('[data-section="about-us-2"]')?.hasAttribute("data-layout-hidden"));
+  const state = await page.evaluate(() => ({
+    future: document.querySelector('[data-section="about-us-2"]').hasAttribute("data-layout-hidden"),
+    past: document.querySelector('[data-section="about-us-3"]').hasAttribute("data-layout-hidden"),
+    open: document.querySelector('[data-section="about-us-1"]').hasAttribute("data-layout-hidden"),
+    inWindow: document.querySelector(".cms-added")?.hasAttribute("data-layout-hidden"),
+  }));
+  assert.deepEqual(state, { future: true, past: true, open: false, inWindow: false });
+});

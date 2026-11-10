@@ -46,7 +46,7 @@
     (sections || []).forEach(function (s) {
       if (s && s.key && byKey[s.key] && !placed[s.key]) {
         placed[s.key] = true;
-        order.push({ el: byKey[s.key], hidden: !!s.hidden });
+        order.push({ el: byKey[s.key], hidden: !!s.hidden, s: s });
       } else if (s && s.added) {
         const sec = doc.createElement("section");
         sec.className = "cms-added" + (s.style === "alt" ? " alt" : s.style === "navy" ? " navy-block" : "");
@@ -56,7 +56,7 @@
         box.className = "container cms-added-body";
         box.innerHTML = clean(s.html);
         sec.appendChild(box);
-        order.push({ el: sec, added: true });
+        order.push({ el: sec, added: true, s: s });
       }
     });
     builtins.forEach(function (el, i) {
@@ -85,6 +85,16 @@
       // page script that shows its own section (e.g. a team schedule once
       // it loads) can't bring a hidden one back.
       if (o.hidden) o.el.setAttribute("data-layout-hidden", "1");
+      // Show-from / hide-after window set in the editor. The editor keeps the
+      // section visible (so it can be edited) and just remembers the dates.
+      const from = o.s && o.s.from, until = o.s && o.s.until;
+      o.el.removeAttribute("data-show-from"); o.el.removeAttribute("data-show-until");
+      if (from) o.el.setAttribute("data-show-from", from);
+      if (until) o.el.setAttribute("data-show-until", until);
+      if (!opts.editing) {
+        const now = Date.now();
+        if ((from && now < Date.parse(from)) || (until && now >= Date.parse(until))) o.el.setAttribute("data-layout-hidden", "1");
+      }
     });
     marker.remove();
     return order;

@@ -314,6 +314,21 @@
   </form>
 </div>
 
+<div id="sched-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="sched-title" hidden>
+  <form id="sched-form" class="ed-link-card">
+    <h3 id="sched-title">Schedule this section</h3>
+    <p class="ed-link-hint">Show it to visitors only between these times (your time zone). Leave a box empty for no start or no end.</p>
+    <label class="ed-link-hint">Show from<br><input type="datetime-local" id="sched-from" style="width:100%;padding:8px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;"></label>
+    <label class="ed-link-hint">Hide after<br><input type="datetime-local" id="sched-until" style="width:100%;padding:8px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;"></label>
+    <div id="sched-msg" class="ed-link-msg"></div>
+    <div class="ed-link-actions">
+      <button type="button" id="sched-clear" class="ed-link-secondary">Remove schedule</button>
+      <span style="flex:1"></span>
+      <button type="button" id="sched-cancel" class="ed-link-secondary">Cancel</button>
+      <button type="submit" class="ed-link-primary">Apply</button>
+    </div>
+  </form>
+</div>
 <div id="opts-dialog" class="ed-link-dialog" role="dialog" aria-modal="true" aria-labelledby="opts-dialog-title" hidden>
   <form id="opts-form" class="ed-link-card">
     <h3 id="opts-dialog-title">Edit dropdown choices</h3>
@@ -886,6 +901,8 @@
       add("+ Add below", "Add a new section below this one", function (b) { openTemplateGallery(b, null, { ref: sec, before: false }); }, "cms-sec-add-below");
       if (i > 0) add("\u2191", "Move this section up", function () { moveSection(doc, sec, -1); });
       if (i < secs.length - 1) add("\u2193", "Move this section down", function () { moveSection(doc, sec, 1); });
+      const scheduled = sec.hasAttribute("data-show-from") || sec.hasAttribute("data-show-until");
+      add(scheduled ? "\u23F0 Scheduled" : "\u23F0 Schedule", "Show this section only between two dates", function () { openSchedule(doc, sec); });
       if (added) {
         const cur = sec.getAttribute("data-style") || "";
         const idx = SECTION_STYLES.findIndex(function (st) { return st[0] === cur; });
@@ -947,6 +964,45 @@
     sec.scrollIntoView({ block: "center" });
   }
 
+  // A section can carry a show-from / hide-after window (ISO times).
+  function addWindow(sec, o) {
+    const f = sec.getAttribute("data-show-from"), u = sec.getAttribute("data-show-until");
+    if (f) o.from = f;
+    if (u) o.until = u;
+  }
+  function localInput(iso) {
+    if (!iso) return "";
+    const d = new Date(iso); if (isNaN(d)) return "";
+    const z = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()) + "T" + z(d.getHours()) + ":" + z(d.getMinutes());
+  }
+  const schedDialog = document.getElementById("sched-dialog");
+  let schedSec = null, schedDoc = null;
+  function openSchedule(doc, sec) {
+    schedSec = sec; schedDoc = doc;
+    document.getElementById("sched-from").value = localInput(sec.getAttribute("data-show-from"));
+    document.getElementById("sched-until").value = localInput(sec.getAttribute("data-show-until"));
+    document.getElementById("sched-msg").textContent = "";
+    schedDialog.hidden = false;
+  }
+  function setWindow(sec, from, until) {
+    if (from) sec.setAttribute("data-show-from", from); else sec.removeAttribute("data-show-from");
+    if (until) sec.setAttribute("data-show-until", until); else sec.removeAttribute("data-show-until");
+  }
+  document.getElementById("sched-cancel").addEventListener("click", function () { schedDialog.hidden = true; });
+  schedDialog.addEventListener("click", function (e) { if (e.target === schedDialog) schedDialog.hidden = true; });
+  document.getElementById("sched-clear").addEventListener("click", function () {
+    setWindow(schedSec, "", ""); schedDialog.hidden = true; refreshSectionBars(schedDoc); markLayoutDirty();
+  });
+  document.getElementById("sched-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const fv = document.getElementById("sched-from").value, uv = document.getElementById("sched-until").value;
+    const f = fv ? new Date(fv) : null, u = uv ? new Date(uv) : null;
+    if (f && u && u <= f) { document.getElementById("sched-msg").textContent = "The end has to be after the start."; return; }
+    setWindow(schedSec, f ? f.toISOString() : "", u ? u.toISOString() : "");
+    schedDialog.hidden = true; refreshSectionBars(schedDoc); markLayoutDirty();
+  });
+
   // What gets saved to page_layouts: every section in its on-screen order.
   function computeLayout(doc) {
     return topSections(doc).map(function (sec) {
@@ -954,10 +1010,12 @@
         const body = sec.querySelector(".cms-added-body");
         const o = { added: sec.getAttribute("data-section").slice(2), html: body ? getCleanHtml(body) : "" };
         if (sec.getAttribute("data-style")) o.style = sec.getAttribute("data-style");
+        addWindow(sec, o);
         return o;
       }
       const o = { key: sec.getAttribute("data-section") };
       if (sec.hasAttribute("data-layout-hidden")) o.hidden = true;
+      addWindow(sec, o);
       return o;
     });
   }

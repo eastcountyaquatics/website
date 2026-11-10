@@ -50,35 +50,37 @@
   var builtIn = PHOTOS.map(function (p) { return { url: "images/" + p[0], alt: p[1] }; });
   window.ECA_GALLERY_DEFAULTS = builtIn;
   if (!document.querySelector("[data-gallery]")) return;
-  // Paused for now: set to true to show the scrolling photo strip again.
-  var ENABLED = false;
-  if (!ENABLED) { document.querySelectorAll("[data-gallery]").forEach(function (el) { el.style.display = "none"; }); return; }
-  // Owners manage the list on Admin > Photo Gallery (site_settings
-  // "gallery_photos"); until they do, or if Supabase is slow, the built-in
-  // photos show.
-  var done = false;
-  function finish(list) { if (done) return; done = true; render(list); }
-  setTimeout(function () { finish(builtIn); }, 2500);
-  if (typeof supabaseClient === "undefined") { finish(builtIn); return; }
+  // Owner-approved photos from Admin > Photo Library: featured ones lead, then
+  // approved photos from every team, taken in turn so no one team dominates.
+  // The old built-in photos only show while these load (or if too few exist).
+  var shown = false;
+  function show(list, final) { if (shown && !final) return; shown = shown || final; render(list); }
+  setTimeout(function () { if (!shown) show(builtIn, false); }, 2500);
+  if (typeof supabaseClient === "undefined") { show(builtIn, true); return; }
+
+  var ownerList = null, fresh = null, ownerDone = false, freshDone = false;
+  function settle() {
+    if (!ownerDone || !freshDone) return;
+    var base = ownerList || builtIn;
+    show(fresh && fresh.length >= 12 ? fresh : base.concat(fresh || []), true);
+  }
+  // Owners can also manage a list on Admin > Photo Gallery (site_settings "gallery_photos").
   supabaseClient.from("site_settings").select("value").eq("key", "gallery_photos").maybeSingle().then(function (res) {
     var v = res && res.data && res.data.value;
-    var list = v && Array.isArray(v.photos) ? v.photos.filter(function (p) { return p && safe(p.url); }) : null;
-    var base = list ? list : builtIn;
-    // Owner-approved photos from Admin > Photo Library: featured ones lead, then
-    // approved photos from every team, taken in turn so no one team dominates.
-    supabaseClient.from("photo_library").select("public_thumb_url, alt, team_slug, featured").eq("status", "approved").limit(200).then(function (r) {
-      var rows = ((r && r.data) || []).filter(function (p) { return safe(p.public_thumb_url); });
-      var feat = rows.filter(function (p) { return p.featured; });
-      var byTeam = {};
-      rows.filter(function (p) { return !p.featured; }).forEach(function (p) { (byTeam[p.team_slug || ""] = byTeam[p.team_slug || ""] || []).push(p); });
-      var rest = [], more = true;
-      while (more && rest.length < 42) {
-        more = false;
-        Object.keys(byTeam).forEach(function (t) { if (byTeam[t].length) { rest.push(byTeam[t].shift()); more = true; } });
-      }
-      var fresh = feat.concat(rest).map(function (p) { return { url: p.public_thumb_url, alt: p.alt || "ECA team photo" }; });
-      // Enough new photos: they replace the old built-ins. Otherwise the old ones stay alongside.
-      finish(fresh.length >= 12 ? fresh : base.concat(fresh));
-    }, function () { finish(base); });
-  }, function () { finish(builtIn); });
+    ownerList = v && Array.isArray(v.photos) ? v.photos.filter(function (p) { return p && safe(p.url); }) : null;
+    ownerDone = true; settle();
+  }, function () { ownerDone = true; settle(); });
+  supabaseClient.from("photo_library").select("public_thumb_url, alt, team_slug, featured").eq("status", "approved").limit(200).then(function (r) {
+    var rows = ((r && r.data) || []).filter(function (p) { return safe(p.public_thumb_url); });
+    var feat = rows.filter(function (p) { return p.featured; });
+    var byTeam = {};
+    rows.filter(function (p) { return !p.featured; }).forEach(function (p) { (byTeam[p.team_slug || ""] = byTeam[p.team_slug || ""] || []).push(p); });
+    var rest = [], more = true;
+    while (more && rest.length < 42) {
+      more = false;
+      Object.keys(byTeam).forEach(function (t) { if (byTeam[t].length) { rest.push(byTeam[t].shift()); more = true; } });
+    }
+    fresh = feat.concat(rest).map(function (p) { return { url: p.public_thumb_url, alt: p.alt || "ECA team photo" }; });
+    freshDone = true; settle();
+  }, function () { freshDone = true; settle(); });
 })();

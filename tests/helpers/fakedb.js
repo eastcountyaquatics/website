@@ -16,7 +16,7 @@
   Q.prototype.maybeSingle=function(){ this.one='maybe'; return this; };
   Q.prototype.single=function(){ this.one='one'; return this; };
   Q.prototype.upsert=function(rows){ this.op='upsert'; this.rows=[].concat(rows); return this; };
-  Q.prototype.insert=function(rows){ this.op='upsert'; this.rows=[].concat(rows); return this; };
+  Q.prototype.insert=function(rows){ this.op='upsert'; var pk=PK[this.t]||['id']; this.rows=[].concat(rows).map(function(r){ if(pk.length===1&&pk[0]==='id'&&r.id==null) r=Object.assign({id:'fake-'+Math.random().toString(36).slice(2,10)},r); return r; }); return this; };
   Q.prototype.update=function(v){ this.op='update'; this.val=v; return this; };
   Q.prototype.delete=function(){ this.op='delete'; return this; };
   Q.prototype.then=function(res,rej){

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alumni | ECA Admin</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261113">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Alumni</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+<style>
+  .al-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .al-stat{flex:1;min-width:120px;background:#f4fbfd;border:1px solid #e3edf3;border-radius:10px;padding:10px 14px;}
+  .al-stat span{display:block;font-size:12px;color:#6b7189;}
+  .al-stat b{font-size:22px;color:var(--navy);}
+  .al-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .al-tools input,.al-tools select{padding:8px 10px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;}
+  .al-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:1px solid #eef3f6;padding:10px 0;font-size:14px;}
+  .al-pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:#eef2ff;color:#3730a3;margin-left:6px;}
+</style>
+<section class="section-tight">
+  <div class="container" style="max-width:900px;">
+    <div class="notice" style="margin-bottom:20px;">
+      People who joined the <a href="alumni.html" target="_blank" rel="noopener">public Alumni page</a>. Share that link anywhere (email, Instagram, flyers).
+      Players and parents are kept apart so you can contact each group on its own.
+    </div>
+    <div id="al-msg" class="form-msg"></div>
+    <div class="al-stats">
+      <div class="al-stat"><span>Everyone</span><b id="st-all">0</b></div>
+      <div class="al-stat"><span>Players</span><b id="st-player">0</b></div>
+      <div class="al-stat"><span>Parents</span><b id="st-parent">0</b></div>
+      <div class="al-stat"><span>Both</span><b id="st-both">0</b></div>
+    </div>
+    <div class="al-tools">
+      <input type="search" id="al-search" placeholder="Search name or email&hellip;" aria-label="Search">
+      <select id="al-seg" aria-label="Group"><option value="">Everyone</option><option value="player">Players</option><option value="parent">Parents</option><option value="both">Both</option></select>
+      <button type="button" class="btn btn-primary" id="al-add">+ Add someone</button>
+      <button type="button" class="btn btn-outline-dark" id="al-paste">Paste a list</button>
+      <button type="button" class="btn btn-outline-dark" id="al-copy">Copy emails</button>
+      <button type="button" class="btn btn-outline-dark" id="al-csv">Download CSV</button>
+    </div>
+
+    <div class="admin-form" id="al-form-wrap" style="display:none;">
+      <h3 id="al-form-title">Add someone</h3>
+      <form id="al-form">
+        <input type="hidden" id="f-id">
+        <div class="field"><label for="f-first">First name</label><input type="text" id="f-first" maxlength="100" required></div>
+        <div class="field"><label for="f-last">Last name</label><input type="text" id="f-last" maxlength="100" required></div>
+        <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" maxlength="200" required></div>
+        <div class="field"><label for="f-phone">Phone</label><input type="tel" id="f-phone" maxlength="40"></div>
+        <div class="field"><label for="f-seg">Group</label><select id="f-seg"><option value="player">Player</option><option value="parent">Parent</option><option value="both">Both</option></select></div>
+        <div class="field"><label for="f-year">Last year with ECA</label><input type="number" id="f-year" min="1990" max="2100"></div>
+        <div class="field"><label for="f-notes">Notes (only you see this)</label><textarea id="f-notes" rows="2" maxlength="2000"></textarea></div>
+        <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-bottom:12px;"><input type="checkbox" id="f-wants" checked style="width:auto;"> OK to email them</label>
+        <button type="submit" class="btn btn-primary" id="f-save">Save</button>
+        <button type="button" class="btn btn-outline-dark" id="f-cancel">Cancel</button>
+      </form>
+    </div>
+
+    <div class="admin-form" id="al-paste-wrap" style="display:none;">
+      <h3>Paste a list</h3>
+      <p class="muted" style="font-size:13px;margin-top:0;">One person per line: <strong>First Last, email, phone (optional)</strong>. Pick the group they all belong to. People already on the list are skipped.</p>
+      <select id="p-seg" aria-label="Group" style="margin-bottom:8px;padding:8px;border:1px solid #d7e6ee;border-radius:8px;"><option value="player">Players</option><option value="parent">Parents</option><option value="both">Both</option></select>
+      <textarea id="p-text" rows="6" style="width:100%;padding:10px 12px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;" placeholder="Jamie Lee, jamie@example.com, 619-555-0100"></textarea>
+      <p style="margin-top:8px;"><button type="button" class="btn btn-primary" id="p-go">Add them</button> <button type="button" class="btn btn-outline-dark" id="p-cancel">Cancel</button></p>
+    </div>
+
+    <div id="al-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261027"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script>
+  function escapeHtml(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
+  function say(t, ok) { var m = document.getElementById("al-msg"); m.className = "form-msg " + (ok ? "success" : "error"); m.textContent = t; }
+  var rows = [];
+  var SEG = { player: "Player", parent: "Parent", both: "Both" };
+
+  function visible() {
+    var q = document.getElementById("al-search").value.trim().toLowerCase();
+    var seg = document.getElementById("al-seg").value;
+    return rows.filter(function (r) {
+      // "Players" includes people who are both; so does "Parents".
+      if (seg === "player" && r.segment === "parent") return false;
+      if (seg === "parent" && r.segment === "player") return false;
+      if (seg === "both" && r.segment !== "both") return false;
+      return !q || (r.first_name + " " + r.last_name + " " + r.email).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  function draw() {
+    ["player", "parent", "both"].forEach(function (s) { document.getElementById("st-" + s).textContent = rows.filter(function (r) { return r.segment === s; }).length; });
+    document.getElementById("st-all").textContent = rows.length;
+    var list = visible(), el = document.getElementById("al-list");
+    if (!list.length) { el.innerHTML = '<p class="muted">' + (rows.length ? "No one matches." : "No one yet. Share the Alumni page link, or add people here.") + "</p>"; return; }
+    el.innerHTML = list.map(function (r) {
+      return '<div class="al-row"><div><strong>' + escapeHtml(r.first_name + " " + r.last_name) + '</strong><span class="al-pill">' + SEG[r.segment] + "</span>" +
+        (r.wants_email ? "" : '<span class="al-pill" style="background:#fdecec;color:#a12626;">No email</span>') +
+        '<div class="muted" style="font-size:13px;">' + escapeHtml(r.email) + (r.phone ? " &middot; " + escapeHtml(r.phone) : "") + (r.grad_year ? " &middot; " + r.grad_year : "") + "</div>" +
+        (r.notes ? '<div style="font-size:13px;margin-top:4px;">' + escapeHtml(r.notes) + "</div>" : "") + "</div>" +
+        '<div><button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-edit="' + r.id + '">Edit</button> ' +
+        '<button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-del="' + r.id + '">Remove</button></div></div>';
+    }).join("");
+    el.querySelectorAll("[data-edit]").forEach(function (b) { b.addEventListener("click", function () { openForm(rows.find(function (x) { return x.id === b.dataset.edit; })); }); });
+    el.querySelectorAll("[data-del]").forEach(function (b) {
+      b.addEventListener("click", async function () {
+        var r = rows.find(function (x) { return x.id === b.dataset.del; });
+        if (!confirm("Remove " + r.first_name + " " + r.last_name + " from the list?")) return;
+        var res = await supabaseClient.from("alumni_contacts").delete().eq("id", r.id);
+        if (res.error) return say("Could not remove: " + res.error.message, false);
+        say("", true); load();
+      });
+    });
+  }
+  async function load() {
+    var res = await supabaseClient.from("alumni_contacts").select("*").order("created_at", { ascending: false }).limit(5000);
+    if (res.error) { document.getElementById("al-list").innerHTML = '<p class="muted">Could not load: ' + escapeHtml(res.error.message) + "</p>"; return; }
+    rows = res.data || []; draw();
+  }
+  function openForm(r) {
+    document.getElementById("al-paste-wrap").style.display = "none";
+    document.getElementById("al-form-wrap").style.display = "block";
+    document.getElementById("al-form-title").textContent = r ? "Edit " + r.first_name : "Add someone";
+    document.getElementById("f-id").value = r ? r.id : "";
+    document.getElementById("f-first").value = r ? r.first_name : "";
+    document.getElementById("f-last").value = r ? r.last_name : "";
+    document.getElementById("f-email").value = r ? r.email : "";
+    document.getElementById("f-phone").value = r && r.phone || "";
+    document.getElementById("f-seg").value = r ? r.segment : "player";
+    document.getElementById("f-year").value = r && r.grad_year || "";
+    document.getElementById("f-notes").value = r && r.notes || "";
+    document.getElementById("f-wants").checked = r ? !!r.wants_email : true;
+    document.getElementById("al-form-wrap").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  document.getElementById("al-add").addEventListener("click", function () { openForm(null); });
+  document.getElementById("f-cancel").addEventListener("click", function () { document.getElementById("al-form-wrap").style.display = "none"; });
+  document.getElementById("al-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var id = document.getElementById("f-id").value, year = parseInt(document.getElementById("f-year").value, 10);
+    var body = {
+      first_name: document.getElementById("f-first").value.trim(), last_name: document.getElementById("f-last").value.trim(),
+      email: document.getElementById("f-email").value.trim(), phone: document.getElementById("f-phone").value.trim() || null,
+      segment: document.getElementById("f-seg").value, grad_year: year >= 1990 && year <= 2100 ? year : null,
+      notes: document.getElementById("f-notes").value.trim() || null, wants_email: document.getElementById("f-wants").checked,
+    };
+    if (!id) body.source = "added by staff";
+    var res = id ? await supabaseClient.from("alumni_contacts").update(body).eq("id", id) : await supabaseClient.from("alumni_contacts").insert(body);
+    if (res.error) return say(res.error.code === "23505" ? "That email is already on the list." : "Could not save: " + res.error.message, false);
+    say("Saved.", true); document.getElementById("al-form-wrap").style.display = "none"; load();
+  });
+  // Paste many: "First Last, email, phone" per line.
+  document.getElementById("al-paste").addEventListener("click", function () {
+    document.getElementById("al-form-wrap").style.display = "none";
+    document.getElementById("al-paste-wrap").style.display = "block";
+  });
+  document.getElementById("p-cancel").addEventListener("click", function () { document.getElementById("al-paste-wrap").style.display = "none"; });
+  document.getElementById("p-go").addEventListener("click", async function () {
+    var seg = document.getElementById("p-seg").value, have = {};
+    rows.forEach(function (r) { have[r.email.toLowerCase()] = true; });
+    var add = [], bad = 0;
+    document.getElementById("p-text").value.split(/\r?\n/).forEach(function (line) {
+      if (!line.trim()) return;
+      var p = line.split(/[,\t]/).map(function (x) { return x.trim(); });
+      var name = (p[0] || "").split(/\s+/), email = (p[1] || "").toLowerCase();
+      if (name.length < 2 || !/^[^@\s]+@[^@\s]+$/.test(email)) { bad++; return; }
+      if (have[email]) return;
+      have[email] = true;
+      add.push({ first_name: name[0].slice(0, 100), last_name: name.slice(1).join(" ").slice(0, 100), email: email.slice(0, 200), phone: (p[2] || "").slice(0, 40) || null, segment: seg, source: "added by staff" });
+    });
+    if (!add.length) return say(bad ? bad + " line(s) didn\u2019t look right. Use: First Last, email, phone." : "Nothing new to add.", false);
+    var res = await supabaseClient.from("alumni_contacts").insert(add);
+    if (res.error) return say("Could not add: " + res.error.message, false);
+    say("Added " + add.length + (bad ? " (" + bad + " line(s) skipped)." : "."), true);
+    document.getElementById("p-text").value = ""; document.getElementById("al-paste-wrap").style.display = "none"; load();
+  });
+  document.getElementById("al-search").addEventListener("input", draw);
+  document.getElementById("al-seg").addEventListener("change", draw);
+  // Copy the emails of whoever is shown (only people who said yes to email) to paste into BCC.
+  document.getElementById("al-copy").addEventListener("click", function () {
+    var emails = visible().filter(function (r) { return r.wants_email; }).map(function (r) { return r.email; });
+    if (!emails.length) return say("No one to copy.", false);
+    (navigator.clipboard ? navigator.clipboard.writeText(emails.join(", ")) : Promise.reject()).then(
+      function () { say("Copied " + emails.length + " email" + (emails.length === 1 ? "" : "s") + ". Paste them into the BCC box of a new email.", true); },
+      function () { say("Could not copy. Use Download CSV instead.", false); });
+  });
+  function csvCell(v) { var t = String(v == null ? "" : v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; }
+  document.getElementById("al-csv").addEventListener("click", function () {
+    var out = [["First name", "Last name", "Email", "Phone", "Group", "Last year", "OK to email", "Notes", "Joined"]].concat(visible().map(function (r) {
+      return [r.first_name, r.last_name, r.email, r.phone || "", SEG[r.segment], r.grad_year || "", r.wants_email ? "yes" : "no", r.notes || "", r.created_at];
+    }));
+    var blob = new Blob(["\ufeff" + out.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "alumni.csv"; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  });
+  (async function () { var auth = await requireRole(["owner"]); if (!auth) return; load(); })();
+</script>
+</body>
+</html>

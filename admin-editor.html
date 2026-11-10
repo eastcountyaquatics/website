@@ -205,7 +205,7 @@
   <div class="spacer"></div>
   <span class="status" id="save-status"></span>
   <button type="button" id="discard-btn" style="display:none;">Discard Changes</button>
-  <button type="button" id="save-btn" class="primary" style="display:none;">Save Changes</button>
+  <button type="button" id="save-btn" class="primary" style="display:none;" title="Make your changes live for visitors">Publish Changes</button>
 </div>
 
 <div class="ed-settings" id="settings-panel">
@@ -271,7 +271,7 @@
       <div class="ed-steps">
         <div class="ed-step"><span class="ed-step-num">1</span><div><strong>Choose a page</strong><span>Pick one from the dropdown above, or start a brand new one.</span></div></div>
         <div class="ed-step"><span class="ed-step-num">2</span><div><strong>Click any text or photo</strong><span>It opens up right there on the real page &mdash; just start typing.</span></div></div>
-        <div class="ed-step"><span class="ed-step-num">3</span><div><strong>Save when you're happy</strong><span>Nothing goes live until you click Save Changes.</span></div></div>
+        <div class="ed-step"><span class="ed-step-num">3</span><div><strong>Publish when you're happy</strong><span>Your edits stay a draft, only you see them, until you click Publish Changes.</span></div></div>
       </div>
     </div>
   </div>
@@ -501,10 +501,9 @@
     saveBtn.style.display = dirty ? "inline-block" : "none";
     discardBtn.style.display = dirty ? "inline-block" : "none";
     if (dirty) {
-      setStatus("Unsaved changes", "dirty");
-      scheduleAutosave();
+      setStatus("Draft \u2014 not published yet. Click Publish Changes to make it live.", "dirty");
     } else if (currentKind) {
-      setStatus("All changes saved.");
+      setStatus("Everything is published.");
     }
   }
 
@@ -1538,7 +1537,7 @@
 
       wireSelectionTracking(doc);
       flashEditableRegions(doc, null);
-      setStatus("All changes saved.");
+      setStatus("Everything is published.");
     };
     canvas.src = path + (path.indexOf("?") === -1 ? "?" : "&") + "edit=1&_=" + Date.now();
   }
@@ -1628,7 +1627,7 @@
 
       wireSelectionTracking(doc);
       flashEditableRegions(doc, bodyEl);
-      setStatus("All changes saved.");
+      setStatus("Everything is published.");
     };
     canvas.src = "page.html?slug=" + encodeURIComponent(row.slug) + "&edit=1&_=" + Date.now();
   }
@@ -2126,7 +2125,7 @@
   async function saveAll() {
     if (!currentKind) return;
     if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
-    setStatus("Saving…");
+    setStatus("Publishing…");
     saveBtn.disabled = true;
     try {
       if (currentKind === "static") {

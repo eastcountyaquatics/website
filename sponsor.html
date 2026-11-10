@@ -381,11 +381,12 @@
       };
     }
 
-    const { data: row, error } = await supabaseClient
-      .from("sponsorships")
-      .insert(insertRow)
-      .select("id")
-      .single();
+    let { data: row, error } = await supabaseClient.from("sponsorships").insert(insertRow).select("id").single();
+    // If the comments column isn't in the database yet, still take the gift (without the comment).
+    if (error && /comments/i.test(error.message || "") && insertRow.comments) {
+      delete insertRow.comments;
+      ({ data: row, error } = await supabaseClient.from("sponsorships").insert(insertRow).select("id").single());
+    }
 
     if (error || !row) {
       btn.disabled = false;

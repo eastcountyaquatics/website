@@ -182,9 +182,7 @@
     // anyone submit one), then the checkout function looks it up by id so
     // the charged amount always comes from the database, never the browser.
     const donorName = document.getElementById("dn-name").value.trim();
-    const { data: row, error } = await supabaseClient
-      .from("sponsorships")
-      .insert({
+    const donationRow = {
         is_donation: true,
         company_name: donorName,
         contact_name: donorName,
@@ -192,9 +190,13 @@
         org_name: document.getElementById("dn-org").value.trim() || null,
         amount_cents: Math.round(dollars * 100),
         ...(document.getElementById("dn-comments").value.trim() ? { comments: document.getElementById("dn-comments").value.trim() } : {}),
-      })
-      .select("id")
-      .single();
+      };
+    let { data: row, error } = await supabaseClient.from("sponsorships").insert(donationRow).select("id").single();
+    // If the comments column isn't in the database yet, still take the gift (without the comment).
+    if (error && /comments/i.test(error.message || "") && donationRow.comments) {
+      delete donationRow.comments;
+      ({ data: row, error } = await supabaseClient.from("sponsorships").insert(donationRow).select("id").single());
+    }
 
     if (error || !row) {
       btn.disabled = false;

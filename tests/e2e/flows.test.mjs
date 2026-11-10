@@ -250,3 +250,15 @@ test("a section scheduled for the future or the past stays hidden; one in its wi
   }));
   assert.deepEqual(state, { future: true, past: true, open: false, inWindow: false });
 });
+
+test("a page scheduled for later shows a 'not available' note; one in its window shows normally", async () => {
+  const future = new Date(Date.now() + 86400000).toISOString();
+  const closed = await env.page({ seed: { site_settings: [{ key: "page_windows", value: { "about-us.html": { from: future, until: null } } }] } });
+  await closed.goto(env.url + "/about-us.html");
+  await closed.waitForSelector("text=isn’t available right now");
+  const open = await env.page({ seed: { site_settings: [{ key: "page_windows", value: { "about-us.html": { from: null, until: future } } }] } });
+  await open.goto(env.url + "/about-us.html");
+  await open.waitForSelector('[data-section="about-us-1"]');
+  await open.waitForTimeout(300);
+  assert.equal(await open.locator("text=isn’t available right now").count(), 0);
+});

@@ -262,3 +262,14 @@ test("a page scheduled for later shows a 'not available' note; one in its window
   await open.waitForTimeout(300);
   assert.equal(await open.locator("text=isn’t available right now").count(), 0);
 });
+
+test("approved team photos are spread between sections, not one block", async () => {
+  const photos = Array.from({ length: 12 }, (_, i) => ({ id: "p" + i, status: "approved", team_slug: "14u-boys", public_url: "https://x.test/p" + i + ".webp", public_thumb_url: "https://x.test/t" + i + ".webp", alt: "a" }));
+  photos.push({ id: "px", status: "review", team_slug: "14u-boys", public_url: "https://x.test/no.webp", public_thumb_url: "https://x.test/no-t.webp" });
+  const page = await env.page({ seed: { photo_library: photos } });
+  await page.goto(env.url + "/team-14u-boys.html");
+  await page.waitForSelector(".team-photo-band", { timeout: 8000 });
+  const r = await page.evaluate(() => ({ bands: document.querySelectorAll(".team-photo-band").length, imgs: document.querySelectorAll(".team-photo-row img").length, unapproved: document.querySelectorAll('img[src*="no-t"]').length }));
+  assert.ok(r.bands >= 2, "photos should be in several places: " + JSON.stringify(r));
+  assert.equal(r.unapproved, 0);
+});

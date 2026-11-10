@@ -75,7 +75,13 @@
   #advanced-details summary { cursor: pointer; color: var(--blue, #0000ff); font-weight: 700; }
 
   .ed-canvas-wrap { flex: 1; min-height: 0; background: #e9edf3; position: relative; }
-  #canvas { width: 100%; height: 100%; border: none; display: block; background: #fff; }
+  #canvas { width: 100%; height: 100%; border: none; display: block; background: #fff; transition: width .2s ease; }
+  /* Device preview: the page is shown at phone or tablet width, centered. */
+  .ed-canvas-wrap.device { display: flex; justify-content: center; overflow: auto; }
+  .ed-canvas-wrap.device #canvas { width: var(--dev-w); flex: 0 0 auto; box-shadow: 0 0 0 1px #cfd6e2, 0 10px 30px rgba(20,30,50,.18); }
+  .ed-device { display: inline-flex; border: 1px solid rgba(255,255,255,.35); border-radius: 8px; overflow: hidden; }
+  .ed-device button { background: transparent; color: #fff; border: 0; padding: 5px 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; opacity: .75; }
+  .ed-device button.active { background: rgba(255,255,255,.22); opacity: 1; }
   .ed-empty { padding: 60px 20px; display: flex; align-items: center; justify-content: center; height: 100%; }
   .ed-empty-inner { max-width: 480px; text-align: left; }
   .ed-empty-inner h2 { text-align: center; margin-bottom: 28px; color: #1a1a4d; }
@@ -186,6 +192,11 @@
     <option value="new">+ New Page&hellip;</option>
   </select>
   <a id="view-live-link" class="btn-link" href="#" target="_blank" rel="noopener" style="display:none;">View Live &rarr;</a>
+  <span class="ed-device" id="device-toggle" title="Preview the page at different screen sizes">
+    <button type="button" data-w="" class="active">Desktop</button>
+    <button type="button" data-w="820px">Tablet</button>
+    <button type="button" data-w="390px">Phone</button>
+  </span>
   <button type="button" id="settings-toggle-btn" style="display:none;">Page Settings</button>
   <button type="button" id="history-btn" style="display:none;">History</button>
   <button type="button" id="meta-btn" style="display:none;" title="The page's name in the browser tab and in Google results">Tab &amp; Google Text</button>
@@ -365,6 +376,14 @@
   const richBar = document.getElementById("rich-bar");
   const settingsPanel = document.getElementById("settings-panel");
   const settingsToggleBtn = document.getElementById("settings-toggle-btn");
+  // Desktop / Tablet / Phone preview: only the width of the editing frame changes.
+  document.getElementById("device-toggle").addEventListener("click", function (e) {
+    const b = e.target.closest("button"); if (!b) return;
+    this.querySelectorAll("button").forEach(function (x) { x.classList.toggle("active", x === b); });
+    const wrap = document.getElementById("canvas-wrap");
+    wrap.classList.toggle("device", !!b.dataset.w);
+    wrap.style.setProperty("--dev-w", b.dataset.w || "100%");
+  });
   const metaBtn = document.getElementById("meta-btn");
   const resetPageBtn = document.getElementById("reset-page-btn");
   const historyBtn = document.getElementById("history-btn");

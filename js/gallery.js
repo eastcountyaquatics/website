@@ -54,6 +54,11 @@
   supabaseClient.from("site_settings").select("value").eq("key", "gallery_photos").maybeSingle().then(function (res) {
     var v = res && res.data && res.data.value;
     var list = v && Array.isArray(v.photos) ? v.photos.filter(function (p) { return p && safe(p.url); }) : null;
-    finish(list ? list : builtIn);
+    var base = list ? list : builtIn;
+    // Owner-approved photos marked "featured" in Admin > Photo Library join the strip.
+    supabaseClient.from("photo_library").select("public_thumb_url, alt").eq("status", "approved").eq("featured", true).limit(24).then(function (r) {
+      var extra = ((r && r.data) || []).filter(function (p) { return safe(p.public_thumb_url); }).map(function (p) { return { url: p.public_thumb_url, alt: p.alt || "ECA team photo" }; });
+      finish(base.concat(extra));
+    }, function () { finish(base); });
   }, function () { finish(builtIn); });
 })();

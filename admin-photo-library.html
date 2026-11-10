@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo Library | Admin | San Diego East County Aquatics</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261027">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Photo Library</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+
+<style>
+  .pl-wrap{max-width:1100px;margin:0 auto;}
+  .pl-drop{border:2px dashed #b9c6ff;border-radius:14px;background:#f5f7ff;padding:22px;text-align:center;}
+  .pl-drop.over{background:#e3ecff;border-color:var(--blue);}
+  .pl-drop .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px 0;}
+  .pl-defaults{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:13.5px;}
+  .pl-defaults label{display:flex;gap:6px;align-items:center;font-weight:700;color:var(--navy);}
+  .pl-progress{height:8px;border-radius:999px;background:#e3e6f0;overflow:hidden;margin-top:10px;display:none;}
+  .pl-progress span{display:block;height:100%;width:0;background:var(--gold);transition:width .2s;}
+  .pl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:22px 0 10px;}
+  .pl-tabs button{border:1px solid #d7e6ee;background:#fff;border-radius:999px;padding:6px 14px;font-weight:700;font-size:13.5px;cursor:pointer;color:var(--navy);}
+  .pl-tabs button.on{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .pl-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .pl-bar select,.pl-bar input[type=search]{min-width:150px;}
+  .pl-bulk{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #e3e6f0;border-radius:10px;padding:8px 12px;margin-bottom:12px;position:sticky;top:8px;z-index:5;}
+  .pl-bulk button,.pl-dlg button.sm{border:1px solid #d7e6ee;background:#fff;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;color:var(--blue);}
+  .pl-bulk button.go{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .pl-bulk button.bad,.pl-dlg button.bad{color:#c0392b;border-color:#f0c4c0;}
+  .pl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .pl-card{position:relative;background:#fff;border:2px solid transparent;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(10,31,107,.08);cursor:pointer;}
+  .pl-card.sel{border-color:var(--blue);}
+  .pl-card img{display:block;width:100%;aspect-ratio:1;object-fit:cover;background:#eef1f8;}
+  .pl-card .chk{position:absolute;left:6px;top:6px;width:20px;height:20px;}
+  .pl-card .st{position:absolute;right:6px;top:6px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#fff4c2;color:#7a5d00;}
+  .pl-card .st.approved{background:#dff3e4;color:#1f6b35;}
+  .pl-card .st.hidden{background:#f1f1f1;color:#666;}
+  .pl-card .meta{padding:6px 8px;font-size:12px;color:var(--muted);line-height:1.3;}
+  .pl-pager{display:flex;gap:10px;align-items:center;justify-content:center;margin:16px 0;}
+  .pl-dlg{position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .pl-dlg[hidden]{display:none;}
+  .pl-dlg .card{background:#fff;border-radius:14px;max-width:900px;width:100%;max-height:92vh;overflow:auto;display:grid;grid-template-columns:1.3fr 1fr;gap:0;}
+  .pl-dlg .pic{background:#111;display:flex;align-items:center;justify-content:center;min-height:240px;}
+  .pl-dlg .pic img{max-width:100%;max-height:86vh;display:block;}
+  .pl-dlg .info{padding:18px;}
+  .pl-dlg label{display:block;font-weight:700;font-size:13px;margin:10px 0 4px;color:var(--navy);}
+  .pl-dlg .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  @media (max-width:760px){.pl-dlg .card{grid-template-columns:1fr;}}
+</style>
+
+<section class="section-tight">
+  <div class="container pl-wrap">
+    <div class="notice" style="margin-bottom:18px;">
+      Photos go into a <strong>private review area</strong>. Nothing is public until you <strong>approve</strong> it &mdash; so check each photo (permission to post, quality, who&rsquo;s in it) first. Approved photos appear on that team&rsquo;s page, and the ones you <strong>feature</strong> also join the scrolling strip on the home page.
+    </div>
+    <div id="pl-msg" class="form-msg"></div>
+
+    <div class="pl-drop" id="pl-drop">
+      <strong>Add photos</strong>
+      <p class="muted" style="margin:6px 0 0;font-size:13.5px;">Drag photos or whole folders here. They&rsquo;re shrunk to web size on your computer before upload. Folders named like <em>14U_Girls</em> are filed under that team automatically.</p>
+      <div class="row">
+        <label class="btn btn-primary" style="cursor:pointer;">Choose a folder<input type="file" id="pl-folder" webkitdirectory multiple hidden></label>
+        <label class="btn btn-outline-dark" style="cursor:pointer;">Choose photos<input type="file" id="pl-files" accept="image/*" multiple hidden></label>
+      </div>
+      <div class="pl-defaults">
+        <label>Team if not detected <select id="pl-team"><option value="">No team</option></select></label>
+        <label>Album <input type="text" id="pl-album" maxlength="120" placeholder="optional"></label>
+      </div>
+      <div class="pl-progress" id="pl-progress"><span></span></div>
+      <p class="muted" id="pl-status" style="margin:8px 0 0;font-size:13px;"></p>
+    </div>
+
+    <div class="pl-tabs" id="pl-tabs">
+      <button type="button" data-st="review" class="on">Needs review <span data-n="review"></span></button>
+      <button type="button" data-st="approved">Approved <span data-n="approved"></span></button>
+      <button type="button" data-st="hidden">Hidden <span data-n="hidden"></span></button>
+      <button type="button" data-st="all">All <span data-n="all"></span></button>
+    </div>
+    <div class="pl-bar">
+      <select id="pl-f-team" aria-label="Team"><option value="all">All teams</option></select>
+      <select id="pl-f-album" aria-label="Album"><option value="all">All albums</option></select>
+      <input type="search" id="pl-f-q" placeholder="Search captions&hellip;">
+    </div>
+    <div class="pl-bulk" id="pl-bulk" style="display:none;">
+      <strong id="pl-selcount"></strong>
+      <button type="button" class="go" data-bulk="approve">Approve</button>
+      <button type="button" data-bulk="hide">Hide</button>
+      <button type="button" data-bulk="feature">Feature on home</button>
+      <button type="button" data-bulk="unfeature">Unfeature</button>
+      <select id="pl-bulk-team" aria-label="Set team"><option value="">Set team&hellip;</option></select>
+      <button type="button" class="bad" data-bulk="delete">Delete</button>
+      <button type="button" data-bulk="clear">Clear</button>
+    </div>
+    <div id="pl-grid" class="pl-grid"><p class="muted">Loading&hellip;</p></div>
+    <div class="pl-pager" id="pl-pager"></div>
+  </div>
+</section>
+
+<div class="pl-dlg" id="pl-dlg" role="dialog" aria-modal="true" hidden>
+  <div class="card">
+    <div class="pic"><img id="pl-big" alt=""></div>
+    <div class="info">
+      <h3 style="margin:0 0 4px;" id="pl-d-title">Photo</h3>
+      <p class="muted" id="pl-d-source" style="font-size:12.5px;margin:0 0 6px;"></p>
+      <label for="pl-d-team">Team</label><select id="pl-d-team"></select>
+      <label for="pl-d-album">Album</label><input type="text" id="pl-d-album" maxlength="120">
+      <label for="pl-d-caption">Caption (shown under the photo)</label><input type="text" id="pl-d-caption" maxlength="300">
+      <label for="pl-d-alt">Description for screen readers</label><input type="text" id="pl-d-alt" maxlength="300" placeholder="e.g. 14U girls celebrating in the pool">
+      <label style="display:flex;gap:8px;align-items:center;font-weight:400;"><input type="checkbox" id="pl-d-feat" style="width:auto;"> Feature on the home page strip</label>
+      <p class="muted" id="pl-d-msg" style="font-size:13px;margin:8px 0 0;"></p>
+      <div class="acts">
+        <button type="button" class="sm" id="pl-d-save">Save details</button>
+        <button type="button" class="sm btn-go" id="pl-d-approve" style="background:var(--blue);color:#fff;border-color:var(--blue);">Approve</button>
+        <button type="button" class="sm" id="pl-d-hide">Hide</button>
+        <button type="button" class="sm bad" id="pl-d-delete">Delete</button>
+        <button type="button" class="sm" id="pl-d-prev">&larr;</button>
+        <button type="button" class="sm" id="pl-d-next">&rarr;</button>
+        <button type="button" class="sm" id="pl-d-close">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261027"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script src="js/photo-meta.js"></script>
+<script>
+  // Admin > Photo Library. Photos live in a private bucket until approved;
+  // approving copies them (full size and thumbnail) to the public bucket.
+  var REVIEW = "photos-review", PUBLIC = "photos-public", PAGE = 60;
+  var photos = [], teams = [], sel = {}, state = { st: "review", team: "all", album: "all", q: "", page: 0 };
+  var current = null, signed = {};
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function say(t, ok) { var m = $("pl-msg"); m.className = "form-msg " + (ok ? "success" : "error"); m.textContent = t || ""; }
+  function teamName(slug) { if (!slug) return "No team"; var t = teams.find(function (x) { return x.team_slug === slug; }); return t ? t.team_label : slug; }
+  function pad(n, w) { return String(n).padStart(w, "0"); }
+
+  // ---------- load ----------
+  async function loadAll() {
+    var all = [], from = 0;
+    for (;;) {
+      var r = await supabaseClient.from("photo_library").select("*").order("created_at", { ascending: false }).range(from, from + 999);
+      if (r.error) { $("pl-grid").innerHTML = '<p class="muted">Could not load photos: ' + esc(r.error.message) + (/does not exist|schema cache/i.test(r.error.message) ? " (the Photo Library hasn&rsquo;t been set up in the database yet)" : "") + "</p>"; return false; }
+      all = all.concat(r.data || []);
+      if (!r.data || r.data.length < 1000) break;
+      from += 1000;
+    }
+    photos = all;
+    return true;
+  }
+  async function loadTeams() {
+    var r = await supabaseClient.from("schedules").select("team_slug, team_label, sort_order, is_active").order("sort_order", { ascending: true });
+    teams = (r.data || []).filter(function (t) { return t.is_active !== false; });
+    var opts = teams.map(function (t) { return '<option value="' + esc(t.team_slug) + '">' + esc(t.team_label) + "</option>"; }).join("");
+    $("pl-team").innerHTML = '<option value="">No team</option>' + opts;
+    $("pl-f-team").innerHTML = '<option value="all">All teams</option><option value="none">No team</option>' + opts;
+    $("pl-bulk-team").innerHTML = '<option value="">Set team…</option><option value="__none">No team</option>' + opts;
+    $("pl-d-team").innerHTML = '<option value="">No team</option>' + opts;
+  }
+
+  // ---------- filter + draw ----------
+  function filtered() {
+    var q = state.q.toLowerCase();
+    return photos.filter(function (p) {
+      if (state.st !== "all" && p.status !== state.st) return false;
+      if (state.team === "none" ? p.team_slug : (state.team !== "all" && p.team_slug !== state.team)) return false;
+      if (state.album !== "all" && (p.album || "") !== state.album) return false;
+      if (q && ((p.caption || "") + " " + (p.alt || "") + " " + (p.album || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+  function counts() {
+    var c = { review: 0, approved: 0, hidden: 0, all: photos.length };
+    photos.forEach(function (p) { c[p.status] = (c[p.status] || 0) + 1; });
+    document.querySelectorAll("[data-n]").forEach(function (s) { s.textContent = "(" + c[s.dataset.n] + ")"; });
+    var albums = {}; photos.forEach(function (p) { if (p.album) albums[p.album] = 1; });
+    var cur = $("pl-f-album").value || "all";
+    $("pl-f-album").innerHTML = '<option value="all">All albums</option>' + Object.keys(albums).sort().map(function (a) { return '<option value="' + esc(a) + '">' + esc(a) + "</option>"; }).join("");
+    $("pl-f-album").value = albums[cur] ? cur : "all";
+  }
+  async function signThumbs(list) {
+    var need = list.filter(function (p) { return p.status !== "approved" && !signed[p.thumb_path]; }).map(function (p) { return p.thumb_path; });
+    if (!need.length) return;
+    var r = await supabaseClient.storage.from(REVIEW).createSignedUrls(need, 3600);
+    (r.data || []).forEach(function (x) { if (x && x.signedUrl && x.path) signed[x.path] = x.signedUrl; });
+  }
+  function thumbOf(p) { return p.status === "approved" && p.public_thumb_url ? p.public_thumb_url : (signed[p.thumb_path] || ""); }
+  async function draw() {
+    counts();
+    var list = filtered(), pages = Math.max(1, Math.ceil(list.length / PAGE));
+    if (state.page >= pages) state.page = pages - 1;
+    var slice = list.slice(state.page * PAGE, state.page * PAGE + PAGE);
+    await signThumbs(slice);
+    $("pl-grid").innerHTML = slice.length ? slice.map(function (p) {
+      var u = thumbOf(p);
+      return '<div class="pl-card' + (sel[p.id] ? " sel" : "") + '" data-id="' + p.id + '">' +
+        '<input type="checkbox" class="chk" ' + (sel[p.id] ? "checked" : "") + ' aria-label="Select photo">' +
+        '<span class="st ' + p.status + '">' + (p.status === "review" ? "Review" : p.status === "approved" ? (p.featured ? "★ Public" : "Public") : "Hidden") + "</span>" +
+        (u ? '<img src="' + esc(u) + '" alt="" loading="lazy">' : '<img alt="">') +
+        '<div class="meta">' + esc(teamName(p.team_slug)) + (p.album ? " · " + esc(p.album) : "") + "</div></div>";
+    }).join("") : '<p class="muted" style="grid-column:1/-1;">' + (photos.length ? "No photos match." : "No photos yet — add some above.") + "</p>";
+    $("pl-pager").innerHTML = pages > 1 ? '<button type="button" class="btn btn-outline-dark" id="pl-prev" ' + (state.page ? "" : "disabled") + '>&larr; Prev</button><span class="muted">Page ' + (state.page + 1) + " of " + pages + " &middot; " + list.length + ' photos</span><button type="button" class="btn btn-outline-dark" id="pl-next" ' + (state.page < pages - 1 ? "" : "disabled") + ">Next &rarr;</button>" : "";
+    var n = Object.keys(sel).length;
+    $("pl-bulk").style.display = n ? "" : "none";
+    $("pl-selcount").textContent = n + " selected";
+  }
+
+  // ---------- upload ----------
+  function loadBitmap(file) {
+    if (window.createImageBitmap) return createImageBitmap(file, { imageOrientation: "from-image" });
+    return new Promise(function (res, rej) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = rej; i.src = URL.createObjectURL(file); });
+  }
+  function shrink(bmp, max, q) {
+    var scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    var c = document.createElement("canvas"); c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return new Promise(function (res) {
+      c.toBlob(function (b) {
+        if (b && b.type === "image/webp") return res({ blob: b, ext: "webp", w: c.width, h: c.height });
+        c.toBlob(function (j) { res({ blob: j, ext: "jpg", w: c.width, h: c.height }); }, "image/jpeg", 0.85);
+      }, "image/webp", q);
+    });
+  }
+  async function uploadFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList).filter(function (f) { return /^image\//.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name); });
+    // manifest.json files (folder drops) say which pack/source each photo is from.
+    var manifests = {};
+    for (var m of Array.prototype.slice.call(fileList).filter(function (f) { return /(^|\/)manifest\.json$/i.test(f.webkitRelativePath || f.name); })) {
+      try {
+        var j = JSON.parse(await m.text());
+        var dir = (m.webkitRelativePath || "").replace(/manifest\.json$/i, "");
+        (j.photos || []).forEach(function (e) { manifests[dir + e.filename] = e; });
+      } catch (e) { /* no manifest, no extra info */ }
+    }
+    if (!files.length) { say("No photos found in what you chose.", false); return; }
+    var have = {}; photos.forEach(function (p) { have[p.sha256] = 1; });
+    var defTeam = $("pl-team").value || null, defAlbum = $("pl-album").value.trim() || null;
+    var done = 0, added = 0, dup = 0, failed = [], bar = $("pl-progress");
+    bar.style.display = "block";
+    var queue = files.slice();
+    async function worker() {
+      while (queue.length) {
+        var f = queue.shift();
+        try {
+          var buf = await f.arrayBuffer(), sha = await PhotoMeta.sha256(buf);
+          if (have[sha]) { dup++; continue; }
+          have[sha] = 1;
+          var bmp = await loadBitmap(f);
+          var big = await shrink(bmp, 1600, 0.82), small = await shrink(bmp, 480, 0.78);
+          var path = sha.slice(0, 2) + "/" + sha.slice(0, 20) + "." + big.ext, tpath = sha.slice(0, 2) + "/" + sha.slice(0, 20) + "-t." + small.ext;
+          var u1 = await supabaseClient.storage.from(REVIEW).upload(path, big.blob, { contentType: big.blob.type, upsert: true });
+          if (u1.error) throw new Error(u1.error.message);
+          var u2 = await supabaseClient.storage.from(REVIEW).upload(tpath, small.blob, { contentType: small.blob.type, upsert: true });
+          if (u2.error) throw new Error(u2.error.message);
+          var rel = f.webkitRelativePath || f.name, man = manifests[rel] || {};
+          var pk = PhotoMeta.albumFromPack(man.pack || (rel.split("/").slice(-2, -1)[0] || ""));
+          var row = {
+            sha256: sha, path: path, thumb_path: tpath, width: big.w, height: big.h,
+            team_slug: PhotoMeta.teamFromPath(rel) || defTeam,
+            album: defAlbum || pk.album || null, taken_label: pk.taken || null,
+            source: { filename: f.name, pack: man.pack || null, source_group: man.source_group || null, uploader: man.uploader || null, upload_date: man.upload_date || null },
+          };
+          var ins = await supabaseClient.from("photo_library").insert(row);
+          if (ins.error) throw new Error(ins.error.message);
+          added++;
+        } catch (e) { failed.push(f.name + ": " + e.message); }
+        finally {
+          done++;
+          bar.firstElementChild.style.width = Math.round(done * 100 / files.length) + "%";
+          $("pl-status").textContent = "Uploading " + done + " of " + files.length + "…";
+        }
+      }
+    }
+    await Promise.all([worker(), worker(), worker()]);
+    $("pl-status").textContent = "";
+    bar.style.display = "none"; bar.firstElementChild.style.width = "0";
+    say("Added " + added + " photo" + (added === 1 ? "" : "s") + " for review." + (dup ? " " + dup + " were already in the library." : "") + (failed.length ? " " + failed.length + " failed: " + failed.slice(0, 3).join("; ") : ""), !failed.length);
+    await loadAll(); state.st = "review"; setTabs(); draw();
+  }
+  $("pl-folder").addEventListener("change", function () { var f = this.files; uploadFiles(f).then(function () { $("pl-folder").value = ""; }); });
+  $("pl-files").addEventListener("change", function () { var f = this.files; uploadFiles(f).then(function () { $("pl-files").value = ""; }); });
+  var drop = $("pl-drop");
+  ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); });
+
+  // ---------- actions ----------
+  async function approveOne(p) {
+    var parts = [[p.path], [p.thumb_path]], urls = [];
+    for (var i = 0; i < 2; i++) {
+      var path = i ? p.thumb_path : p.path;
+      var d = await supabaseClient.storage.from(REVIEW).download(path);
+      if (d.error || !d.data) throw new Error("Could not read " + path);
+      var u = await supabaseClient.storage.from(PUBLIC).upload(path, d.data, { contentType: d.data.type || "image/webp", upsert: true });
+      if (u.error) throw new Error(u.error.message);
+      urls.push(supabaseClient.storage.from(PUBLIC).getPublicUrl(path).data.publicUrl);
+    }
+    var r = await supabaseClient.from("photo_library").update({ status: "approved", public_url: urls[0], public_thumb_url: urls[1], approved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", p.id);
+    if (r.error) throw new Error(r.error.message);
+    Object.assign(p, { status: "approved", public_url: urls[0], public_thumb_url: urls[1] });
+  }
+  async function hideOne(p) {
+    await supabaseClient.storage.from(PUBLIC).remove([p.path, p.thumb_path]);
+    var r = await supabaseClient.from("photo_library").update({ status: "hidden", public_url: null, public_thumb_url: null, featured: false, updated_at: new Date().toISOString() }).eq("id", p.id);
+    if (r.error) throw new Error(r.error.message);
+    Object.assign(p, { status: "hidden", public_url: null, public_thumb_url: null, featured: false });
+  }
+  async function deleteOne(p) {
+    await supabaseClient.storage.from(PUBLIC).remove([p.path, p.thumb_path]);
+    await supabaseClient.storage.from(REVIEW).remove([p.path, p.thumb_path]);
+    var r = await supabaseClient.from("photo_library").delete().eq("id", p.id);
+    if (r.error) throw new Error(r.error.message);
+    photos = photos.filter(function (x) { return x.id !== p.id; });
+  }
+  async function patchOne(p, patch) {
+    patch.updated_at = new Date().toISOString();
+    var r = await supabaseClient.from("photo_library").update(patch).eq("id", p.id);
+    if (r.error) throw new Error(r.error.message);
+    Object.assign(p, patch);
+  }
+  async function each(list, fn, label) {
+    var failed = 0, i = 0, queue = list.slice();
+    async function w() { while (queue.length) { var p = queue.shift(); try { await fn(p); } catch (e) { failed++; } i++; $("pl-status").textContent = label + " " + i + " of " + list.length + "…"; } }
+    await Promise.all([w(), w(), w()]);
+    $("pl-status").textContent = "";
+    return failed;
+  }
+  $("pl-bulk").addEventListener("click", async function (e) {
+    var b = e.target.closest("[data-bulk]"); if (!b) return;
+    var ids = Object.keys(sel), list = photos.filter(function (p) { return sel[p.id]; }), act = b.dataset.bulk, failed = 0;
+    if (act === "clear") { sel = {}; draw(); return; }
+    if (act === "delete" && !confirm("Permanently delete " + list.length + " photo" + (list.length === 1 ? "" : "s") + "? This can’t be undone.")) return;
+    if (act === "approve") failed = await each(list.filter(function (p) { return p.status !== "approved"; }), approveOne, "Approving");
+    if (act === "hide") failed = await each(list, hideOne, "Hiding");
+    if (act === "delete") failed = await each(list, deleteOne, "Deleting");
+    if (act === "feature" || act === "unfeature") failed = await each(list.filter(function (p) { return act === "unfeature" || p.status === "approved"; }), function (p) { return patchOne(p, { featured: act === "feature" }); }, "Updating");
+    sel = {};
+    say(failed ? failed + " could not be updated." : "Done.", !failed);
+    draw();
+  });
+  $("pl-bulk-team").addEventListener("change", async function () {
+    var v = this.value; if (!v) return; this.value = "";
+    var list = photos.filter(function (p) { return sel[p.id]; });
+    var failed = await each(list, function (p) { return patchOne(p, { team_slug: v === "__none" ? null : v }); }, "Updating");
+    say(failed ? failed + " could not be updated." : "Team set for " + list.length + " photo" + (list.length === 1 ? "" : "s") + ".", !failed);
+    draw();
+  });
+
+  // ---------- grid + filters ----------
+  $("pl-grid").addEventListener("click", function (e) {
+    var card = e.target.closest(".pl-card"); if (!card) return;
+    var id = card.dataset.id;
+    if (e.target.classList.contains("chk")) { if (sel[id]) delete sel[id]; else sel[id] = true; draw(); return; }
+    openDetail(id);
+  });
+  $("pl-pager").addEventListener("click", function (e) {
+    if (e.target.id === "pl-prev") { state.page--; draw(); window.scrollTo({ top: $("pl-tabs").offsetTop - 80, behavior: "smooth" }); }
+    if (e.target.id === "pl-next") { state.page++; draw(); window.scrollTo({ top: $("pl-tabs").offsetTop - 80, behavior: "smooth" }); }
+  });
+  function setTabs() { document.querySelectorAll("#pl-tabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.st === state.st); }); }
+  $("pl-tabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; state.st = b.dataset.st; state.page = 0; setTabs(); draw(); });
+  $("pl-f-team").addEventListener("change", function () { state.team = this.value; state.page = 0; draw(); });
+  $("pl-f-album").addEventListener("change", function () { state.album = this.value; state.page = 0; draw(); });
+  $("pl-f-q").addEventListener("input", function () { state.q = this.value.trim(); state.page = 0; draw(); });
+
+  // ---------- one photo ----------
+  function openDetail(id) {
+    current = photos.find(function (p) { return p.id === id; }); if (!current) return;
+    var p = current;
+    $("pl-big").src = p.status === "approved" && p.public_url ? p.public_url : "";
+    if (p.status !== "approved") supabaseClient.storage.from(REVIEW).createSignedUrl(p.path, 3600).then(function (r) { if (current === p && r.data) $("pl-big").src = r.data.signedUrl; });
+    var s = p.source || {};
+    $("pl-d-title").textContent = p.status === "approved" ? "Public photo" : p.status === "hidden" ? "Hidden photo" : "Needs your review";
+    $("pl-d-source").textContent = [p.taken_label, s.source_group, s.uploader && s.uploader !== "Unverified" ? "uploaded by " + s.uploader : "", s.filename].filter(Boolean).join(" · ");
+    $("pl-d-team").value = p.team_slug || ""; $("pl-d-album").value = p.album || ""; $("pl-d-caption").value = p.caption || ""; $("pl-d-alt").value = p.alt || "";
+    $("pl-d-feat").checked = !!p.featured; $("pl-d-msg").textContent = "";
+    $("pl-d-approve").style.display = p.status === "approved" ? "none" : "";
+    $("pl-d-hide").style.display = p.status === "hidden" ? "none" : "";
+    $("pl-dlg").hidden = false;
+  }
+  function detailPatch() {
+    return { team_slug: $("pl-d-team").value || null, album: $("pl-d-album").value.trim() || null, caption: $("pl-d-caption").value.trim() || null, alt: $("pl-d-alt").value.trim() || null, featured: current.status === "approved" ? $("pl-d-feat").checked : false };
+  }
+  async function guard(fn, okText) {
+    var m = $("pl-d-msg");
+    try { await fn(); m.textContent = okText; draw(); } catch (e) { m.textContent = "Could not do that: " + e.message; }
+  }
+  $("pl-d-save").addEventListener("click", function () { guard(function () { return patchOne(current, detailPatch()); }, "Saved."); });
+  $("pl-d-approve").addEventListener("click", function () {
+    var alt = $("pl-d-alt").value.trim();
+    if (!alt && !confirm("This photo has no screen-reader description. Approve it anyway?")) return;
+    guard(async function () { await patchOne(current, detailPatch()); await approveOne(current); await patchOne(current, { featured: $("pl-d-feat").checked }); openDetail(current.id); }, "Approved — it’s public now.");
+  });
+  $("pl-d-hide").addEventListener("click", function () { guard(async function () { await hideOne(current); openDetail(current.id); }, "Hidden — no longer public."); });
+  $("pl-d-delete").addEventListener("click", async function () {
+    if (!confirm("Permanently delete this photo?")) return;
+    await guard(function () { return deleteOne(current); }, "");
+    $("pl-dlg").hidden = true;
+  });
+  $("pl-d-close").addEventListener("click", function () { $("pl-dlg").hidden = true; });
+  $("pl-dlg").addEventListener("click", function (e) { if (e.target === this) this.hidden = true; });
+  function step(d) {
+    var list = filtered(), i = list.findIndex(function (p) { return p.id === current.id; });
+    var n = list[i + d]; if (n) openDetail(n.id);
+  }
+  $("pl-d-prev").addEventListener("click", function () { step(-1); });
+  $("pl-d-next").addEventListener("click", function () { step(1); });
+  document.addEventListener("keydown", function (e) {
+    if ($("pl-dlg").hidden) return;
+    if (e.key === "Escape") $("pl-dlg").hidden = true;
+    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.key === "ArrowRight") step(1);
+    if (e.key === "ArrowLeft") step(-1);
+  });
+
+  (async function () {
+    var auth = await requireRole(["owner"]);
+    if (!auth) return;
+    await loadTeams();
+    if (await loadAll()) draw();
+  })();
+</script>
+</body>
+</html>

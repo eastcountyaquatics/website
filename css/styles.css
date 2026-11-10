@@ -606,3 +606,4 @@ html.eca-edit .eca-live--zeffy::before{content:"Live: Zeffy fundraisers and even
 html.eca-edit .eca-live--countdown::before{content:"Countdown: type the date, then what it counts down to";}
 html.eca-edit .eca-live--video::before{content:"Video: paste a YouTube or Vimeo link here";}
 html.eca-edit .eca-live--map::before{content:"Map: type the address here";}
+html.eca-edit .eca-live--photos::before{content:"Team photos (live): approved Photo Library photos; optionally type a team code like 14u-boys";}

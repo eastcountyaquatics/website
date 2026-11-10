@@ -16,6 +16,7 @@
 //   coaches    active coaches with photos
 //   gallery    the Photo Gallery (Admin > Photo Gallery) as a grid
 //   zeffy      Zeffy forms ticked "Show on website" (js/zeffy-showcase.js)
+//   photos     approved Photo Library photos (text = team slug, optional)
 //   countdown  text "2026-12-05 Winter season starts" -> days left
 //   video      text = a YouTube or Vimeo link
 //   map        text = an address
@@ -93,6 +94,20 @@
         el.innerHTML = '<div class="live-photos">' + photos.map(function (p) {
           var u = p.url || ("images/" + p[0]);
           return '<img src="' + esc(u) + '" alt="' + esc(p.alt || p[1] || "") + '" loading="lazy">';
+        }).join("") + "</div>";
+      });
+    },
+    photos: function (el) {
+      // Approved photos from Admin > Photo Library. Text in the div = a team
+      // slug (e.g. 14u-boys) to show only that team; empty = all teams.
+      var team = el.textContent.trim().slice(0, 40);
+      var q = supabaseClient.from("photo_library").select("public_thumb_url, public_url, alt").eq("status", "approved");
+      if (/^[a-z0-9-]+$/.test(team)) q = q.eq("team_slug", team);
+      return q.limit(count(el, 12)).then(function (r) {
+        var rows = ((r && r.data) || []).filter(function (p) { return safeImg(p.public_thumb_url); });
+        if (!rows.length) return empty(el, "Photos coming soon.");
+        el.innerHTML = '<div class="live-photos">' + rows.map(function (p) {
+          return '<img src="' + esc(p.public_thumb_url) + '" alt="' + esc(p.alt || "ECA team photo") + '" loading="lazy">';
         }).join("") + "</div>";
       });
     },

@@ -28,42 +28,49 @@
     wrap.appendChild(row); sec.appendChild(wrap);
     return sec;
   }
-  supabaseClient.from("photo_library").select("public_url, public_thumb_url, alt, caption, featured, width, height")
-    .eq("status", "approved").eq("team_slug", slug).limit(48).then(function (r) {
+  // Spread through the page: a short row of photos between sections, not one
+  // block at the bottom. Run after the page's own layout (js/page-extras.js)
+  // has put the sections in order.
+  var PER_BAND = 4, MAX_BANDS = 8;
+  function bandOf(list) {
+    var sec = document.createElement("section");
+    sec.className = "team-photo-band";
+    var wrap = document.createElement("div");
+    wrap.className = "container";
+    var grid = document.createElement("div");
+    grid.className = "team-photo-row";
+    list.forEach(function (p) {
+      var a = document.createElement("a");
+      a.href = p.public_url; a.target = "_blank"; a.rel = "noopener";
+      var img = document.createElement("img");
+      img.src = p.public_thumb_url; img.loading = "lazy";
+      img.alt = p.alt || p.caption || "ECA team photo";
+      a.appendChild(img);
+      grid.appendChild(a);
+    });
+    wrap.appendChild(grid); sec.appendChild(wrap);
+    return sec;
+  }
+  function place(rows) {
+    var secs = Array.prototype.slice.call(document.querySelectorAll("body > section[data-section]")).slice(1);
+    if (!secs.length) { // no sections to spread between: one band above the footer
+      var foot = document.querySelector("footer.site-footer");
+      if (foot) foot.parentNode.insertBefore(bandOf(rows.slice(0, PER_BAND * 2)), foot);
+      return;
+    }
+    var bands = Math.min(secs.length, MAX_BANDS, Math.ceil(rows.length / PER_BAND));
+    // every gap-th section gets a band after it, so they spread evenly down the page
+    var gap = secs.length / bands;
+    for (var b = 0; b < bands; b++) {
+      var after = secs[Math.min(secs.length - 1, Math.floor(gap * (b + 1)) - 1)];
+      after.parentNode.insertBefore(bandOf(rows.slice(b * PER_BAND, (b + 1) * PER_BAND)), after.nextSibling);
+    }
+  }
+  supabaseClient.from("photo_library").select("public_url, public_thumb_url, alt, caption")
+    .eq("status", "approved").eq("team_slug", slug).limit(MAX_BANDS * PER_BAND).then(function (r) {
       var rows = ((r && r.data) || []).filter(function (p) { return safe(p.public_url) && safe(p.public_thumb_url); });
       if (!rows.length) return;
-      var foot = document.querySelector("footer.site-footer");
-      if (!foot) return;
-      // Featured first, and landscape shots ahead of portrait ones for the wide bands.
-      rows.sort(function (a, b) {
-        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) ||
-          ((b.width || 0) >= (b.height || 0) ? 1 : 0) - ((a.width || 0) >= (a.height || 0) ? 1 : 0);
-      });
-      // Visible sections after the hero are the gaps the bands go into.
-      var secs = Array.prototype.filter.call(document.querySelectorAll("main section, body > section"), function (s) {
-        return !s.classList.contains("page-hero") && s.style.display !== "none" && !s.classList.contains("team-photo-band");
-      });
-      // Bands of 3, 3, then 2 photos after the first sections (the last one, the contact block, stays last).
-      var sizes = [3, 3, 2], used = 0, slots = Math.max(0, Math.min(sizes.length, secs.length - 1));
-      for (var i = 0; i < slots && used < rows.length; i++) {
-        var n = Math.min(sizes[i], rows.length - used);
-        if (n < 2) break;
-        var s = secs[i];
-        s.parentNode.insertBefore(band(rows.slice(used, used + n)), s.nextSibling);
-        used += n;
-      }
-      var rest = rows.slice(used);
-      if (!rest.length) return;
-      var sec = document.createElement("section");
-      sec.className = "section team-photos";
-      var wrap = document.createElement("div");
-      wrap.className = "container";
-      var h = document.createElement("h2");
-      h.textContent = "More photos";
-      var grid = document.createElement("div");
-      grid.className = "live-photos";
-      rest.forEach(function (p) { grid.appendChild(link(p)); });
-      wrap.appendChild(h); wrap.appendChild(grid); sec.appendChild(wrap);
-      foot.parentNode.insertBefore(sec, foot);
+      var go = function () { setTimeout(function () { place(rows); }, 900); };
+      if (document.readyState === "complete") go(); else window.addEventListener("load", go);
     }, function () {});
 })();

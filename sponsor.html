@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="images/eca-logo-240.png">
 <meta name="theme-color" content="#0a1f6b">
 <meta property="og:type" content="website">
+<link rel="canonical" href="https://eastcountyaquatics.github.io/website/sponsor.html">
 <meta property="og:url" content="https://eastcountyaquatics.github.io/website/sponsor.html">
 <meta property="og:title" content="Donate or Sponsor | San Diego East County Aquatics">
 <meta property="og:description" content="Sponsor San Diego East County Aquatics water polo club and put your business in front of East County families.">
@@ -148,6 +149,10 @@
             <label data-cms="sponsor-0010" for="dn-amount-other">Other Amount (USD)</label>
             <input type="number" id="dn-amount-other" step="0.01" min="1" placeholder="75.00">
           </div>
+          <div class="field">
+            <label for="dn-comments">Other comments (optional)</label>
+            <textarea id="dn-comments" rows="3" maxlength="2000" placeholder="For example: please use my gift for the scholarship fund."></textarea>
+          </div>
         </div>
 
         <!-- Sponsorship -->
@@ -195,6 +200,10 @@
           <div class="field">
             <label data-cms="sponsor-0021" for="sp-blurb">What would you like us to say about your business?</label>
             <textarea id="sp-blurb" rows="3" placeholder="A short description, address, or promotion you'd like featured."></textarea>
+          </div>
+          <div class="field">
+            <label for="sp-comments">Other comments (optional)</label>
+            <textarea id="sp-comments" rows="3" maxlength="2000" placeholder="Anything else you'd like us to know."></textarea>
           </div>
         </div>
 
@@ -357,6 +366,7 @@
         website_url: normalizeUrl(document.getElementById("sp-website").value),
         logo_url: normalizeUrl(document.getElementById("sp-logo").value),
         blurb: document.getElementById("sp-blurb").value.trim() || null,
+        ...(document.getElementById("sp-comments").value.trim() ? { comments: document.getElementById("sp-comments").value.trim() } : {}),
       };
     } else {
       const donorName = document.getElementById("dn-name").value.trim();
@@ -367,6 +377,7 @@
         contact_email: document.getElementById("dn-email").value.trim(),
         org_name: document.getElementById("dn-org").value.trim() || null,
         amount_cents: Math.round(dollars * 100),
+        ...(document.getElementById("dn-comments").value.trim() ? { comments: document.getElementById("dn-comments").value.trim() } : {}),
       };
     }
 

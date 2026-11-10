@@ -111,6 +111,10 @@
           <label data-cms="donate-0007" for="dn-amount">Amount (USD)</label>
           <input type="number" id="dn-amount" step="0.01" min="1" placeholder="50.00" required>
         </div>
+        <div class="field">
+          <label for="dn-comments">Other comments (optional)</label>
+          <textarea id="dn-comments" rows="3" maxlength="2000" placeholder="For example: please use my gift for the scholarship fund."></textarea>
+        </div>
         <button type="submit" id="donate-submit" data-cms="donate-btn01" class="btn btn-primary" style="width:100%;">Continue to Payment</button>
       </form>
     </div>
@@ -187,6 +191,7 @@
         contact_email: document.getElementById("dn-email").value.trim(),
         org_name: document.getElementById("dn-org").value.trim() || null,
         amount_cents: Math.round(dollars * 100),
+        ...(document.getElementById("dn-comments").value.trim() ? { comments: document.getElementById("dn-comments").value.trim() } : {}),
       })
       .select("id")
       .single();

@@ -165,6 +165,7 @@
         (isHttpUrl(s.website_url) ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.website_url) + '" target="_blank" rel="noopener">' + escapeHtml(s.website_url) + "</a></p>" : "") +
         (isHttpUrl(s.logo_url) ? '<p style="font-size:13px;margin-top:4px;"><a href="' + escapeHtml(s.logo_url) + '" target="_blank" rel="noopener">Logo image</a></p>' : "") +
         (s.blurb ? '<p style="font-size:13.5px;margin-top:8px;white-space:pre-wrap;">' + escapeHtml(s.blurb) + "</p>" : "") +
+        (s.comments ? '<p style="font-size:13.5px;margin-top:8px;white-space:pre-wrap;"><strong>Comments:</strong> ' + escapeHtml(s.comments) + "</p>" : "") +
         "</div>";
     }).join("");
   }

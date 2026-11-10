@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
               body: JSON.stringify({
                 from,
                 to: parentProfile.email,
+                cc: ccFor(parentProfile.email),
                 subject: title,
                 text: m.text,
               }),
@@ -149,6 +150,13 @@ Deno.serve(async (req) => {
     return json({ error: "Something went wrong sending reminders" }, 500);
   }
 });
+
+// Every email sent to a team is also copied to the club's own address.
+// Override with the CLUB_CC_EMAIL secret.
+const CLUB_CC = Deno.env.get("CLUB_CC_EMAIL") || "eastcountyaquatics@gmail.com";
+function ccFor(to: string): string[] | undefined {
+  return to.toLowerCase() === CLUB_CC.toLowerCase() ? undefined : [CLUB_CC];
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

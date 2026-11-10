@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
             const res = await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ from, to: parentProfile.email, subject, text: textBody }),
+              body: JSON.stringify({ from, to: parentProfile.email, cc: ccFor(parentProfile.email), subject, text: textBody }),
             });
             if (res.ok) emailed++;
             else emailErrors.push(`${parentProfile.email}: ${res.status}`);
@@ -152,6 +152,13 @@ function athleteTeamSlug(a: { team_slug: string | null; birthdate: string | null
   if (bracket === "8u" || bracket === "10u") return bracket + "-coed";
   const sex = (a.sex || "").toLowerCase();
   return sex === "male" ? bracket + "-boys" : sex === "female" ? bracket + "-girls" : null;
+}
+
+// Every email sent to a team is also copied to the club's own address.
+// Override with the CLUB_CC_EMAIL secret.
+const CLUB_CC = Deno.env.get("CLUB_CC_EMAIL") || "eastcountyaquatics@gmail.com";
+function ccFor(to: string): string[] | undefined {
+  return to.toLowerCase() === CLUB_CC.toLowerCase() ? undefined : [CLUB_CC];
 }
 
 function json(body: unknown, status = 200) {

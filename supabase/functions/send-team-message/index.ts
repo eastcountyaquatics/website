@@ -35,7 +35,11 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const teamSlug = String(body.team_slug || "").trim();
-    const subgroupId = body.subgroup_id ? String(body.subgroup_id) : null;
+    // One group (subgroup_id) or several (subgroup_ids); empty = the whole team.
+    const subgroupIds: string[] = Array.from(new Set([
+      ...(Array.isArray(body.subgroup_ids) ? body.subgroup_ids.map(String) : []),
+      ...(body.subgroup_id ? [String(body.subgroup_id)] : []),
+    ])).slice(0, 25);
     const subject = String(body.subject || "").trim();
     const text = String(body.body || "").trim();
     const sendEmail = body.send_email !== false;
@@ -52,12 +56,14 @@ Deno.serve(async (req) => {
 
     let athleteIds: string[] = [];
     let audience = "Whole team";
-    if (subgroupId) {
-      const { data: group } = await supabase.from("team_subgroups").select("id, name, team_slug").eq("id", subgroupId).maybeSingle();
-      if (!group || group.team_slug !== teamSlug) return json({ error: "That group isn't on this team" }, 404);
-      audience = group.name;
-      const { data: members } = await supabase.from("team_subgroup_members").select("athlete_id").eq("subgroup_id", subgroupId);
-      athleteIds = (members || []).map((m) => m.athlete_id);
+    if (subgroupIds.length) {
+      const { data: groups } = await supabase.from("team_subgroups").select("id, name, team_slug").in("id", subgroupIds);
+      if (!groups || groups.length !== subgroupIds.length || groups.some((g) => g.team_slug !== teamSlug)) {
+        return json({ error: "One of those groups isn't on this team" }, 404);
+      }
+      audience = groups.map((g) => g.name).join(", ");
+      const { data: members } = await supabase.from("team_subgroup_members").select("athlete_id").in("subgroup_id", subgroupIds);
+      athleteIds = Array.from(new Set((members || []).map((m) => m.athlete_id)));
     } else {
       const [{ data: allAthletes }, { data: activeRows }] = await Promise.all([
         supabase.from("athletes").select("id, team_slug, birthdate, sex"),
@@ -89,13 +95,14 @@ Deno.serve(async (req) => {
     let notified = 0;
     let emailed = 0;
     const emailErrors: string[] = [];
+    const sentTo: string[] = [];
     for (const parentId of parentIds) {
       const { error } = await supabase.from("notifications").insert({
         user_id: parentId,
         type: "team_message",
         title: subject,
         body: text,
-        data: { team_slug: teamSlug, subgroup_id: subgroupId, link },
+        data: { team_slug: teamSlug, subgroup_ids: subgroupIds, link },
       });
       if (!error) notified++;
 
@@ -106,9 +113,9 @@ Deno.serve(async (req) => {
             const res = await fetch("https://api.resend.com/emails", {
               method: "POST",
               headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ from, to: email, subject: emailSubject, text: emailText }),
+              body: JSON.stringify({ from, to: email, cc: ccFor(email), subject: emailSubject, text: emailText }),
             });
-            if (res.ok) emailed++;
+            if (res.ok) { emailed++; sentTo.push(email); }
             else emailErrors.push(`${email}: ${res.status}`);
           } catch (err) {
             emailErrors.push(err instanceof Error ? err.message : "send failed");
@@ -117,10 +124,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    await supabase.from("team_messages").insert({
-      team_slug: teamSlug, subgroup_id: subgroupId, audience_label: audience, subject, body: text,
-      sent_by: userId, families_notified: notified, families_emailed: emailed,
-    });
+    const logRow = {
+      team_slug: teamSlug, subgroup_id: subgroupIds.length === 1 ? subgroupIds[0] : null, audience_label: audience, subject, body: text,
+      sent_by: userId, families_notified: notified, families_emailed: emailed, recipients: sentTo,
+    };
+    // Falls back to the older columns if the recipients column isn't there yet.
+    const { error: logErr } = await supabase.from("team_messages").insert(logRow);
+    if (logErr) {
+      const { recipients: _r, ...older } = logRow;
+      await supabase.from("team_messages").insert(older);
+    }
 
     return json({ ok: true, notified, emailed, family_count: parentIds.length, email_configured: !!Deno.env.get("RESEND_API_KEY"), email_errors: emailErrors });
   } catch (err) {
@@ -144,6 +157,13 @@ function athleteTeamSlug(a: { team_slug: string | null; birthdate: string | null
   if (bracket === "8u" || bracket === "10u") return bracket + "-coed";
   const sex = (a.sex || "").toLowerCase();
   return sex === "male" ? bracket + "-boys" : sex === "female" ? bracket + "-girls" : null;
+}
+
+// Every email sent to a team is also copied to the club's own address.
+// Override with the CLUB_CC_EMAIL secret.
+const CLUB_CC = Deno.env.get("CLUB_CC_EMAIL") || "eastcountyaquatics@gmail.com";
+function ccFor(to: string): string[] | undefined {
+  return to.toLowerCase() === CLUB_CC.toLowerCase() ? undefined : [CLUB_CC];
 }
 
 function json(body: unknown, status = 200) {

@@ -1103,6 +1103,7 @@
     document.getElementById("add-athlete-toggle").style.display = show ? "none" : "inline-block";
     if (!show) {
       document.getElementById("athlete-form").reset();
+      if (typeof syncUswpRequired === "function") syncUswpRequired();
       document.getElementById("athlete-form-msg").textContent = "";
       document.getElementById("athlete_id").value = "";
       document.getElementById("athlete-form-title").textContent = "Add an Athlete";
@@ -1292,6 +1293,7 @@
     document.getElementById("athlete_sex").value = a.sex || "";
     document.getElementById("athlete_school").value = a.school || "";
     document.getElementById("athlete_uswp_number").value = a.uswp_number || "";
+    syncUswpRequired();
     document.getElementById("athlete_emergency_name").value = a.emergency_contact_name || "";
     document.getElementById("athlete_emergency_email").value = a.emergency_contact_email || "";
     document.getElementById("athlete_emergency_phone1").value = a.emergency_contact_phone1 || "";
@@ -1304,6 +1306,24 @@
     document.getElementById("athlete_notes").value = a.notes || "";
     document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
   }
+
+  // Splashball (ages 5-8) doesn't need a USA Water Polo number, so it's optional for
+  // athletes that young. Older athletes still need one.
+  function needsUswp(birthdate) {
+    const age = birthdate ? calcAge(birthdate) : null;
+    return !(age !== null && age <= 8);
+  }
+  function syncUswpRequired() {
+    const input = document.getElementById("athlete_uswp_number");
+    const label = document.querySelector('label[for="athlete_uswp_number"]');
+    const need = needsUswp(document.getElementById("athlete_birthdate").value);
+    input.required = need;
+    if (label) label.dataset.splash = need ? "" : "1";
+    input.placeholder = need ? "e.g. 1234567" : "Not needed for Splashball (ages 5-8)";
+  }
+  document.getElementById("athlete_birthdate").addEventListener("input", syncUswpRequired);
+  document.getElementById("athlete_birthdate").addEventListener("change", syncUswpRequired);
+  syncUswpRequired();
 
   document.getElementById("athlete-form").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -1520,7 +1540,7 @@
       "</div>";
     athletes.forEach(function (a) {
       const required = [
-        ["School", a.school], ["USWP Number", a.uswp_number],
+        ["School", a.school], ...(needsUswp(a.birthdate) ? [["USWP Number", a.uswp_number]] : []),
         ["Emergency Contact 1", a.emergency_contact_name], ["Relationship", a.emergency_contact_relationship],
         ["Emergency Phone", a.emergency_contact_phone1],
       ];
@@ -1529,7 +1549,7 @@
         '<button type="button" class="btn btn-outline-dark" data-review-edit="' + a.id + '">Edit</button></div>' +
         reviewLine("Birthdate", a.birthdate ? formatDate(a.birthdate + "T00:00:00") : "", true) +
         reviewLine("School", a.school, true) +
-        reviewLine("USWP Number", a.uswp_number, true) +
+        reviewLine("USWP Number", a.uswp_number, needsUswp(a.birthdate)) +
         reviewLine("Emergency Contact 1", [a.emergency_contact_name, a.emergency_contact_relationship, a.emergency_contact_phone1].filter(Boolean).join(" \u00b7 "), true) +
         (a.emergency_contact_name && !a.emergency_contact_relationship ? reviewLine("Relationship", "", true) : "") +
         reviewLine("Emergency Contact 2", [a.emergency_contact2_name, a.emergency_contact2_relationship, a.emergency_contact2_phone1].filter(Boolean).join(" \u00b7 "), false) +

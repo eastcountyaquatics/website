@@ -4,8 +4,15 @@
 // Markup: <section data-zeffy-section style="display:none"> ... <div data-zeffy-campaigns data-show="all|donation|event"></div></section>
 // The section stays hidden when there's nothing to show.
 (function () {
-  var boxes = document.querySelectorAll("[data-zeffy-campaigns]");
-  if (!boxes.length || typeof supabaseClient === "undefined") return;
+  if (typeof supabaseClient === "undefined") return;
+  // Also callable later (js/live-sections.js adds Zeffy cards to pages after load).
+  window.ecaZeffyShowcase = run;
+  var drawn = [];
+  run();
+  function run() {
+  var boxes = Array.prototype.filter.call(document.querySelectorAll("[data-zeffy-campaigns]"), function (b) { return drawn.indexOf(b) === -1; });
+  if (!boxes.length) return;
+  boxes.forEach(function (b) { drawn.push(b); });
   var T = function (k, v, d) { return typeof ecaT === "function" ? ecaT(k, v) : d; };
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function money(c) { return "$" + Math.round((c || 0) / 100).toLocaleString("en-US"); }
@@ -43,4 +50,5 @@
       if (sec) sec.style.display = "";
     });
   }, function () {});
+  }
 })();

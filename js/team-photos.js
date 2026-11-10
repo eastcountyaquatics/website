@@ -4,6 +4,9 @@
 // The best photos are woven into the page between its sections; the rest
 // fill a "More photos" grid above the footer.
 (function () {
+  // Paused for now: set to true to show photo bands and the photo grid on team pages again.
+  var ENABLED = false;
+  if (!ENABLED) return;
   if (typeof supabaseClient === "undefined") return;
   var slug = window.TEAM_SLUG || (/masters\.html/.test(location.pathname) ? "masters" : "");
   if (!slug) return;

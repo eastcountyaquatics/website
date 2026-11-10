@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from("hosted_events")
-      .select("id, name, event_date, end_date, additional_dates, levels, fee_cents, price_by_level, level_prices")
+      .select("id, name, event_date, end_date, additional_dates, levels, fee_cents, price_by_level, level_prices, level_caps")
       .eq("id", invite.event_id)
       .maybeSingle();
     if (eventError || !event) return json({ error: "This event could not be found." }, 404);
@@ -88,6 +88,31 @@ Deno.serve(async (req) => {
       registered.push({ level: t.level, count: t.count, fee_cents: fee });
     }
     if (!registered.length) return json({ error: "Pick at least one team to sign up." }, 400);
+
+    // Owner-set limits per age group (Admin > Hosted Events > Team limits).
+    const caps: { level: string; max_total: number | null; max_per_club: number | null }[] = Array.isArray(event.level_caps) ? event.level_caps : [];
+    if (caps.length) {
+      const taken: Record<string, number> = {};
+      if (caps.some((c) => c.max_total)) {
+        const { data: paid } = await supabase.from("hosted_event_invites").select("registered_teams").eq("event_id", event.id).eq("status", "paid");
+        for (const row of paid || []) {
+          for (const t of (row.registered_teams || []) as { level: string; count: number }[]) taken[t.level] = (taken[t.level] || 0) + Number(t.count || 0);
+        }
+      }
+      for (const r of registered) {
+        const cap = caps.find((c) => c.level === r.level);
+        if (!cap) continue;
+        if (cap.max_per_club && r.count > cap.max_per_club) {
+          return json({ error: `Each club can bring up to ${cap.max_per_club} ${r.level} team${cap.max_per_club === 1 ? "" : "s"}.` }, 400);
+        }
+        if (cap.max_total) {
+          const left = Math.max(0, cap.max_total - (taken[r.level] || 0));
+          if (r.count > left) {
+            return json({ error: left === 0 ? `${r.level} is full.` : `Only ${left} ${r.level} spot${left === 1 ? "" : "s"} left.` }, 409);
+          }
+        }
+      }
+    }
     const amountCents = registered.reduce((sum, r) => sum + r.fee_cents * r.count, 0);
 
     // Keep the contact email on file current -- whoever actually pays is

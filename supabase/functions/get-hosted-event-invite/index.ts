@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
     const { data: event, error: eventError } = await supabase
       .from("hosted_events")
-      .select("id, name, event_date, end_date, additional_dates, levels, description, location, fee_cents, price_by_level, level_prices, schedule_url")
+      .select("id, name, event_date, end_date, additional_dates, levels, description, location, fee_cents, price_by_level, level_prices, level_caps, schedule_url")
       .eq("id", invite.event_id)
       .maybeSingle();
     if (eventError || !event) return json({ error: "This event could not be found." }, 404);
@@ -56,6 +56,16 @@ Deno.serve(async (req) => {
     const closedReason = lastDate && today > lastDate
       ? "This event has already taken place."
       : null;
+
+    // Spots already taken in each age group (paid sign-ups only), for "N spots left".
+    const caps: { level: string; max_total: number | null; max_per_club: number | null }[] = Array.isArray(event.level_caps) ? event.level_caps : [];
+    const taken: Record<string, number> = {};
+    if (caps.some((c) => c.max_total)) {
+      const { data: paid } = await supabase.from("hosted_event_invites").select("registered_teams").eq("event_id", event.id).eq("status", "paid");
+      for (const row of paid || []) {
+        for (const t of (row.registered_teams || []) as { level: string; count: number }[]) taken[t.level] = (taken[t.level] || 0) + Number(t.count || 0);
+      }
+    }
 
     return json({
       status: invite.status,
@@ -74,6 +84,10 @@ Deno.serve(async (req) => {
         fee_cents: event.fee_cents,
         price_by_level: event.price_by_level,
         level_prices: event.level_prices ?? [],
+        level_caps: caps.map((c) => ({
+          level: c.level, max_per_club: c.max_per_club ?? null, max_total: c.max_total ?? null,
+          spots_left: c.max_total ? Math.max(0, c.max_total - (taken[c.level] || 0)) : null,
+        })),
         schedule_url: event.schedule_url,
       },
     });

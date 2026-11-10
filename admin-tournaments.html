@@ -324,6 +324,7 @@
             ? '<div class="admin-list-actions">' +
               '<a href="admin-tournament-manage.html?id=' + t.id + '" class="btn btn-outline-dark" style="padding:6px 12px;font-size:13px;text-decoration:none;">Manage &rarr;</a>' +
               '<button data-edit="' + t.id + '">Edit</button>' +
+              '<button data-clone="' + t.id + '" title="Start a new tournament with this one\'s settings">Duplicate</button>' +
               "</div>"
             : "") +
           "</div>"
@@ -335,6 +336,12 @@
       btn.addEventListener("click", function () {
         const t = tournaments.find(function (x) { return x.id === btn.dataset.edit; });
         if (t) startEditTournament(t);
+      });
+    });
+    listEl.querySelectorAll("[data-clone]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const t = tournaments.find(function (x) { return x.id === btn.dataset.clone; });
+        if (t) startCloneTournament(t);
       });
     });
   }
@@ -440,6 +447,27 @@
     else setDateMode("single");
 
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Duplicate: the form is filled with this tournament's settings but saves as a NEW one. Dates, RSVP deadline
+  // and the Zeffy form link are cleared (each tournament has its own), and it starts unpublished.
+  function startCloneTournament(t) {
+    startEditTournament(t);
+    document.getElementById("t-id").value = "";
+    document.getElementById("tournament-form-title").textContent = "Add a Tournament (copy of " + t.name + ")";
+    document.getElementById("t-name").value = t.name + " (copy)";
+    document.getElementById("t-event-date").value = "";
+    document.getElementById("t-end-date").value = "";
+    extraDatesDraft = [];
+    renderExtraDates(extraDatesDraft);
+    setDateMode("single");
+    document.getElementById("t-rsvp-deadline").value = "";
+    document.getElementById("t-zeffy-url").value = "";
+    document.getElementById("t-published").checked = false;
+    document.getElementById("t-submit-btn").textContent = "Add Tournament";
+    const msg = document.getElementById("tournament-form-msg");
+    if (msg) { msg.className = "form-msg"; msg.textContent = "Copied. Set the new dates, deadline and Zeffy form, then click Add Tournament."; }
+    document.getElementById("t-name").focus();
   }
 
   function resetTournamentForm() {

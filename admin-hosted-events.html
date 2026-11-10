@@ -175,6 +175,11 @@
           <div id="ev-level-prices" style="display:none;"></div>
         </div>
         <div class="field">
+          <label>Team limits</label>
+          <label class="switch-row"><input type="checkbox" id="ev-caps-on" role="switch"> Limit how many teams can sign up</label>
+          <div id="ev-level-caps" style="display:none;"></div>
+        </div>
+        <div class="field">
           <label for="ev-invite-emails">Invite Teams by Email</label>
           <textarea id="ev-invite-emails" rows="3" placeholder="coach@otherclub.org, manager@anotherteam.com"></textarea>
           <p class="muted" style="font-size:12px;margin-top:4px;">Optional. Paste one or more emails (commas or new lines). Each team is emailed its own signup link as soon as you save &mdash; they enter their team name when they sign up. Teams already invited to this event are skipped.</p>
@@ -470,6 +475,42 @@
   }
   document.getElementById("ev-price-by-level").addEventListener("change", renderLevelPrices);
 
+  // Team limits per age group: spots in total (all clubs) and per club. Blank = no limit.
+  let levelCapDraft = {};
+  let hadCaps = false; // the event being edited already had limits (so clearing them must be saved)
+  function renderLevelCaps() {
+    const wrap = document.getElementById("ev-level-caps");
+    wrap.querySelectorAll("[data-cap-total]").forEach(function (i) { (levelCapDraft[i.dataset.capTotal] = levelCapDraft[i.dataset.capTotal] || {}).total = i.value; });
+    wrap.querySelectorAll("[data-cap-club]").forEach(function (i) { (levelCapDraft[i.dataset.capClub] = levelCapDraft[i.dataset.capClub] || {}).club = i.value; });
+    const on = document.getElementById("ev-caps-on").checked;
+    wrap.style.display = on ? "block" : "none";
+    if (!on) { wrap.innerHTML = ""; return; }
+    const levels = selectedLevels();
+    wrap.innerHTML = levels.length
+      ? '<p class="muted" style="font-size:12px;margin:0 0 4px;">For each age group: most teams in total, and most per club. Leave blank for no limit.</p>' +
+        levels.map(function (l) {
+          const d = levelCapDraft[l] || {};
+          return '<div class="lp-row"><span>' + escapeHtml(l) + '</span><span class="lp-input">Total <input type="number" min="1" max="500" data-cap-total="' + escapeHtml(l) + '" value="' + escapeHtml(d.total || "") + '" aria-label="Most teams in ' + escapeHtml(l) + '"></span>' +
+            '<span class="lp-input">Per club <input type="number" min="1" max="10" data-cap-club="' + escapeHtml(l) + '" value="' + escapeHtml(d.club || "") + '" aria-label="Most teams per club in ' + escapeHtml(l) + '"></span></div>';
+        }).join("")
+      : '<p class="muted" style="font-size:13px;">Pick the age groups above first.</p>';
+  }
+  document.getElementById("ev-caps-on").addEventListener("change", renderLevelCaps);
+  document.getElementById("ev-level-options").addEventListener("change", renderLevelCaps);
+  document.getElementById("ev-level-other").addEventListener("input", renderLevelCaps);
+  // [{level, max_total, max_per_club}] from the form (only rows with a limit).
+  function collectLevelCaps(levels) {
+    if (!document.getElementById("ev-caps-on").checked) return [];
+    renderLevelCaps();
+    const out = [];
+    levels.forEach(function (l) {
+      const d = levelCapDraft[l] || {};
+      const t = parseInt(d.total, 10), c = parseInt(d.club, 10);
+      if (t > 0 || c > 0) out.push({ level: l, max_total: t > 0 ? t : null, max_per_club: c > 0 ? Math.min(c, 10) : null });
+    });
+    return out;
+  }
+
   // "$300/team" or "$250–$350/team" for an event's list row.
   function feeSummary(ev) {
     if (!ev.price_by_level || !(ev.level_prices || []).length) return formatAmount(ev.fee_cents) + "/team";
@@ -614,6 +655,11 @@
     (ev.level_prices || []).forEach(function (p) { levelPriceDraft[p.level] = (p.fee_cents / 100).toFixed(2); });
     document.getElementById("ev-price-by-level").checked = !!ev.price_by_level;
     renderLevelPrices();
+    levelCapDraft = {};
+    (ev.level_caps || []).forEach(function (c) { levelCapDraft[c.level] = { total: c.max_total || "", club: c.max_per_club || "" }; });
+    hadCaps = (ev.level_caps || []).length > 0;
+    document.getElementById("ev-caps-on").checked = hadCaps;
+    renderLevelCaps();
 
     document.getElementById("event-submit-btn").textContent = "Save Changes";
     document.getElementById("event-cancel-btn").style.display = "inline-block";
@@ -649,6 +695,9 @@
     levelPriceDraft = {};
     document.getElementById("ev-price-by-level").checked = false;
     renderLevelPrices();
+    levelCapDraft = {}; hadCaps = false;
+    document.getElementById("ev-caps-on").checked = false;
+    renderLevelCaps();
     document.getElementById("ev-notify-wrap").style.display = "none";
     document.getElementById("ev-notify").checked = false;
     document.getElementById("ev-notify-note").value = "";
@@ -713,6 +762,10 @@
       price_by_level: priceByLevel,
       level_prices: levelPrices,
     };
+    // Only sent when set, so saving still works before the database has the column.
+    const caps = collectLevelCaps(levels);
+    if (caps.length) payload.level_caps = caps;
+    else if (hadCaps) payload.level_caps = [];
 
     const emails = parseEmails(document.getElementById("ev-invite-emails").value);
     const resultsEl = document.getElementById("event-invite-results");

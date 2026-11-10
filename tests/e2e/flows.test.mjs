@@ -287,3 +287,20 @@ test("family with no athletes sees no programs, just a prompt to add an athlete"
   await page.click("#reg-add-athlete");
   await page.waitForSelector("#athlete-form", { state: "visible" });
 });
+
+test("tournaments: Duplicate copies the settings into a new, unpublished tournament with dates cleared", async () => {
+  const page = await env.page({
+    seed: {
+      tournaments: [{ id: "t1", name: "Winter Classic", event_date: "2026-12-05", status: "live", teams: ["14u-boys"], is_published: true, payment_provider: "zeffy", zeffy_form_url: "https://www.zeffy.com/en-US/ticketing/x", location: "Grossmont High" }],
+      schedules: TEAMS,
+    },
+  });
+  await page.goto(env.url + "/admin-tournaments.html");
+  await page.waitForSelector("[data-clone]");
+  await page.click("[data-clone]");
+  assert.equal(await page.inputValue("#t-name"), "Winter Classic (copy)");
+  assert.equal(await page.inputValue("#t-id"), "");
+  assert.equal(await page.inputValue("#t-event-date"), "");
+  assert.equal(await page.inputValue("#t-location"), "Grossmont High");
+  assert.equal(await page.isChecked("#t-published"), false);
+});

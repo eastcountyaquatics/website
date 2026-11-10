@@ -844,6 +844,44 @@
       name.className = "cms-sec-name";
       name.textContent = added ? "Your section" : "Section " + (i + 1);
       bar.appendChild(name);
+      // Drag the grip onto another section to drop this one above or below it.
+      const grip = add("\u2630", "Drag to move this section", function () {}, "cms-sec-grip");
+      grip.draggable = true;
+      grip.style.cursor = "grab";
+      grip.addEventListener("dragstart", function (e) {
+        e.stopPropagation();
+        if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", "eca-section"); }
+        doc.__dragSec = sec;
+        sec.style.opacity = "0.5";
+      });
+      grip.addEventListener("dragend", function () {
+        sec.style.opacity = "";
+        doc.querySelectorAll(".cms-drop-line").forEach(function (x) { x.classList.remove("cms-drop-line"); x.style.boxShadow = ""; });
+        doc.__dragSec = null;
+      });
+      if (!sec.__dnd) { sec.__dnd = true;
+      sec.addEventListener("dragover", function (e) {
+        const d = doc.__dragSec;
+        if (!d || d === sec) return;
+        e.preventDefault();
+        const after = e.clientY > sec.getBoundingClientRect().top + sec.offsetHeight / 2;
+        sec.classList.add("cms-drop-line");
+        sec.style.boxShadow = after ? "inset 0 -6px 0 #ffd400" : "inset 0 6px 0 #ffd400";
+        sec.__dropAfter = after;
+      });
+      sec.addEventListener("dragleave", function () { sec.classList.remove("cms-drop-line"); sec.style.boxShadow = ""; });
+      sec.addEventListener("drop", function (e) {
+        const d = doc.__dragSec;
+        if (!d || d === sec) return;
+        e.preventDefault();
+        sec.classList.remove("cms-drop-line"); sec.style.boxShadow = "";
+        sec.parentNode.insertBefore(d, sec.__dropAfter ? sec.nextSibling : sec);
+        d.style.opacity = "";
+        refreshSectionBars(doc);
+        resetSelectionAfterMove();
+        markLayoutDirty();
+      });
+      }
       if (i === 0) add("+ Add above", "Add a new section above this one", function (b) { openTemplateGallery(b, null, { ref: sec, before: true }); }, "cms-sec-add-above");
       add("+ Add below", "Add a new section below this one", function (b) { openTemplateGallery(b, null, { ref: sec, before: false }); }, "cms-sec-add-below");
       if (i > 0) add("\u2191", "Move this section up", function () { moveSection(doc, sec, -1); });

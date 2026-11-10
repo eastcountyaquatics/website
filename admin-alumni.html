@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alumni | ECA Admin</title>
+<title>Contacts | ECA Admin</title>
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="css/styles.css?v=20261113">
 <script src="js/theme.js"></script>
@@ -78,7 +78,7 @@
 
 <section class="admin-header">
   <div class="container">
-    <h1>Alumni</h1>
+    <h1>Contacts</h1>
     <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
   </div>
 </section>
@@ -95,8 +95,9 @@
 <section class="section-tight">
   <div class="container" style="max-width:900px;">
     <div class="notice" style="margin-bottom:20px;">
-      People who joined the <a href="alumni.html" target="_blank" rel="noopener">public Alumni page</a>. Share that link anywhere (email, Instagram, flyers).
-      Players and parents are kept apart so you can contact each group on its own.
+      Everyone the club can reach: <strong>accounts</strong> (everyone who signs up on the site is added automatically), people who joined the
+      <a href="alumni.html" target="_blank" rel="noopener">public Alumni page</a>, and anyone you add or import. Players and parents are kept apart so you can contact
+      each group on its own. People who haven&rsquo;t agreed to club news are marked <em>No email</em>, and Copy emails leaves them out.
     </div>
     <div id="al-msg" class="form-msg"></div>
     <div class="al-stats">
@@ -107,6 +108,7 @@
     </div>
     <div class="al-tools">
       <input type="search" id="al-search" placeholder="Search name or email&hellip;" aria-label="Search">
+      <select id="al-src" aria-label="Where they came from"><option value="">All sources</option><option value="account">Accounts</option><option value="alumni page">Alumni page</option><option value="imported">Imported</option><option value="added by staff">Added by staff</option></select>
       <select id="al-seg" aria-label="Group"><option value="">Everyone</option><option value="player">Players</option><option value="parent">Parents</option><option value="both">Both</option></select>
       <button type="button" class="btn btn-primary" id="al-add">+ Add someone</button>
       <button type="button" class="btn btn-outline-dark" id="al-paste">Paste a list</button>
@@ -183,6 +185,8 @@
       if (seg === "player" && r.segment === "parent") return false;
       if (seg === "parent" && r.segment === "player") return false;
       if (seg === "both" && r.segment !== "both") return false;
+      var src = document.getElementById("al-src").value;
+      if (src && r.source !== src) return false;
       return !q || (r.first_name + " " + r.last_name + " " + r.email).toLowerCase().indexOf(q) !== -1;
     });
   }
@@ -192,7 +196,7 @@
     var list = visible(), el = document.getElementById("al-list");
     if (!list.length) { el.innerHTML = '<p class="muted">' + (rows.length ? "No one matches." : "No one yet. Share the Alumni page link, or add people here.") + "</p>"; return; }
     el.innerHTML = list.map(function (r) {
-      return '<div class="al-row"><div><strong>' + escapeHtml(r.first_name + " " + r.last_name) + '</strong><span class="al-pill">' + SEG[r.segment] + "</span>" +
+      return '<div class="al-row"><div><strong>' + escapeHtml(r.first_name + " " + r.last_name) + '</strong><span class="al-pill">' + SEG[r.segment] + "</span>" + (r.source === "account" ? '<span class="al-pill" style="background:#e2f6e8;color:#145c2c;">Account</span>' : "") +
         (r.wants_email ? "" : '<span class="al-pill" style="background:#fdecec;color:#a12626;">No email</span>') +
         '<div class="muted" style="font-size:13px;">' + escapeHtml(r.email) + (r.phone ? " &middot; " + escapeHtml(r.phone) : "") + (r.grad_year ? " &middot; " + r.grad_year : "") + "</div>" +
         (r.notes ? '<div style="font-size:13px;margin-top:4px;">' + escapeHtml(r.notes) + "</div>" : "") + "</div>" +
@@ -273,6 +277,7 @@
   });
   document.getElementById("al-search").addEventListener("input", draw);
   document.getElementById("al-seg").addEventListener("change", draw);
+  document.getElementById("al-src").addEventListener("change", draw);
   // Copy the emails of whoever is shown (only people who said yes to email) to paste into BCC.
   document.getElementById("al-copy").addEventListener("click", function () {
     var emails = visible().filter(function (r) { return r.wants_email; }).map(function (r) { return r.email; });
@@ -283,8 +288,8 @@
   });
   function csvCell(v) { var t = String(v == null ? "" : v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; }
   document.getElementById("al-csv").addEventListener("click", function () {
-    var out = [["First name", "Last name", "Email", "Phone", "Group", "Last year", "OK to email", "Notes", "Joined"]].concat(visible().map(function (r) {
-      return [r.first_name, r.last_name, r.email, r.phone || "", SEG[r.segment], r.grad_year || "", r.wants_email ? "yes" : "no", r.notes || "", r.created_at];
+    var out = [["First name", "Last name", "Email", "Phone", "Group", "Last year", "OK to email", "Source", "Notes", "Joined"]].concat(visible().map(function (r) {
+      return [r.first_name, r.last_name, r.email, r.phone || "", SEG[r.segment], r.grad_year || "", r.wants_email ? "yes" : "no", r.source || "", r.notes || "", r.created_at];
     }));
     var blob = new Blob(["\ufeff" + out.map(function (r) { return r.map(csvCell).join(","); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "alumni.csv"; document.body.appendChild(a); a.click();

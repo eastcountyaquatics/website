@@ -111,7 +111,8 @@
         <label data-cms="signup-0009" for="confirm_password">Confirm Password</label>
         <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" minlength="8" required>
       </div>
-      <button type="submit" id="submit-btn" data-cms="signup-btn01" class="btn btn-primary auth-submit">Create Account</button>
+            <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;font-size:14px;margin:4px 0 14px;"><input type="checkbox" id="wants_news" checked style="width:auto;margin-top:4px;"> <span>Email me club news and updates (optional; you can ask to stop any time). Registration and payment emails are always sent.</span></label>
+<button type="submit" id="submit-btn" data-cms="signup-btn01" class="btn btn-primary auth-submit">Create Account</button>
     </form>
 
     <div data-cms="signup-0010" class="auth-switch">Already have an account? <a href="login.html">Sign in</a></div>
@@ -192,7 +193,7 @@
       email: email,
       password: password,
       options: {
-        data: { full_name: fullName, first_name: firstName, last_name: lastName, phone: phone },
+        data: { full_name: fullName, first_name: firstName, last_name: lastName, phone: phone, wants_news: document.getElementById("wants_news").checked },
         emailRedirectTo: window.location.origin + window.location.pathname.replace("signup.html", "login.html"),
       },
     });

@@ -607,3 +607,17 @@ html.eca-edit .eca-live--countdown::before{content:"Countdown: type the date, th
 html.eca-edit .eca-live--video::before{content:"Video: paste a YouTube or Vimeo link here";}
 html.eca-edit .eca-live--map::before{content:"Map: type the address here";}
 html.eca-edit .eca-live--photos::before{content:"Team photos (live): approved Photo Library photos; optionally type a team code like 14u-boys";}
+
+/* Photo bands woven between team page sections (js/team-photos.js) */
+.team-photo-band{padding:28px 0;}
+.photo-band-row{display:grid;gap:12px;grid-template-columns:repeat(3,1fr);}
+.photo-band-row.photo-band-2{grid-template-columns:repeat(2,1fr);}
+.photo-band-row a{display:block;overflow:hidden;border-radius:14px;box-shadow:0 10px 24px rgba(10,31,107,.16);}
+.photo-band-row img{width:100%;height:260px;object-fit:cover;display:block;transition:transform .4s ease;}
+.photo-band-row a:hover img{transform:scale(1.04);}
+@media(max-width:700px){
+  .photo-band-row,.photo-band-row.photo-band-2{grid-template-columns:1fr 1fr;}
+  .photo-band-row.photo-band-3 a:first-child{grid-column:1/-1;}
+  .photo-band-row img{height:170px;}
+  .photo-band-row.photo-band-3 a:first-child img{height:210px;}
+}

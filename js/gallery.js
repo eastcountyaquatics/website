@@ -21,23 +21,29 @@
   // Built-in photos use their small WebP copy; owner photos are used as uploaded.
   function srcOf(p) { return /^images\//.test(p.url) && /\.jpg$/.test(p.url) ? p.url.replace(/^images\//, "images/thumbs/").replace(/\.jpg$/, ".webp") : p.url; }
 
+  function rowHtml(list) {
+    // Two copies back to back so the loop is seamless; the second is hidden from screen readers.
+    return [0, 1].map(function (copy) {
+      return list.map(function (p) {
+        return '<img src="' + esc(srcOf(p)) + '" alt="' + (copy ? "" : esc(p.alt || "")) + '" loading="lazy"' + (copy ? ' aria-hidden="true"' : "") + ">";
+      }).join("");
+    }).join("");
+  }
   function render(list) {
     document.querySelectorAll("[data-gallery]").forEach(function (el) {
       el.innerHTML = "";
       if (!list.length) { el.style.display = "none"; return; }
       el.style.display = "";
-      var track = document.createElement("div");
-      track.className = "gallery-track";
-      // Two copies back to back so the loop is seamless; the second is
-      // hidden from screen readers.
-      track.innerHTML = [0, 1].map(function (copy) {
-        return list.map(function (p) {
-          return '<img src="' + esc(srcOf(p)) + '" alt="' + (copy ? "" : esc(p.alt || "")) + '" loading="lazy"' + (copy ? ' aria-hidden="true"' : "") + ">";
-        }).join("");
-      }).join("");
-      // Short lists still need to fill the strip: keep the loop speed per photo.
-      track.style.animationDuration = Math.max(30, list.length * 6) + "s";
-      el.appendChild(track);
+      // Plenty of photos: two rows drifting in opposite directions. Few: one row.
+      var rows = list.length >= 16 ? [list.filter(function (_, i) { return i % 2 === 0; }), list.filter(function (_, i) { return i % 2 === 1; })] : [list];
+      rows.forEach(function (row, i) {
+        var track = document.createElement("div");
+        track.className = "gallery-track" + (i % 2 ? " reverse" : "");
+        track.innerHTML = rowHtml(row);
+        // Keep the drift speed per photo, so short rows don't race.
+        track.style.animationDuration = Math.max(40, row.length * 7) + "s";
+        el.appendChild(track);
+      });
     });
   }
 
@@ -55,10 +61,21 @@
     var v = res && res.data && res.data.value;
     var list = v && Array.isArray(v.photos) ? v.photos.filter(function (p) { return p && safe(p.url); }) : null;
     var base = list ? list : builtIn;
-    // Owner-approved photos marked "featured" in Admin > Photo Library join the strip.
-    supabaseClient.from("photo_library").select("public_thumb_url, alt").eq("status", "approved").eq("featured", true).limit(24).then(function (r) {
-      var extra = ((r && r.data) || []).filter(function (p) { return safe(p.public_thumb_url); }).map(function (p) { return { url: p.public_thumb_url, alt: p.alt || "ECA team photo" }; });
-      finish(base.concat(extra));
+    // Owner-approved photos from Admin > Photo Library: featured ones lead, then
+    // approved photos from every team, taken in turn so no one team dominates.
+    supabaseClient.from("photo_library").select("public_thumb_url, alt, team_slug, featured").eq("status", "approved").limit(200).then(function (r) {
+      var rows = ((r && r.data) || []).filter(function (p) { return safe(p.public_thumb_url); });
+      var feat = rows.filter(function (p) { return p.featured; });
+      var byTeam = {};
+      rows.filter(function (p) { return !p.featured; }).forEach(function (p) { (byTeam[p.team_slug || ""] = byTeam[p.team_slug || ""] || []).push(p); });
+      var rest = [], more = true;
+      while (more && rest.length < 42) {
+        more = false;
+        Object.keys(byTeam).forEach(function (t) { if (byTeam[t].length) { rest.push(byTeam[t].shift()); more = true; } });
+      }
+      var fresh = feat.concat(rest).map(function (p) { return { url: p.public_thumb_url, alt: p.alt || "ECA team photo" }; });
+      // Enough new photos: they replace the old built-ins. Otherwise the old ones stay alongside.
+      finish(fresh.length >= 12 ? fresh : base.concat(fresh));
     }, function () { finish(base); });
   }, function () { finish(builtIn); });
 })();

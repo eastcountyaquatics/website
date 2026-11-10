@@ -60,9 +60,10 @@ h3{font-size:21px;font-weight:700;}
 
 /* Scrolling photo gallery: a slow, endless strip of real team photos.
    Pauses on hover; still (and swipeable) if the visitor prefers less motion. */
-.gallery{padding:8px 0 56px;overflow:hidden;}
+.gallery{padding:8px 0 56px;overflow:hidden;display:flex;flex-direction:column;gap:14px;}
 .gallery-track{display:flex;gap:14px;width:max-content;animation:eca-scroll 70s linear infinite;}
-.gallery-track img{height:260px;width:auto;border-radius:var(--radius);flex:none;}
+.gallery-track.reverse{animation-direction:reverse;}
+.gallery-track img{height:230px;width:auto;border-radius:var(--radius);flex:none;}
 .gallery:hover .gallery-track{animation-play-state:paused;}
 @keyframes eca-scroll{from{transform:translateX(0);}to{transform:translateX(calc(-50% - 7px));}}
 @media(prefers-reduced-motion:reduce){

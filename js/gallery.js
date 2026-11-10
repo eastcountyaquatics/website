@@ -50,6 +50,9 @@
   var builtIn = PHOTOS.map(function (p) { return { url: "images/" + p[0], alt: p[1] }; });
   window.ECA_GALLERY_DEFAULTS = builtIn;
   if (!document.querySelector("[data-gallery]")) return;
+  // Paused for now: set to true to show the scrolling photo strip again.
+  var ENABLED = false;
+  if (!ENABLED) { document.querySelectorAll("[data-gallery]").forEach(function (el) { el.style.display = "none"; }); return; }
   // Owners manage the list on Admin > Photo Gallery (site_settings
   // "gallery_photos"); until they do, or if Supabase is slow, the built-in
   // photos show.

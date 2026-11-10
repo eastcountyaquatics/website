@@ -574,3 +574,35 @@ table.schedule tr:nth-child(even){background:var(--foam);}
 }
 :where(select, textarea, input):focus{outline:2px solid var(--aqua);outline-offset:1px;border-color:var(--blue);}
 :where(select:disabled, textarea:disabled, input:disabled){opacity:.6;cursor:default;}
+
+/* Live sections (js/live-sections.js) */
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin:20px 0;}
+.live-card{text-decoration:none;color:inherit;display:block;}
+a.live-card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(10,31,107,.12);}
+.live-card h3{margin:0 0 6px;font-size:18px;}
+.live-card p{margin:0 0 10px;}
+.live-price{font-size:22px;font-weight:800;color:var(--blue);}
+.live-list{list-style:none;padding:0;margin:16px 0;}
+.live-list li{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #e3e6f0;}
+.live-person{text-align:center;}
+.live-person img{width:96px;height:96px;border-radius:50%;object-fit:cover;margin:0 auto 10px;display:block;}
+.live-initial{display:flex;width:96px;height:96px;border-radius:50%;background:#e3ecff;color:var(--navy);font-size:36px;font-weight:800;align-items:center;justify-content:center;margin:0 auto 10px;}
+.live-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:20px 0;}
+.live-photos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:block;}
+.live-countdown{text-align:center;padding:28px 16px;background:var(--navy);color:#fff;border-radius:14px;margin:20px 0;}
+.live-countdown strong{display:block;font-size:56px;line-height:1;color:var(--gold);}
+.live-embed{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;margin:20px 0 0;background:#000;}
+.live-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.live-empty{margin:16px 0;}
+/* In Edit Website: a labeled placeholder instead of today's data. */
+html.eca-edit .eca-live{min-height:64px;border:2px dashed #b9c6ff;border-radius:12px;padding:30px 16px 14px;position:relative;background:#f5f7ff;margin:20px 0;}
+html.eca-edit .eca-live::before{position:absolute;left:12px;top:8px;font:700 12px/1.2 Roboto,sans-serif;color:#1a3fa8;text-transform:uppercase;letter-spacing:.04em;pointer-events:none;}
+html.eca-edit .eca-live--teams::before{content:"Live: your teams (updates automatically)";}
+html.eca-edit .eca-live--sessions::before{content:"Live: open registration sessions (updates automatically)";}
+html.eca-edit .eca-live--tournaments::before{content:"Live: upcoming tournaments (updates automatically)";}
+html.eca-edit .eca-live--coaches::before{content:"Live: coaches with photos (updates automatically)";}
+html.eca-edit .eca-live--gallery::before{content:"Live: your Photo Gallery (updates automatically)";}
+html.eca-edit .eca-live--zeffy::before{content:"Live: Zeffy fundraisers and events you ticked on Admin > Zeffy";}
+html.eca-edit .eca-live--countdown::before{content:"Countdown: type the date, then what it counts down to";}
+html.eca-edit .eca-live--video::before{content:"Video: paste a YouTube or Vimeo link here";}
+html.eca-edit .eca-live--map::before{content:"Map: type the address here";}

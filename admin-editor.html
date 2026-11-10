@@ -89,10 +89,14 @@
   .ed-step span { display: block; font-size: 13.5px; color: #6b7280; }
   .ed-template-gallery {
     display: none; position: absolute; z-index: 50; background: #fff; border: 1px solid #d7e6ee;
-    border-radius: 10px; box-shadow: 0 8px 28px rgba(20,30,50,.18); padding: 10px; flex-wrap: wrap; gap: 8px; max-width: 420px;
+    border-radius: 10px; box-shadow: 0 8px 28px rgba(20,30,50,.18); padding: 10px; flex-wrap: wrap; gap: 8px; width: 460px; max-width: calc(100vw - 24px);
+    max-height: 70vh; overflow-y: auto;
   }
+  .ed-template-group { flex: 0 0 100%; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; margin: 6px 2px 0; }
+  .ed-template-group:first-child { margin-top: 0; }
+  .ed-template-group em { font-style: normal; font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 6px; }
   .ed-template-gallery.open { display: flex; }
-  .ed-template-choice { display: flex; gap: 10px; align-items: center; border: 1px solid #d7e6ee; background: #fff; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-family: inherit; text-align: left; max-width: 190px; }
+  .ed-template-choice { display: flex; gap: 10px; align-items: center; border: 1px solid #d7e6ee; background: #fff; border-radius: 8px; padding: 10px 12px; cursor: pointer; font-family: inherit; text-align: left; width: calc(50% - 4px); }
   .ed-template-choice:hover { background: #eef3f8; border-color: var(--blue, #0000ff); }
   .ed-template-icon { flex-shrink: 0; width: 34px; height: 34px; border-radius: 7px; background: #f1f4f9; display: flex; align-items: center; justify-content: center; font-size: 16px; letter-spacing: -2px; }
   .ed-template-text strong { display: block; font-size: 13px; margin-bottom: 2px; }
@@ -903,32 +907,61 @@
 
   // ---- Template gallery ---------------------------------------------------
   const SECTION_TEMPLATES = [
-    { key: "text", label: "Heading + Text", hint: "A title and a paragraph", icon: "\u00b6",
+    { key: "text", cat: "start", label: "Heading + Text", hint: "A title and a paragraph", icon: "\u00b6",
       html: '<h2>New Section</h2><p>Write something here.</p>' },
-    { key: "two-col", label: "Two-Column Text", hint: "Side-by-side paragraphs", icon: "▤▤",
+    { key: "two-col", cat: "start", label: "Two-Column Text", hint: "Side-by-side paragraphs", icon: "▤▤",
       html: '<div class="grid grid-2" style="margin:28px 0;"><div><h3>First Topic</h3><p>Write about the first topic here.</p></div><div><h3>Second Topic</h3><p>Write about the second topic here.</p></div></div>' },
-    { key: "feature-cards", label: "Feature Cards", hint: "3 cards in a row", icon: "▦▦▦",
+    { key: "feature-cards", cat: "start", label: "Feature Cards", hint: "3 cards in a row", icon: "▦▦▦",
       html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card"><h3>Feature One</h3><p class="muted">Describe this feature or benefit.</p></div><div class="card"><h3>Feature Two</h3><p class="muted">Describe this feature or benefit.</p></div><div class="card"><h3>Feature Three</h3><p class="muted">Describe this feature or benefit.</p></div></div>' },
-    { key: "stats", label: "Stats Row", hint: "A few big numbers", icon: "📊",
+    { key: "stats", cat: "start", label: "Stats Row", hint: "A few big numbers", icon: "📊",
       html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">100+</h3><p class="muted">Athletes</p></div><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">10+</h3><p class="muted">Years Running</p></div><div class="card" style="text-align:center;"><h3 style="font-size:30px;margin-bottom:2px;">6</h3><p class="muted">Age Groups</p></div></div>' },
-    { key: "quote", label: "Quote / Callout", hint: "A highlighted note", icon: "❝",
+    { key: "quote", cat: "start", label: "Quote / Callout", hint: "A highlighted note", icon: "❝",
       html: '<div class="notice" style="margin:28px 0;"><p style="margin:0;">Put an important note, quote, or announcement here.</p></div>' },
-    { key: "photo-text", label: "Photo + Text", hint: "Image on one side", icon: "🖼️",
+    { key: "photo-text", cat: "start", label: "Photo + Text", hint: "Image on one side", icon: "🖼️",
       html: '<div class="grid grid-2" style="margin:28px 0;align-items:center;"><p class="muted">Click the <strong>Image</strong> button above to add a photo here, then delete this placeholder text.</p><div><h3>About This Photo</h3><p>Write a caption or related text here.</p></div></div>' },
-    { key: "cta", label: "Call to Action", hint: "Banner with a button", icon: "📣",
+    { key: "cta", cat: "start", label: "Call to Action", hint: "Banner with a button", icon: "📣",
       html: '<div class="cta-band" style="margin:28px 0;"><h2>Ready to Join East County Aquatics?</h2><p>Write a short call to action here.</p><p style="margin-top:16px;"><a href="#" class="btn btn-primary">Button Text</a></p></div>' },
-    { key: "teams", label: "Our Teams", hint: "Auto-filled from your teams", icon: "🏊",
-      async html() {
-        const { data } = await supabaseClient.from("schedules").select("team_label").order("sort_order", { ascending: true });
-        const teams = (data || []).length ? data : [{ team_label: "8U Coed" }, { team_label: "12U Girls" }, { team_label: "14U Boys" }];
-        return '<div class="grid grid-3" style="margin:28px 0;">' + teams.map(function (t) {
-          return '<div class="card"><h3>' + escapeHtml(t.team_label) + '</h3><p class="muted">Practice schedule and details for this team.</p></div>';
-        }).join("") + "</div>";
-      } },
+    { key: "faq", label: "FAQ", hint: "Questions and answers", icon: "?", cat: "start",
+      html: '<h2>Frequently Asked Questions</h2><h3>First question?</h3><p>Write the answer here.</p><h3>Second question?</h3><p>Write the answer here.</p><h3>Third question?</h3><p>Write the answer here.</p>' },
+    { key: "testimonials", label: "Testimonials", hint: "Kind words from families", icon: "\u2605", cat: "community",
+      html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card"><p>&ldquo;Write what a family or athlete said about ECA.&rdquo;</p><p class="muted"><strong>Parent name</strong></p></div><div class="card"><p>&ldquo;Another kind word goes here.&rdquo;</p><p class="muted"><strong>Athlete name</strong></p></div><div class="card"><p>&ldquo;And one more.&rdquo;</p><p class="muted"><strong>Name</strong></p></div></div>' },
+    { key: "pricing", label: "Pricing", hint: "Programs and what they cost", icon: "$", cat: "community",
+      html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card" style="text-align:center;"><h3>Program One</h3><p style="font-size:26px;font-weight:800;margin:6px 0;">$000</p><p class="muted">What\u2019s included.</p></div><div class="card" style="text-align:center;"><h3>Program Two</h3><p style="font-size:26px;font-weight:800;margin:6px 0;">$000</p><p class="muted">What\u2019s included.</p></div><div class="card" style="text-align:center;"><h3>Program Three</h3><p style="font-size:26px;font-weight:800;margin:6px 0;">$000</p><p class="muted">What\u2019s included.</p></div></div>' },
+    { key: "info-cards", label: "Contact / Info Cards", hint: "Where, when, who to call", icon: "\u2709", cat: "community",
+      html: '<div class="grid grid-3" style="margin:28px 0;"><div class="card"><h3>Where</h3><p class="muted">Pool name and address.</p></div><div class="card"><h3>When</h3><p class="muted">Days and times.</p></div><div class="card"><h3>Questions?</h3><p class="muted">Email or phone.</p></div></div>' },
+    { key: "schedule-table", label: "Schedule Table", hint: "Days, times and places", icon: "\u25A4", cat: "community",
+      html: '<table style="width:100%;margin:28px 0;"><thead><tr><th>Day</th><th>Time</th><th>Place</th></tr></thead><tbody><tr><td>Tuesday</td><td>7:00\u20139:00 pm</td><td>Pool name</td></tr><tr><td>Thursday</td><td>5:30\u20137:30 pm</td><td>Pool name</td></tr></tbody></table>' },
+    { key: "live-teams", label: "Our Teams (live)", hint: "Every team, always current", icon: "\uD83C\uDFCA", cat: "live",
+      html: '<h2>Our Teams</h2><div class="eca-live eca-live--teams"></div>' },
+    { key: "live-sessions", label: "Open Sessions (live)", hint: "Sign-ups with prices", icon: "\uD83D\uDCDD", cat: "live",
+      html: '<h2>Register Now</h2><div class="eca-live eca-live--sessions"></div>' },
+    { key: "live-tournaments", label: "Upcoming Tournaments (live)", hint: "Next published tournaments", icon: "\uD83C\uDFC6", cat: "live",
+      html: '<h2>Upcoming Tournaments</h2><div class="eca-live eca-live--tournaments"></div>' },
+    { key: "live-coaches", label: "Coaches (live)", hint: "Photos from Admin > Coaches", icon: "\uD83D\uDC4B", cat: "live",
+      html: '<h2>Meet the Coaches</h2><div class="eca-live eca-live--coaches"></div>' },
+    { key: "live-gallery", label: "Photo Grid (live)", hint: "From your Photo Gallery", icon: "\uD83D\uDCF7", cat: "live",
+      html: '<h2>Photos</h2><div class="eca-live eca-live--gallery"></div>' },
+    { key: "live-zeffy", label: "Zeffy Fundraisers (live)", hint: "Forms you tick on Admin > Zeffy", icon: "\uD83D\uDC9B", cat: "live",
+      html: '<h2>Support ECA</h2><div class="eca-live eca-live--zeffy"></div>' },
+    { key: "countdown", label: "Countdown", hint: "Days until a date", icon: "\u23F1", cat: "live",
+      html: '<div class="eca-live eca-live--countdown">2026-12-05 Winter season starts</div>' },
+    { key: "video", label: "Video", hint: "YouTube or Vimeo", icon: "\u25B6", cat: "live",
+      html: '<h2>Watch</h2><div class="eca-live eca-live--video">https://www.youtube.com/watch?v=</div>' },
+    { key: "map", label: "Map", hint: "Where the pool is", icon: "\uD83D\uDCCD", cat: "live",
+      html: '<h2>Find Us</h2><div class="eca-live eca-live--map">Grossmont High School, La Mesa, CA</div>' },
   ];
 
-  galleryEl.innerHTML = SECTION_TEMPLATES.map(function (t) {
-    return '<button type="button" class="ed-template-choice" data-template="' + t.key + '"><span class="ed-template-icon">' + t.icon + '</span><span class="ed-template-text"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.hint) + "</span></span></button>";
+  const TEMPLATE_GROUPS = [
+    ["start", "Start here", "text, photos, buttons"],
+    ["community", "Community and info", "FAQ, prices, contact"],
+    ["live", "Live from your club", "stays up to date by itself"],
+  ];
+  galleryEl.innerHTML = TEMPLATE_GROUPS.map(function (g) {
+    const items = SECTION_TEMPLATES.filter(function (t) { return (t.cat || "start") === g[0]; });
+    if (!items.length) return "";
+    return '<div class="ed-template-group">' + escapeHtml(g[1]) + "<em>" + escapeHtml(g[2]) + "</em></div>" + items.map(function (t) {
+      return '<button type="button" class="ed-template-choice" data-template="' + t.key + '"><span class="ed-template-icon">' + t.icon + '</span><span class="ed-template-text"><strong>' + escapeHtml(t.label) + "</strong><span>" + escapeHtml(t.hint) + "</span></span></button>";
+    }).join("");
   }).join("");
 
   let galleryInsertBtn = null;

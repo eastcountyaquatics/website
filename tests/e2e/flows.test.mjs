@@ -304,3 +304,64 @@ test("tournaments: Duplicate copies the settings into a new, unpublished tournam
   assert.equal(await page.inputValue("#t-location"), "Grossmont High");
   assert.equal(await page.isChecked("#t-published"), false);
 });
+
+test("alumni: a visitor joins from the public page and the owner sees them in the right group", async () => {
+  const page = await env.page({});
+  await page.goto(env.url + "/alumni.html");
+  await page.fill("#al-first", "Jamie");
+  await page.fill("#al-last", "Lee");
+  await page.fill("#al-email", "jamie@example.com");
+  await page.selectOption("#al-segment", "parent");
+  await page.click("#alumni-submit");
+  await page.waitForSelector("text=Thank you, Jamie");
+  assert.match(await page.inputValue("#alumni-card input"), /alumni\.html/);
+  assert.equal((await rows(page, "alumni_contacts"))[0].segment, "parent");
+  await page.goto(env.url + "/admin-alumni.html");
+  await page.waitForSelector("text=Jamie Lee");
+  assert.equal(await page.textContent("#st-parent"), "1");
+  assert.equal(await page.textContent("#st-player"), "0");
+});
+
+test("coaches hub: filters by age group, embeds a YouTube video on click, and only managers see Edit", async () => {
+  const seed = { coach_resources: [
+    { id: "r1", kind: "drill", title: "Eggbeater ladder", body: "Hold for 30s.", age_groups: ["8U", "10U"], video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", sort_order: 0 },
+    { id: "r2", kind: "drill", title: "Shooting circuit", body: "Five shots.", age_groups: ["16U"], video_url: null, sort_order: 1 },
+  ] };
+  const page = await env.page({ seed });
+  await page.goto(env.url + "/admin-coach-hub.html");
+  await page.click('#ch-tabs [data-kind="drill"]');
+  await page.waitForSelector("text=Eggbeater ladder");
+  await page.selectOption("#ch-age", "16U");
+  assert.equal(await page.locator(".ch-item").count(), 1);
+  await page.selectOption("#ch-age", "8U");
+  await page.click("text=Watch video");
+  assert.match(await page.getAttribute(".ch-video iframe", "src"), /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ$/);
+  assert.ok(await page.locator("text=Edit").count() >= 1);
+});
+
+test("team groups: one click adds A, B and C squads", async () => {
+  const page = await env.page({ seed: { schedules: TEAMS, team_subgroups: [{ id: "g1", team_slug: "14u-boys", name: "A Team" }] } });
+  await page.goto(env.url + "/admin-team-groups.html");
+  await page.selectOption("#team-pick", "14u-boys");
+  await page.waitForSelector("#grp-abc");
+  await page.click("#grp-abc");
+  await page.waitForFunction(() => document.querySelectorAll("#grp-list .grp-row").length === 3);
+  const names = (await rows(page, "team_subgroups")).map((g) => g.name).sort();
+  assert.deepEqual(names, ["A Team", "B Team", "C Team"]);
+});
+
+test("tournament invite for a deleted athlete shows as unavailable instead of a database error", async () => {
+  const page = await env.page({
+    seed: {
+      athletes: [{ id: "a1", parent_id: "owner1", full_name: "Max Smith", birthdate: "2013-03-01", sex: "Male", team_slug: "14u-boys" }],
+      profiles: [{ id: "owner1", full_name: "Jordan", role: "parent" }],
+      notifications: [
+        { id: "n1", type: "tournament_invite", title: "Invited: Winter Classic", body: "", data: { tournament_id: "t1", athlete_id: "gone-athlete" }, read_at: null, actioned_at: null, created_at: "2026-11-01T00:00:00Z" },
+        { id: "n2", type: "tournament_invite", title: "Invited: Spring Cup", body: "", data: { tournament_id: "t2", athlete_id: "a1" }, read_at: null, actioned_at: null, created_at: "2026-11-02T00:00:00Z" },
+      ],
+    },
+  });
+  await page.goto(env.url + "/dashboard.html");
+  await page.waitForSelector("text=no longer on your account");
+  assert.equal(await page.locator('[data-notif-response]').count(), 2); // only the live invite (a1) keeps Yes/No
+});

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coaches Hub | ECA Admin</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/styles.css?v=20261113">
+<script src="js/theme.js"></script>
+<link rel="icon" type="image/png" href="images/eca-logo-240.png">
+<link rel="apple-touch-icon" href="images/eca-logo-240.png">
+<meta name="theme-color" content="#0a1f6b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="nav-wrap">
+    <a href="index.html" class="brand">
+      <img src="images/eca-logo-240.png" alt="ECA Waterpolo logo" class="logo-mark" width="240" height="240">
+      <span class="brand-text"><strong>East County Aquatics</strong><span>San Diego Water Polo</span></span>
+    </a>
+    <nav class="main-nav">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Teams</button>
+          <ul class="nav-menu nav-menu-wide">
+            <li><a href="teams.html">All teams</a></li>
+            <li><a href="team-splashball.html">Splashball</a></li>
+            <li><a href="team-8u-coed.html">8U Coed</a></li>
+            <li><a href="team-10u-coed.html">10U Coed</a></li>
+            <li><a href="team-12u-boys.html">12U Boys</a></li>
+            <li><a href="team-12u-girls.html">12U Girls</a></li>
+            <li><a href="team-14u-boys.html">14U Boys</a></li>
+            <li><a href="team-14u-girls.html">14U Girls</a></li>
+            <li><a href="team-16u-boys.html">16U Boys</a></li>
+            <li><a href="team-16u-girls.html">16U Girls</a></li>
+            <li><a href="team-18u-boys.html">18U Boys</a></li>
+            <li><a href="team-18u-girls.html">18U Girls</a></li>
+            <li><a href="masters.html">Masters</a></li>
+            <li><a href="summer-league.html">Summer League</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">Register</button>
+          <ul class="nav-menu">
+            <li><a href="index.html#sessions">Open sessions</a></li>
+            <li><a href="dashboard.html">My Account</a></li>
+            <li><a href="signup.html?trial=1">2-week trial</a></li>
+            <li><a href="registration-refund-policy.html">Registration &amp; refund policy</a></li>
+            <li><a href="age-division-calculator.html">Age division calculator</a></li>
+          </ul>
+        </li>
+        <li class="has-menu">
+          <button type="button" class="nav-parent" aria-expanded="false" aria-haspopup="true">About</button>
+          <ul class="nav-menu">
+            <li><a href="about-us.html">About us &amp; coaches</a></li>
+            <li><a href="accomplishments.html">Accomplishments</a></li>
+            <li><a href="junior-olympics.html">Junior Olympics</a></li>
+            <li><a href="projects.html">Athlete projects</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+            <li><a href="guidelines-etiquette.html">Guidelines &amp; etiquette</a></li>
+          </ul>
+        </li>
+        <li class="nav-logo"><a href="index.html" aria-label="East County Aquatics home"><img src="images/eca-logo-240.png" alt="" width="240" height="240"></a></li>
+        <li><a href="eca-gear.html">Team Store</a></li>
+        <li><a href="support.html">Donate/Sponsor</a></li>
+        <li><a href="contact.html">Contact</a></li>
+        <li id="nav-auth-slot"></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false"><span></span></button>
+  </div>
+</header>
+
+<section class="admin-header">
+  <div class="container">
+    <h1>Coaches Hub</h1>
+    <p><a href="admin.html" style="color:var(--gold);">&larr; Back to Admin</a></p>
+  </div>
+</section>
+<style>
+  .ch-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .ch-tabs button{border:1px solid #cfd6e4;background:#fff;border-radius:999px;padding:7px 16px;font:inherit;font-weight:700;cursor:pointer;}
+  .ch-tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .ch-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .ch-tools input,.ch-tools select{padding:8px 10px;border:1px solid #d7e6ee;border-radius:8px;font:inherit;}
+  .ch-item{border:1px solid #e3edf3;border-radius:12px;padding:14px 16px;margin-bottom:10px;background:#fff;}
+  .ch-item h4{margin:0 0 4px;}
+  .ch-pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:#eef2ff;color:#3730a3;margin-right:4px;}
+  .ch-body{white-space:pre-wrap;font-size:14.5px;margin:8px 0;}
+  .ch-video{position:relative;padding-top:56.25%;margin-top:8px;border-radius:10px;overflow:hidden;background:#000;}
+  .ch-video iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+</style>
+<section class="section-tight">
+  <div class="container" style="max-width:900px;">
+    <div id="ch-msg" class="form-msg"></div>
+    <div class="ch-tabs" id="ch-tabs" role="tablist">
+      <button type="button" data-kind="skill" class="on">Skills</button>
+      <button type="button" data-kind="drill">Drills</button>
+      <button type="button" data-kind="vocabulary">Vocabulary</button>
+    </div>
+    <div class="ch-tools">
+      <select id="ch-age" aria-label="Age group"></select>
+      <input type="search" id="ch-search" placeholder="Search&hellip;" aria-label="Search">
+      <button type="button" class="btn btn-primary" id="ch-add" style="display:none;">+ Add</button>
+    </div>
+
+    <div class="admin-form" id="ch-form-wrap" style="display:none;">
+      <h3 id="ch-form-title">Add</h3>
+      <form id="ch-form">
+        <input type="hidden" id="f-id">
+        <div class="field"><label for="f-kind">Type</label><select id="f-kind"><option value="skill">Skill</option><option value="drill">Drill</option><option value="vocabulary">Vocabulary</option></select></div>
+        <div class="field"><label for="f-title">Title</label><input type="text" id="f-title" maxlength="200" required></div>
+        <div class="field"><label for="f-body">Description / how to run it</label><textarea id="f-body" rows="6" maxlength="4000"></textarea></div>
+        <div class="field"><label>Age groups</label><div id="f-ages" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+          <p class="muted" style="font-size:12px;margin:4px 0 0;">Tick &ldquo;All&rdquo; for something every age uses.</p></div>
+        <div class="field"><label for="f-video">Video link (YouTube or Vimeo, optional)</label><input type="url" id="f-video" placeholder="https://www.youtube.com/watch?v=..."></div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-outline-dark" id="f-cancel">Cancel</button>
+      </form>
+    </div>
+
+    <div id="ch-list"><p class="muted">Loading&hellip;</p></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> San Diego East County Aquatics. All rights reserved.</span>
+      <span>Non-profit water polo club &middot; El Cajon, CA</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/vendor/supabase.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/fn-error.js"></script>
+<script src="js/auth.js?v=20261014i"></script>
+<script src="js/main.js?v=20261027"></script>
+<script src="js/site-chrome.js?v=20261014p"></script>
+<script>
+  var AGES = ["All", "Splashball", "8U", "10U", "12U", "14U", "16U", "18U", "Masters"];
+  var KIND_LABEL = { skill: "skill", drill: "drill", vocabulary: "term" };
+  var rows = [], kind = "skill", canEdit = false;
+  function say(t, ok) { var m = document.getElementById("ch-msg"); m.className = "form-msg " + (ok ? "success" : "error"); m.textContent = t; }
+
+  // Only https YouTube / Vimeo links become an embedded player; any other https link stays a plain link.
+  function embedSrc(u) {
+    var yt = /(?:youtube\.com\/watch\?(?:[^#]*&)?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([\w-]{11})/.exec(u || "");
+    if (yt) return "https://www.youtube-nocookie.com/embed/" + yt[1];
+    var vm = /vimeo\.com\/(\d{6,12})/.exec(u || "");
+    return vm ? "https://player.vimeo.com/video/" + vm[1] : null;
+  }
+  function el(tag, attrs, text) { var e = document.createElement(tag); Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); }); if (text != null) e.textContent = text; return e; }
+
+  function visible() {
+    var age = document.getElementById("ch-age").value, q = document.getElementById("ch-search").value.trim().toLowerCase();
+    return rows.filter(function (r) {
+      if (r.kind !== kind) return false;
+      if (age && (r.age_groups || []).indexOf(age) === -1 && (r.age_groups || []).indexOf("All") === -1) return false;
+      return !q || (r.title + " " + (r.body || "")).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  function draw() {
+    var list = document.getElementById("ch-list"), items = visible();
+    list.textContent = "";
+    if (!items.length) { list.appendChild(el("p", { class: "muted" }, rows.length ? "Nothing here yet for that filter." : "Nothing here yet.")); return; }
+    items.forEach(function (r) {
+      var card = el("div", { class: "ch-item" });
+      card.appendChild(el("h4", {}, r.title));
+      var pills = el("div");
+      (r.age_groups || []).forEach(function (a) { pills.appendChild(el("span", { class: "ch-pill" }, a)); });
+      card.appendChild(pills);
+      if (r.body) card.appendChild(el("div", { class: "ch-body" }, r.body));
+      if (/^https:\/\//.test(r.video_url || "")) {
+        var src = embedSrc(r.video_url);
+        if (src) {
+          var watch = el("button", { type: "button", class: "btn btn-outline-dark" }, "Watch video");
+          watch.style.cssText = "padding:6px 14px;font-size:13px;";
+          watch.addEventListener("click", function () {
+            var box = el("div", { class: "ch-video" }), f = el("iframe", { src: src, title: r.title, allowfullscreen: "", loading: "lazy", referrerpolicy: "strict-origin-when-cross-origin" });
+            box.appendChild(f); watch.replaceWith(box);
+          });
+          card.appendChild(watch);
+        } else {
+          var a = el("a", { href: r.video_url, target: "_blank", rel: "noopener noreferrer" }, "Open video link"); card.appendChild(a);
+        }
+      }
+      if (canEdit) {
+        var tools = el("div"); tools.style.marginTop = "8px";
+        var ed = el("button", { type: "button", class: "btn btn-outline-dark" }, "Edit"), del = el("button", { type: "button", class: "btn btn-outline-dark" }, "Remove");
+        ed.style.cssText = del.style.cssText = "padding:5px 12px;font-size:13px;margin-right:6px;";
+        ed.addEventListener("click", function () { openForm(r); });
+        del.addEventListener("click", async function () {
+          if (!confirm("Remove \u201c" + r.title + "\u201d?")) return;
+          var res = await supabaseClient.from("coach_resources").delete().eq("id", r.id);
+          if (res.error) return say("Could not remove: " + res.error.message, false);
+          say("", true); load();
+        });
+        tools.appendChild(ed); tools.appendChild(del); card.appendChild(tools);
+      }
+      list.appendChild(card);
+    });
+  }
+  async function load() {
+    var res = await supabaseClient.from("coach_resources").select("*").order("sort_order", { ascending: true }).order("title", { ascending: true }).limit(2000);
+    if (res.error) { document.getElementById("ch-list").textContent = "Could not load: " + res.error.message; return; }
+    rows = res.data || []; draw();
+  }
+  document.getElementById("ch-tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-kind]"); if (!b) return;
+    kind = b.dataset.kind;
+    document.querySelectorAll("#ch-tabs button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    draw();
+  });
+  document.getElementById("ch-age").innerHTML = '<option value="">All age groups</option>' + AGES.filter(function (a) { return a !== "All"; }).map(function (a) { return '<option value="' + a + '">' + a + "</option>"; }).join("");
+  document.getElementById("ch-age").addEventListener("change", draw);
+  document.getElementById("ch-search").addEventListener("input", draw);
+
+  function openForm(r) {
+    document.getElementById("ch-form-wrap").style.display = "block";
+    document.getElementById("ch-form-title").textContent = r ? "Edit" : "Add";
+    document.getElementById("f-id").value = r ? r.id : "";
+    document.getElementById("f-kind").value = r ? r.kind : kind;
+    document.getElementById("f-title").value = r ? r.title : "";
+    document.getElementById("f-body").value = r && r.body || "";
+    document.getElementById("f-video").value = r && r.video_url || "";
+    var have = r ? (r.age_groups || []) : ["All"];
+    document.getElementById("f-ages").innerHTML = AGES.map(function (a) {
+      return '<label style="font-weight:400;display:flex;gap:4px;align-items:center;"><input type="checkbox" value="' + a + '" style="width:auto;"' + (have.indexOf(a) !== -1 ? " checked" : "") + "> " + a + "</label>";
+    }).join("");
+    document.getElementById("ch-form-wrap").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  document.getElementById("ch-add").addEventListener("click", function () { openForm(null); });
+  document.getElementById("f-cancel").addEventListener("click", function () { document.getElementById("ch-form-wrap").style.display = "none"; });
+  document.getElementById("ch-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var id = document.getElementById("f-id").value;
+    var ages = Array.prototype.map.call(document.querySelectorAll("#f-ages input:checked"), function (c) { return c.value; });
+    var video = document.getElementById("f-video").value.trim();
+    if (video && !/^https:\/\//.test(video)) return say("The video link must start with https://", false);
+    var body = {
+      kind: document.getElementById("f-kind").value, title: document.getElementById("f-title").value.trim(),
+      body: document.getElementById("f-body").value.trim() || null, age_groups: ages.length ? ages : ["All"],
+      video_url: video || null, updated_at: new Date().toISOString(),
+    };
+    var res = id ? await supabaseClient.from("coach_resources").update(body).eq("id", id) : await supabaseClient.from("coach_resources").insert(body);
+    if (res.error) return say("Could not save: " + res.error.message, false);
+    say("Saved.", true); document.getElementById("ch-form-wrap").style.display = "none";
+    kind = body.kind; document.querySelectorAll("#ch-tabs button").forEach(function (x) { x.classList.toggle("on", x.dataset.kind === kind); });
+    load();
+  });
+  (async function () {
+    var auth = await requireRole(["owner", "head_coach", "assistant_coach", "coach"]);
+    if (!auth) return;
+    canEdit = auth.role === "owner" || auth.role === "head_coach";
+    document.getElementById("ch-add").style.display = canEdit ? "inline-block" : "none";
+    load();
+  })();
+</script>
+</body>
+</html>

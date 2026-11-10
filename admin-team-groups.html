@@ -111,6 +111,7 @@
         <form id="grp-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
           <input type="text" id="grp-name" maxlength="60" placeholder="New group name" required style="flex:1;min-width:200px;">
           <button type="submit" class="btn btn-primary">Add Group</button>
+          <button type="button" class="btn btn-outline-dark" id="grp-abc" title="Adds A Team, B Team and C Team if they are not there yet">Add A, B &amp; C squads</button>
         </form>
         <div id="grp-list"><p class="muted">Loading&hellip;</p></div>
       </div>
@@ -237,6 +238,7 @@
       return '<div class="grp-row' + (open ? " sel" : "") + '">' +
         '<div class="grp-top"><strong>' + escapeHtml(g.name) + ' <span class="muted" style="font-weight:400;">&middot; ' + set.size + (set.size === 1 ? " athlete" : " athletes") + "</span></strong>" +
         '<span><button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-toggle="' + g.id + '">' + (open ? "Done" : "Choose athletes") + "</button> " +
+        '<button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-roster="' + g.id + '">Roster (CSV)</button> ' +
         '<button type="button" class="btn btn-outline-dark" style="padding:5px 12px;font-size:13px;" data-remove="' + g.id + '">Remove</button></span></div>' +
         (open
           ? '<input type="search" data-filter="' + g.id + '" placeholder="Type to filter names&hellip;" aria-label="Filter athletes" style="margin-top:10px;max-width:320px;">' +
@@ -264,6 +266,9 @@
           l.style.display = !q || l.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
         });
       });
+    });
+    el.querySelectorAll("[data-roster]").forEach(function (b) {
+      b.addEventListener("click", function () { downloadGroupRoster(groups.find(function (x) { return x.id === b.dataset.roster; })); });
     });
     el.querySelectorAll("[data-toggle]").forEach(function (b) {
       b.addEventListener("click", function () { openGroupId = openGroupId === b.dataset.toggle ? null : b.dataset.toggle; renderGroups(); });
@@ -331,6 +336,35 @@
   }
   function selectedAudience() {
     return Array.prototype.map.call(document.querySelectorAll('#send-to [data-aud="group"]:checked'), function (c) { return c.value; });
+  }
+
+  // One click creates the A, B and C squads for this team (skipping any that already exist).
+  document.getElementById("grp-abc").addEventListener("click", async function () {
+    const slug = document.getElementById("team-pick").value;
+    const have = groups.map(function (g) { return g.name.toLowerCase(); });
+    const add = ["A Team", "B Team", "C Team"].filter(function (n) { return have.indexOf(n.toLowerCase()) === -1; });
+    if (!add.length) return pageMsg("A, B and C squads are already set up.", true);
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { error } = await supabaseClient.from("team_subgroups").insert(add.map(function (n) { return { team_slug: slug, name: n, created_by: session.user.id }; }));
+    if (error) return pageMsg("Could not add: " + error.message, false);
+    pageMsg("Added " + add.join(", ") + ". Use Choose athletes on each to build the rosters.", true);
+    loadTeam();
+  });
+
+  // Roster of one squad as a CSV: athlete, birthdate, parent name, email, phone.
+  async function downloadGroupRoster(g) {
+    const ids = Array.from(membersByGroup[g.id] || []);
+    if (!ids.length) return pageMsg("No athletes in " + g.name + " yet.", false);
+    const { data: kids, error } = await supabaseClient.from("athletes").select("id, full_name, birthdate, parent_id").in("id", ids);
+    if (error) return pageMsg("Could not export: " + error.message, false);
+    const pids = Array.from(new Set((kids || []).map(function (k) { return k.parent_id; }).filter(Boolean)));
+    const { data: people } = pids.length ? await supabaseClient.from("profiles").select("id, full_name, email, phone").in("id", pids) : { data: [] };
+    const byId = {}; (people || []).forEach(function (p) { byId[p.id] = p; });
+    const rows = [["Athlete", "Birthdate", "Parent / guardian", "Email", "Phone"]].concat((kids || []).sort(function (a, b) { return a.full_name.localeCompare(b.full_name); }).map(function (k) {
+      const p = byId[k.parent_id] || {};
+      return [k.full_name, k.birthdate || "", p.full_name || "", p.email || "", p.phone || ""];
+    }));
+    downloadCsv("roster-" + document.getElementById("team-pick").value + "-" + g.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + ".csv", rows);
   }
 
   document.getElementById("grp-form").addEventListener("submit", async function (e) {

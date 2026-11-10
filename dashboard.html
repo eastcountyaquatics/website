@@ -1415,10 +1415,21 @@
       return;
     }
 
-    // Once a family has athletes on file, only the programs at least one of
-    // them fits are listed -- a 10U family never sees the high school
-    // program. With no athletes yet, everything open is shown as a preview.
-    const shown = !myAthletes.length ? options : options.filter(function (o) {
+    // Programs are matched to an athlete's age, so a family with no athletes yet sees none
+    // (we can't know which fit) -- just a prompt to add one. Once athletes are on file, only
+    // the programs at least one of them fits are listed: a 10U family never sees the high
+    // school program.
+    if (!myAthletes.length) {
+      wrap.innerHTML = '<div class="card" style="text-align:center;"><h3>Add your athlete to see programs</h3>' +
+        '<p class="muted">Programs are matched to your athlete\u2019s age, so add them first.</p>' +
+        '<button type="button" class="btn btn-primary" id="reg-add-athlete">+ Add an Athlete</button></div>';
+      document.getElementById("reg-add-athlete").addEventListener("click", function () {
+        toggleAthleteForm(true);
+        document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
+    const shown = options.filter(function (o) {
       return myAthletes.some(function (a) { return athleteFitsProgram(a, o.team_slugs || []); });
     });
     if (!shown.length) {
@@ -1480,12 +1491,10 @@
             (o.description ? '<p class="muted">' + escapeHtml(o.description) + "</p>" : "") +
             '<p style="font-size:22px;font-weight:800;color:var(--blue);margin:10px 0;">' + amount + "</p>" +
             '<div data-athlete-checks="' + o.id + '">' + athleteChecks + "</div>" +
-            // No athletes yet: keep the button clickable and send them to the Add Athlete form
-            // (a dead-looking button was confusing). If athletes exist but none fit this program, or all are
-            // already registered, the button is greyed out.
-            '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '"' + (!myAthletes.length ? ' data-need-athlete="1"' : "") + ' style="margin-top:10px;width:100%;' +
-            (eligible.length || !myAthletes.length ? "" : "opacity:.45;cursor:not-allowed;") + '" ' +
-            (eligible.length || !myAthletes.length ? "" : "disabled") + ">" + ecaT("rc.button") + "</button>" +
+            // Greyed out when every athlete that fits is already registered.
+            '<button type="button" class="btn btn-primary" data-checkout="' + o.id + '" style="margin-top:10px;width:100%;' +
+            (eligible.length ? "" : "opacity:.45;cursor:not-allowed;") + '" ' +
+            (eligible.length ? "" : "disabled") + ">" + ecaT("rc.button") + "</button>" +
             '<div class="form-msg" data-checkout-msg="' + o.id + '"></div>' +
             "</div>"
           );
@@ -1497,13 +1506,6 @@
       btn.addEventListener("click", function () {
         const optionId = btn.dataset.checkout;
         const msgEl = wrap.querySelector('[data-checkout-msg="' + optionId + '"]');
-        if (btn.dataset.needAthlete) {
-          msgEl.className = "form-msg error";
-          msgEl.textContent = "Add your athlete first, then come back and register.";
-          toggleAthleteForm(true);
-          document.getElementById("athlete-form").scrollIntoView({ behavior: "smooth", block: "center" });
-          return;
-        }
         const checked = wrap.querySelectorAll('input[data-option="' + optionId + '"]:checked');
         if (checked.length === 0) {
           msgEl.className = "form-msg error";

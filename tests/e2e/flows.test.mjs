@@ -274,7 +274,7 @@ test("approved team photos are spread between sections, not one block", async ()
   assert.equal(r.unapproved, 0);
 });
 
-test("family with no athletes: Register & Pay opens the Add Athlete form instead of doing nothing", async () => {
+test("family with no athletes sees no programs, just a prompt to add an athlete", async () => {
   const page = await env.page({
     seed: {
       registration_options: [{ id: "o1", label: "14U Boys Winter", amount_cents: 39500, team_slugs: ["14u-boys"], payment_provider: "zeffy", is_open: true, sort_order: 0 }],
@@ -282,9 +282,8 @@ test("family with no athletes: Register & Pay opens the Add Athlete form instead
     },
   });
   await page.goto(env.url + "/dashboard.html");
-  await page.waitForSelector("#registration-options [data-checkout]");
-  assert.equal(await page.locator("#registration-options [data-checkout]").isDisabled(), false);
-  await page.click("#registration-options [data-checkout]");
+  await page.waitForSelector("#reg-add-athlete");
+  assert.equal(await page.locator("#registration-options [data-checkout]").count(), 0);
+  await page.click("#reg-add-athlete");
   await page.waitForSelector("#athlete-form", { state: "visible" });
-  assert.match(await page.textContent("#registration-options [data-checkout-msg]"), /Add your athlete first/);
 });

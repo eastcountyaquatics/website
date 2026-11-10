@@ -1,0 +1,31 @@
+name: Tests
+
+# Runs on every pull request and on pushes to the working and deploy branches.
+# It does not block the Pages deploy; it tells you in the PR whether something broke.
+on:
+  pull_request:
+  push:
+    branches: ["claude/**", "main", "master"]
+  workflow_dispatch:
+
+jobs:
+  checks:
+    name: Static checks and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+
+  browser:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

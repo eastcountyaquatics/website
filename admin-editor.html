@@ -1117,9 +1117,20 @@
       const wrapRect = document.getElementById("canvas-wrap").getBoundingClientRect();
       const btnRect = anchorBtn.getBoundingClientRect(); // relative to iframe viewport
       const frameRect = canvas.getBoundingClientRect();
-      galleryEl.style.top = (frameRect.top - wrapRect.top + btnRect.top + btnRect.height + 6) + "px";
-      galleryEl.style.left = (frameRect.left - wrapRect.left + Math.max(0, btnRect.left - 40)) + "px";
+      const wrapEl = document.getElementById("canvas-wrap");
       galleryEl.classList.add("open");
+      const gw = galleryEl.offsetWidth, gh = galleryEl.offsetHeight;
+      // Below the button by default; keep the whole picker inside the editor
+      // (it used to run off the right edge), and flip above if there is no room below.
+      let left = frameRect.left - wrapRect.left + Math.max(0, btnRect.left - 40);
+      left = Math.max(8, Math.min(left, wrapEl.clientWidth - gw - 8)) + wrapEl.scrollLeft;
+      let top = frameRect.top - wrapRect.top + btnRect.top + btnRect.height + 6;
+      if (top + gh > wrapEl.clientHeight - 8) {
+        const above = frameRect.top - wrapRect.top + btnRect.top - gh - 6;
+        top = above >= 8 ? above : Math.max(8, wrapEl.clientHeight - gh - 8);
+      }
+      galleryEl.style.top = (top + wrapEl.scrollTop) + "px";
+      galleryEl.style.left = left + "px";
     }, 50);
   }
   document.addEventListener("click", function (e) {
